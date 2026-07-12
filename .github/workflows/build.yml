@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
   workflow_dispatch:
 
@@ -21,8 +22,9 @@ jobs:
   # CHANGE DETECTION – only build the images that actually changed.
   #   app → main app image (backend + bundled frontend)
   #   mcp → standalone MCP server image
-  # On a push to main we force a full rebuild (a release merge can leave the
-  # paths-filter diff empty, and merging to main is a deliberate release).
+  # On a push to main or develop we force a full rebuild (a release/merge can
+  # leave the paths-filter diff empty, and merging to these branches is a
+  # deliberate release/staging deploy).
   # ---------------------------------------------------------------------------
   detect-changes:
     runs-on: ubuntu-latest
@@ -50,7 +52,7 @@ jobs:
             echo "image_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "${{ github.event_name }}" = "push" ] && { [ "${{ github.ref_name }}" = "main" ] || [ "${{ github.ref_name }}" = "develop" ]; }; then
             echo "force=true" >> "$GITHUB_OUTPUT"
           else
             echo "force=false" >> "$GITHUB_OUTPUT"
