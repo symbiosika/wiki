@@ -2,36 +2,36 @@
  * Central AI access for the app.
  *
  * All LLM / agent calls go through OpenRouter (per project convention), using a
- * Mistral model. Live audio transcription is handled separately and directly by
- * Mistral (see ../lib/audio/transcription) — NOT here.
+ * Mistral model. We talk to OpenRouter via its OpenAI-compatible API through
+ * `@ai-sdk/openai-compatible` — that provider is versioned in lockstep with the
+ * AI SDK we use (like @ai-sdk/mistral), so the model specification version
+ * matches `ai` at runtime. (The dedicated @openrouter/ai-sdk-provider targets a
+ * different AI SDK major and throws AI_UnsupportedModelVersionError here.)
  *
- * The model id is configurable via OPENROUTER_MODEL (defaults to a Mistral
- * model). Never import @ai-sdk/mistral for text generation in app code — route
- * everything through the provider created here.
+ * Live audio transcription is handled separately and directly by Mistral (see
+ * ../lib/audio/transcription) — NOT here.
  */
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject, type LanguageModel } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { generateObject } from "ai";
 import { valibotSchema } from "@ai-sdk/valibot";
 import type { GenericSchema } from "valibot";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_BASE_URL =
+  process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
 
 /** Model id used for all text LLM / agent calls (a Mistral model on OpenRouter). */
 export const AI_MODEL_ID =
   process.env.OPENROUTER_MODEL ?? "mistralai/mistral-large";
 
-const openrouter = createOpenRouter({
+const openrouter = createOpenAICompatible({
+  name: "openrouter",
+  baseURL: OPENROUTER_BASE_URL,
   apiKey: OPENROUTER_API_KEY ?? "",
 });
 
-/**
- * Shared language model for generateObject / generateText / agents.
- * Cast bridges the provider's bundled ai types to our ai@6 `LanguageModel`
- * (nominal mismatch only; the runtime interface is compatible).
- */
-export const STANDARD_AI_MODEL = openrouter.chat(
-  AI_MODEL_ID,
-) as unknown as LanguageModel;
+/** Shared language model for generateObject / generateText / agents. */
+export const STANDARD_AI_MODEL = openrouter.chatModel(AI_MODEL_ID);
 
 /** Throws a clear error if the OpenRouter key is missing. */
 export const assertOpenRouterConfigured = (): void => {
