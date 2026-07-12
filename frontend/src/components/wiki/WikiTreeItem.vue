@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      class="group flex items-center gap-0.5 rounded-md px-1 py-[3px] text-sm transition-colors"
+      class="group flex items-center gap-0.5 rounded-md px-1 py-1.5 text-sm transition-colors lg:py-[3px]"
       :class="
         isActive
           ? 'bg-primary-50 font-medium text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
@@ -12,7 +12,7 @@
       <!-- expand / collapse -->
       <button
         type="button"
-        class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-600 dark:hover:bg-surface-700 dark:hover:text-surface-300"
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-600 active:bg-surface-200 lg:h-5 lg:w-5 dark:hover:bg-surface-700 dark:hover:text-surface-300 dark:active:bg-surface-700"
         :class="{ 'invisible group-hover:visible': !node.children.length }"
         :aria-label="expanded ? 'collapse' : 'expand'"
         @click.stop="toggleExpanded"
@@ -32,26 +32,26 @@
         {{ node.title || $t('Wiki.untitled') }}
       </button>
 
-      <!-- hover actions -->
+      <!-- actions: always visible on touch, hover-revealed on desktop -->
       <span
-        class="hidden shrink-0 items-center group-hover:flex"
+        class="flex shrink-0 items-center lg:hidden lg:group-hover:flex"
         @click.stop
       >
         <button
           type="button"
           :title="$t('Wiki.newSubPage')"
-          class="flex h-5 w-5 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-600 dark:hover:bg-surface-700 dark:hover:text-surface-300"
+          class="flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-600 active:bg-surface-200 lg:h-5 lg:w-5 dark:hover:bg-surface-700 dark:hover:text-surface-300 dark:active:bg-surface-700"
           @click="$emit('add-child', node)"
         >
-          <IconPlus class="h-3.5 w-3.5" />
+          <IconPlus class="h-4 w-4 lg:h-3.5 lg:w-3.5" />
         </button>
         <button
           type="button"
           :title="$t('Wiki.deletePage')"
-          class="flex h-5 w-5 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-red-600 dark:hover:bg-surface-700 dark:hover:text-red-400"
+          class="flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-red-600 active:bg-surface-200 lg:h-5 lg:w-5 dark:hover:bg-surface-700 dark:hover:text-red-400 dark:active:bg-surface-700"
           @click="$emit('delete', node)"
         >
-          <IconTrash class="h-3.5 w-3.5" />
+          <IconTrash class="h-4 w-4 lg:h-3.5 lg:w-3.5" />
         </button>
       </span>
     </div>

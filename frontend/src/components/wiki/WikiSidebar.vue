@@ -1,38 +1,79 @@
 <template>
   <aside
-    class="flex h-full w-72 shrink-0 flex-col border-r border-surface-200 bg-surface-50 dark:border-surface-800 dark:bg-surface-900"
+    class="flex h-full w-80 max-w-[85vw] shrink-0 flex-col border-r border-surface-200 bg-surface-50 pt-[env(safe-area-inset-top)] lg:w-72 dark:border-surface-800 dark:bg-surface-900"
   >
-    <!-- header -->
-    <div class="flex items-center gap-2 px-4 pt-4 pb-2">
-      <span
-        class="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
+    <!-- header: organisation → start page -->
+    <div class="flex items-center gap-0.5 px-2 pt-3 pb-2">
+      <button
+        type="button"
+        :title="$t('Wiki.goHome')"
+        class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="goHome"
       >
-        W
-      </span>
-      <span
-        class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
+        <span
+          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
+        >
+          {{ tenantInitial }}
+        </span>
+        <span
+          class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
+        >
+          {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
+        </span>
+      </button>
+
+      <!-- switch organisation (only if the user has several) -->
+      <button
+        v-if="app.state.tenants.length > 1"
+        type="button"
+        :title="$t('Wiki.switchTenant')"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 lg:h-7 lg:w-7 dark:hover:bg-surface-800 dark:hover:text-surface-300"
+        @click="tenantMenuRef?.toggle($event)"
       >
-        {{ $t('Wiki.appName') }}
-      </span>
+        <IconChevronDown class="h-4 w-4" />
+      </button>
+
+      <!-- desktop: collapse -->
+      <button
+        type="button"
+        :title="$t('Wiki.collapseSidebar')"
+        class="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 lg:flex dark:hover:bg-surface-800 dark:hover:text-surface-300"
+        @click="layout.toggleCollapsed()"
+      >
+        <IconPanelLeft class="h-4 w-4" />
+      </button>
+
+      <!-- mobile: close drawer -->
+      <button
+        type="button"
+        :aria-label="$t('Wiki.closeMenu')"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors active:bg-surface-100 lg:hidden dark:active:bg-surface-800"
+        @click="layout.closeSidebar()"
+      >
+        <IconClose class="h-5 w-5" />
+      </button>
     </div>
 
-    <!-- tenant switcher (only if the user has several organisations) -->
-    <div v-if="app.state.tenants.length > 1" class="px-3 pb-1">
-      <select
-        :value="app.state.selectedTenant"
-        class="w-full cursor-pointer rounded-md border border-surface-200 bg-surface-0 px-2 py-1.5 text-sm text-surface-800 dark:border-surface-700 dark:bg-surface-950 dark:text-surface-200"
-        :aria-label="$t('Wiki.tenant')"
-        @change="switchTenant(($event.target as HTMLSelectElement).value)"
-      >
-        <option
-          v-for="tenant in app.state.tenants"
-          :key="tenant.id"
-          :value="tenant.id"
-        >
-          {{ tenant.name }}
-        </option>
-      </select>
-    </div>
+    <Menu ref="tenantMenuRef" :model="tenantMenuItems" popup>
+      <template #item="{ item, props: itemProps }">
+        <a v-bind="itemProps.action" class="flex items-center gap-2">
+          <span
+            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary"
+          >
+            {{
+              String(item.label ?? '?')
+                .trim()[0]
+                ?.toUpperCase()
+            }}
+          </span>
+          <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+          <IconCheck
+            v-if="item.tenantId === app.state.selectedTenant"
+            class="h-4 w-4 shrink-0 text-primary"
+          />
+        </a>
+      </template>
+    </Menu>
 
     <!-- search -->
     <div class="relative px-3 py-2">
@@ -43,7 +84,7 @@
         v-model="searchQuery"
         type="search"
         :placeholder="$t('Wiki.search')"
-        class="w-full rounded-md border border-surface-200 bg-surface-0 py-1.5 pr-2 pl-8 text-sm text-surface-800 outline-none placeholder:text-surface-400 focus:border-primary dark:border-surface-700 dark:bg-surface-950 dark:text-surface-200"
+        class="w-full rounded-md border border-surface-200 bg-surface-0 py-2 pr-2 pl-8 text-base text-surface-800 outline-none placeholder:text-surface-400 focus:border-primary lg:py-1.5 lg:text-sm dark:border-surface-700 dark:bg-surface-950 dark:text-surface-200"
       />
     </div>
 
@@ -51,7 +92,7 @@
     <div class="px-3 pb-2">
       <button
         type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis"
+        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
         @click="protocol.openDialog()"
       >
         <IconMicrophone class="h-4 w-4" />
@@ -60,7 +101,10 @@
     </div>
 
     <!-- search results -->
-    <div v-if="searchQuery.trim()" class="flex-1 overflow-y-auto px-2 pb-4">
+    <div
+      v-if="searchQuery.trim()"
+      class="flex-1 overflow-y-auto overscroll-contain px-2 pb-4"
+    >
       <div
         v-if="searchResults.length === 0 && !searchPending"
         class="px-2 py-2 text-sm text-surface-500 dark:text-surface-400"
@@ -71,7 +115,7 @@
         v-for="result in searchResults"
         :key="result.id"
         type="button"
-        class="block w-full rounded-md px-2 py-1.5 text-left hover:bg-surface-100 dark:hover:bg-surface-800"
+        class="block w-full rounded-md px-2 py-2 text-left hover:bg-surface-100 active:bg-surface-100 lg:py-1.5 dark:hover:bg-surface-800 dark:active:bg-surface-800"
         @click="openSearchResult(result)"
       >
         <span
@@ -89,7 +133,7 @@
     </div>
 
     <!-- tree -->
-    <nav v-else class="flex-1 overflow-y-auto px-2 pb-4">
+    <nav v-else class="flex-1 overflow-y-auto overscroll-contain px-2 pb-4">
       <!-- Personal -->
       <WikiSidebarSection
         :label="$t('Wiki.personal')"
@@ -172,7 +216,7 @@
 
     <!-- footer: user -->
     <div
-      class="flex items-center gap-2 border-t border-surface-200 px-4 py-3 dark:border-surface-800"
+      class="flex items-center gap-2 border-t border-surface-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-surface-800"
     >
       <span
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-contrast"
@@ -187,20 +231,20 @@
       <button
         type="button"
         :title="$t('Wiki.manage')"
-        class="relative flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300"
+        class="relative flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 lg:h-7 lg:w-7 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
         @click="gotoManage"
       >
         <IconCog class="h-4 w-4" />
         <span
           v-if="app.state.tenantInvitations.length > 0"
-          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary"
+          class="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary lg:top-0 lg:right-0"
           :title="$t('UserTenants.invitations.openInvitations')"
         />
       </button>
       <button
         type="button"
         :title="$t('Wiki.logout')"
-        class="flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300"
+        class="flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 lg:h-7 lg:w-7 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
         @click="auth.logout()"
       >
         <IconLogout class="h-4 w-4" />
@@ -215,16 +259,17 @@ import IconMagnify from '~icons/mdi/magnify'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
-import type {
-  WikiScope,
-  WikiSearchResult,
-  WikiTreeNode,
-} from '@/types/wiki'
+import IconChevronDown from '~icons/mdi/chevron-down'
+import IconCheck from '~icons/mdi/check'
+import IconClose from '~icons/mdi/close'
+import IconPanelLeft from '~icons/mdi/dock-left'
+import type { WikiScope, WikiSearchResult, WikiTreeNode } from '@/types/wiki'
 
 const app = useApp()
 const protocol = useProtocol()
 const auth = useAuthStore()
 const wiki = useWiki()
+const layout = useLayout()
 const route = useRoute()
 const router = useRouter()
 const confirm = useConfirm()
@@ -239,6 +284,26 @@ watch(
     if (id) wiki.loadTree(id)
   },
   { immediate: true },
+)
+
+// ----- header: organisation ------------------------------------------------
+
+const tenantInitial = computed(
+  () => app.currentTenant?.name?.trim()?.[0]?.toUpperCase() ?? 'W',
+)
+
+const goHome = () => {
+  router.push({ name: 'Wiki', params: { tenantId: tenantId.value } })
+}
+
+const tenantMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+
+const tenantMenuItems = computed(() =>
+  app.state.tenants.map((tenant) => ({
+    label: tenant.name,
+    tenantId: tenant.id,
+    command: () => switchTenant(tenant.id),
+  })),
 )
 
 // ----- expansion state (shared with WikiTreeItem via provide) --------------
@@ -357,6 +422,7 @@ const userInitials = computed(() => {
 })
 
 const switchTenant = async (newTenantId: string) => {
+  if (newTenantId === app.state.selectedTenant) return
   await app.setSelectedTenant(newTenantId)
   router.push({ name: 'Wiki', params: { tenantId: newTenantId } })
 }

@@ -1,12 +1,12 @@
 <template>
   <div
-    class="mb-6 flex gap-1 border-b border-surface-200 dark:border-surface-700"
+    class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
   >
     <button
       v-for="tab in tabs"
       :key="tab.routeName"
       type="button"
-      class="border-b-2 px-4 py-2 text-sm font-medium transition-colors"
+      class="shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:py-2"
       :class="
         isActive(tab.routeName)
           ? 'border-primary text-primary'
