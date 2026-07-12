@@ -7,9 +7,10 @@ For deep detail, read the referenced skill files. The index below gives immediat
 
 ## Project Structure
 
-Monorepo with two apps:
-- `backend/` – Bun + Hono API server. Framework lives in `backend/framework/` (path alias: `@framework/*` → `./framework/src/*`)
+Monorepo with three apps:
+- `backend/` – Bun + Hono API server. Framework lives in `backend/framework/` (path alias: `@framework/*` → `./framework/src/*`). OAuth2/OIDC authorization server enabled via `oauth2` in `src/index.ts`.
 - `frontend/` – Vue 3 SPA (Vite, Tailwind v4, PrimeVue/Volt)
+- `mcp-server/` – standalone Bun MCP server (OAuth2 resource server). Lets a chat app use the wiki as its "brain": identity/discovery/read/write tools over the `knowledge/texts` API. Issues no tokens; validates the backend's OAuth tokens via `/oauth/introspect`. See `mcp-server/README.md`.
 
 ---
 

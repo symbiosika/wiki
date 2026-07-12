@@ -12,6 +12,16 @@ const server = defineServer({
   magicLoginVerifyUrl: "/magic-login-verify.html",
   staticPublicDataPath: "./public",
   staticPrivateDataPath: "./static",
+  // OAuth2 / OIDC Authorization Server. Enabling it mounts all OAuth
+  // endpoints (/oauth/authorize, /oauth/token, /oauth/introspect,
+  // /oauth/userinfo, /.well-known/*, …). The standalone MCP server in
+  // ../mcp-server acts as an OAuth2 resource server: it validates the
+  // bearer tokens minted here via /oauth/introspect using the same
+  // shared secret. The MCP server issues no tokens of its own.
+  oauth2: {
+    enabled: true,
+    introspectionSecret: process.env.OAUTH_INTROSPECTION_SECRET,
+  },
   customDbSchema: {
     ...appDbSchema,
   },

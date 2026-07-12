@@ -1,0 +1,24 @@
+{
+  "name": "symbiosika-wiki-mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "init": "bun run ./.scripts/init.ts",
+    "dev": "bun --hot run src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
+    "@modelcontextprotocol/hono": "2.0.0-alpha.2",
+    "@modelcontextprotocol/server": "2.0.0-alpha.2",
+    "hono": "^4.11.4",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}
