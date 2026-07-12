@@ -94,6 +94,9 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
+  import('./types/usermanagement')
+  // @ts-ignore
   export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore

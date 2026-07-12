@@ -26,6 +26,26 @@ const router = createRouter({
           component: () => import('../views/wiki/page.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/organisations',
+          name: 'Tenants',
+          component: () => import('../views/manage/organisations.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/organisations/:id',
+          name: 'TenantDetails',
+          component: () => import('../views/manage/organisation-details.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/teams',
+          name: 'Teams',
+          component: () => import('../views/manage/teams.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/teams/:teamId',
+          name: 'TeamDetails',
+          component: () => import('../views/manage/team-details.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),

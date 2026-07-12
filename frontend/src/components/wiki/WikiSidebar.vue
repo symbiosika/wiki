@@ -174,6 +174,19 @@
       </span>
       <button
         type="button"
+        :title="$t('Wiki.manage')"
+        class="relative flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300"
+        @click="gotoManage"
+      >
+        <IconCog class="h-4 w-4" />
+        <span
+          v-if="app.state.tenantInvitations.length > 0"
+          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary"
+          :title="$t('UserTenants.invitations.openInvitations')"
+        />
+      </button>
+      <button
+        type="button"
         :title="$t('Wiki.logout')"
         class="flex h-7 w-7 items-center justify-center rounded text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300"
         @click="auth.logout()"
@@ -188,6 +201,7 @@
 import { useConfirm } from 'primevue/useconfirm'
 import IconMagnify from '~icons/mdi/magnify'
 import IconLogout from '~icons/mdi/logout'
+import IconCog from '~icons/mdi/cog-outline'
 import type {
   WikiScope,
   WikiSearchResult,
@@ -276,9 +290,8 @@ const confirmDelete = (node: WikiTreeNode) => {
     message: t('Wiki.deletePageConfirm', {
       title: node.title || t('Wiki.untitled'),
     }),
-    acceptLabel: t('Common.delete'),
-    rejectLabel: t('Common.cancel'),
-    acceptProps: { severity: 'danger' },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    rejectProps: { label: t('Common.cancel') },
     accept: async () => {
       const wasOpen = route.params.pageId === node.id
       await wiki.deletePage(tenantId.value, node.id)
@@ -333,4 +346,13 @@ const switchTenant = async (newTenantId: string) => {
   await app.setSelectedTenant(newTenantId)
   router.push({ name: 'Wiki', params: { tenantId: newTenantId } })
 }
+
+const gotoManage = () => {
+  router.push({ name: 'Tenants', params: { tenantId: tenantId.value } })
+}
+
+// open invitations are surfaced as a badge on the manage button
+onMounted(() => {
+  app.getTenantInvitations().catch(() => {})
+})
 </script>

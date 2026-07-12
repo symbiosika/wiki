@@ -28,5 +28,6 @@
     "organisation": "Organisation"
   },
   "logout": "Log out",
-  "tenant": "Organisation"
+  "tenant": "Organisation",
+  "manage": "Manage"
 }
