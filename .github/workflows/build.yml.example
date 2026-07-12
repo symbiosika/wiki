@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - main
+      - develop
   workflow_dispatch:
 
 env:
   REGISTRY: my-great-registry.azurecr.io
   COOLIFY_BASE_URL: https://my-coolify.my-domain.com
-  COOLIFY_UUID: kj7g...
+  # Coolify app that main/production deploys to
+  COOLIFY_UUID_PROD: kj7g...
+  # Coolify app that develop/staging deploys to
+  COOLIFY_UUID_STAGING: st4g...
 
 jobs:
 
@@ -25,7 +29,6 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          ref: main
           bun-version: latest
 
       - name: Install dependencies
@@ -52,7 +55,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
           submodules: recursive
           fetch-depth: 2
 
@@ -101,6 +103,8 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # MAIN APP IMAGE – backend + bundled frontend
+  # Pushes a moving tag per branch (main -> latest, develop -> develop)
+  # plus an immutable commit-sha tag.
   # ---------------------------------------------------------------------------
   build-docker-app:
     needs: [build-backend, build-frontend]
@@ -126,6 +130,15 @@ jobs:
           mkdir -p dist/static
           cp -r frontend_artifact/static/* dist/static/
 
+      - name: Determine moving image tag
+        id: meta
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "moving_tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "moving_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -143,23 +156,42 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.event.repository.name }}:latest
+            ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ steps.meta.outputs.moving_tag }}
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.event.repository.name }}
-          cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}
+          cache-from: type=gha,scope=${{ github.event.repository.name }}-${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-${{ github.ref_name }}
 
   # ---------------------------------------------------------------------------
   # COOLIFY DEPLOY TRIGGERS
-  # runs only after its image has been pushed successfully.
+  # Each runs only after the image has been pushed successfully, and only
+  # for its own branch.
   # ---------------------------------------------------------------------------
-  deploy-app:
+  deploy-prod:
     needs: build-docker-app
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Coolify deploy
+      - name: Trigger Coolify deploy (production)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-          COOLIFY_UUID: ${{ env.COOLIFY_UUID }}
+          COOLIFY_UUID: ${{ env.COOLIFY_UUID_PROD }}
+        continue-on-error: true
+        run: |
+          curl -sS -X GET \
+            --max-time 2 --retry 2 --retry-all-errors \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
+            || true
+
+  deploy-staging:
+    needs: build-docker-app
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy (staging)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          COOLIFY_UUID: ${{ env.COOLIFY_UUID_STAGING }}
         continue-on-error: true
         run: |
           curl -sS -X GET \
