@@ -20,6 +20,7 @@ declare global {
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
   const fetcher: typeof import('./utils/fetcher').fetcher
+  const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
   const getCurrentInstance: typeof import('vue').getCurrentInstance

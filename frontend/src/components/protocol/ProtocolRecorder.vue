@@ -2,7 +2,7 @@
   <div class="flex flex-col items-center gap-2">
     <button
       type="button"
-      :disabled="isTranscribing"
+      :disabled="isConnecting"
       class="flex items-center justify-center rounded-full text-white shadow-md transition-colors disabled:opacity-60"
       :class="[
         sizeClass,
@@ -14,7 +14,10 @@
       @click="toggleRecording"
     >
       <IconStop v-if="isRecording" :class="iconClass" />
-      <IconLoading v-else-if="isTranscribing" :class="[iconClass, 'animate-spin']" />
+      <IconLoading
+        v-else-if="isConnecting || isTranscribing"
+        :class="[iconClass, 'animate-spin']"
+      />
       <IconMic v-else :class="iconClass" />
     </button>
 
@@ -22,7 +25,8 @@
       v-if="showStatus"
       class="text-sm text-surface-500 dark:text-surface-400"
     >
-      <template v-if="isRecording">{{ $t('Protocol.recording') }}</template>
+      <template v-if="isRecording">{{ $t('Protocol.listening') }}</template>
+      <template v-else-if="isConnecting">{{ $t('Protocol.connecting') }}</template>
       <template v-else-if="isTranscribing">{{ $t('Protocol.transcribing') }}</template>
       <template v-else>{{ $t('Protocol.clickToRecord') }}</template>
     </span>
@@ -43,7 +47,7 @@ import { computed } from 'vue'
 import IconMic from '~icons/mdi/microphone'
 import IconStop from '~icons/mdi/stop'
 import IconLoading from '~icons/mdi/loading'
-import { useTranscription } from '@/composables/useTranscription'
+import { useRealtimeTranscription } from '@/composables/useRealtimeTranscription'
 
 const props = withDefaults(
   defineProps<{
@@ -56,18 +60,21 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
+  'transcription-update': [text: string]
   'transcription-complete': [text: string]
   error: [message: string]
 }>()
 
 const {
   isRecording,
+  isConnecting,
   isTranscribing,
   transcription,
   error,
   toggleRecording,
-} = useTranscription({
+} = useRealtimeTranscription({
   tenantId: () => props.tenantId,
+  onTranscriptionUpdate: (text) => emit('transcription-update', text),
   onTranscriptionComplete: (text) => emit('transcription-complete', text),
   onError: (message) => emit('error', message),
 })

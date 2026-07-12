@@ -4,6 +4,8 @@
   "record": "Aufnahme starten",
   "stop": "Aufnahme stoppen",
   "recording": "Aufnahme läuft…",
+  "listening": "Höre zu… (Text erscheint live)",
+  "connecting": "Verbinde…",
   "transcribing": "Transkribiere…",
   "clickToRecord": "Zum Aufnehmen tippen",
   "voice": "Sprache",

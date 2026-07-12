@@ -4,6 +4,8 @@
   "record": "Start recording",
   "stop": "Stop recording",
   "recording": "Recording…",
+  "listening": "Listening… (text appears live)",
+  "connecting": "Connecting…",
   "transcribing": "Transcribing…",
   "clickToRecord": "Tap to record",
   "voice": "Voice",

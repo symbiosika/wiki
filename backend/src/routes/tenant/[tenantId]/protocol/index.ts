@@ -1,8 +1,11 @@
 /**
  * Protocol routes — "Tagesprotokoll einsprechen".
  *
- * Three steps the frontend chains:
+ * Steps the frontend chains:
+ *   0. GET  /protocol/realtime    — WebSocket: live PCM stream → text deltas
+ *                                   (Mistral realtime/Voxtral). Live typing UX.
  *   1. POST /protocol/transcribe  — audio (multipart) → text (Mistral/Voxtral)
+ *                                   (fallback for browsers without live capture)
  *   2. POST /protocol             — transcript → dated wiki page (LLM workup)
  *   3. POST /protocol/process     — transcript → digital-twin brain merge
  *
@@ -18,6 +21,11 @@ import { isTenantMember } from "@framework/routes/tenant";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { transcribeAudio } from "../../../../lib/audio/transcription";
+import {
+  startRealtimeTranscription,
+  type RealtimeSession,
+} from "../../../../lib/audio/transcription/realtime";
+import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import { createProtocolPage } from "../../../../lib/protocol";
 import { processProtocol } from "../../../../lib/protocol/digital-twin-brain-agent";
 
@@ -28,6 +36,96 @@ export default function defineProtocolRoutes(
   API_BASE_PATH: string = "",
 ) {
   const base = `${API_BASE_PATH}/tenant/:tenantId/protocol`;
+
+  // 0. Live transcription over WebSocket -------------------------------------
+  // The browser captures 16 kHz mono PCM (pcm_s16le) and streams it as binary
+  // frames; the relay pipes them to Mistral's realtime endpoint and sends back
+  // JSON events: {type:"delta",text}, {type:"done",text}, {type:"error",message}.
+  // A JSON {type:"stop"} frame from the browser ends the audio stream.
+  // Auth: the global auth middleware validates the session cookie on the
+  // upgrade request (same-origin WS); `isTenantMember` scopes it to the tenant.
+  app.get(
+    `${base}/realtime`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    validator("param", tenantParam),
+    isTenantMember,
+    upgradeWebSocket((c) => {
+      const rawRate = c.req.query("sampleRate");
+      const parsedRate = rawRate ? Number.parseInt(rawRate, 10) : NaN;
+      const sampleRate = Number.isFinite(parsedRate) ? parsedRate : undefined;
+
+      let session: RealtimeSession | null = null;
+      let closed = false;
+
+      const sendJson = (
+        ws: { send: (data: string) => void; close: (code?: number, reason?: string) => void },
+        payload: Record<string, unknown>,
+      ) => {
+        try {
+          ws.send(JSON.stringify(payload));
+        } catch {
+          // socket already gone — nothing to do
+        }
+      };
+
+      return {
+        onOpen: (_event, ws) => {
+          session = startRealtimeTranscription(
+            {
+              onDelta: (text) => sendJson(ws, { type: "delta", text }),
+              onDone: (text) => {
+                sendJson(ws, { type: "done", text });
+                try {
+                  ws.close(1000, "done");
+                } catch {
+                  /* noop */
+                }
+              },
+              onError: (message) => {
+                sendJson(ws, { type: "error", message });
+                try {
+                  ws.close(1011, "error");
+                } catch {
+                  /* noop */
+                }
+              },
+            },
+            { sampleRate },
+          );
+        },
+        onMessage: (event, _ws) => {
+          const data = event.data;
+          if (typeof data === "string") {
+            try {
+              const msg = JSON.parse(data) as { type?: string };
+              if (msg.type === "stop") session?.finishAudio();
+            } catch {
+              /* ignore malformed control frames */
+            }
+            return;
+          }
+          if (data instanceof ArrayBuffer) {
+            session?.pushAudio(new Uint8Array(data));
+          } else if (ArrayBuffer.isView(data)) {
+            session?.pushAudio(
+              new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+            );
+          }
+        },
+        onClose: () => {
+          if (closed) return;
+          closed = true;
+          session?.close();
+        },
+        onError: () => {
+          if (closed) return;
+          closed = true;
+          session?.close();
+        },
+      };
+    }),
+  );
 
   // 1. Transcribe audio -------------------------------------------------------
   app.post(
