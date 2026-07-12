@@ -11,8 +11,11 @@
         if (parts.length === 2) return parts.pop().split(";").shift();
         return null;
       }
-      const jwtToken = getCookie("jwt");
-      if (jwtToken) {
+      // The real `jwt` cookie is HttpOnly (not readable from JS). The server
+      // also sets a non-secret `jwt_present` marker so the SPA can detect a
+      // logged-in state.
+      const hasJwt = getCookie("jwt_present");
+      if (hasJwt) {
         (async () => {
           try {
             const u = await fetch("/api/v1/user/me");

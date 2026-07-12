@@ -3,256 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Magic Login - Symbiosika</title>
-    <link rel="icon" href="/favicon.svg" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      :root {
-        --p-primary-50: #eff6ff;
-        --p-primary-100: #dbeafe;
-        --p-primary-200: #bfdbfe;
-        --p-primary-300: #93c5fd;
-        --p-primary-400: #60a5fa;
-        --p-primary-500: #1d459f;
-        --p-primary-600: #1e3a8a;
-        --p-primary-700: #1e40af;
-        --p-primary-800: #1e3a8a;
-        --p-primary-900: #172554;
-        --p-primary-950: #0f172a;
-        --p-surface-0: #ffffff;
-        --p-surface-50: #fafafa;
-        --p-surface-100: #f4f4f5;
-        --p-surface-200: #e4e4e7;
-        --p-surface-300: #d4d4d8;
-        --p-surface-400: #a1a1aa;
-        --p-surface-500: #71717a;
-        --p-surface-600: #52525b;
-        --p-surface-700: #3f3f46;
-        --p-surface-800: #27272a;
-        --p-surface-900: #18181b;
-        --p-surface-950: #09090b;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --p-primary-color: var(--p-primary-400);
-          --p-text-color: var(--p-surface-0);
-          --p-text-muted-color: var(--p-surface-400);
-        }
-      }
-
-      body {
-        background: linear-gradient(to bottom right, var(--p-surface-50), var(--p-surface-100));
-      }
-
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: linear-gradient(to bottom right, var(--p-surface-950), var(--p-surface-900));
-        }
-      }
-
-      .card {
-        background: var(--p-surface-0);
-        border: 1px solid var(--p-surface-200);
-        border-radius: 0.75rem;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .card {
-          background: var(--p-surface-900);
-          border-color: var(--p-surface-700);
-        }
-      }
-
-      .text-primary {
-        color: var(--p-surface-800);
-      }
-
-      .text-muted {
-        color: var(--p-surface-500);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .text-primary {
-          color: var(--p-surface-100);
-        }
-        .text-muted {
-          color: var(--p-surface-400);
-        }
-      }
-
-      .input {
-        width: 100%;
-        padding: 0.625rem 0.875rem;
-        border: 1px solid var(--p-surface-300);
-        border-radius: 0.375rem;
-        background: var(--p-surface-0);
-        color: var(--p-surface-800);
-        font-size: 0.875rem;
-        transition: all 0.2s;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .input {
-          border-color: var(--p-surface-700);
-          background: var(--p-surface-900);
-          color: var(--p-surface-0);
-        }
-      }
-
-      .input:focus {
-        outline: none;
-        border-color: var(--p-primary-500);
-        box-shadow: 0 0 0 3px rgba(29, 69, 159, 0.1);
-      }
-
-      .btn {
-        width: 100%;
-        padding: 0.625rem 1rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: all 0.2s;
-        cursor: pointer;
-        border: none;
-      }
-
-      .btn-primary {
-        background: var(--p-primary-500);
-        color: white;
-      }
-
-      .btn-primary:hover:not(:disabled) {
-        background: var(--p-primary-600);
-      }
-
-      .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      .btn-secondary {
-        background: var(--p-surface-200);
-        color: var(--p-surface-800);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .btn-secondary {
-          background: var(--p-surface-700);
-          color: var(--p-surface-0);
-        }
-      }
-
-      .btn-secondary:hover:not(:disabled) {
-        background: var(--p-surface-300);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .btn-secondary:hover:not(:disabled) {
-          background: var(--p-surface-600);
-        }
-      }
-
-      .spinner {
-        border: 3px solid var(--p-surface-200);
-        border-top: 3px solid var(--p-primary-500);
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
-      .toast {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        animation: slideDown 0.3s ease-out;
-        max-width: 90%;
-      }
-
-      .toast.success {
-        background-color: #10b981;
-        color: white;
-      }
-
-      .toast.error {
-        background-color: #ef4444;
-        color: white;
-      }
-
-      .toast.info {
-        background-color: var(--p-primary-500);
-        color: white;
-      }
-
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: translateX(-50%) translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-        }
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      .success-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: #10b981;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 1.5rem;
-      }
-
-      .success-icon svg {
-        width: 32px;
-        height: 32px;
-        color: white;
-      }
-
-      .tab-btn {
-        border-bottom: 2px solid transparent;
-      }
-
-      .tab-btn.active {
-        border-bottom-color: var(--p-primary-500);
-        color: var(--p-primary-500);
-      }
-
-      .tab-btn:not(.active) {
-        color: var(--p-surface-500);
-      }
-
-      .tabs-divider {
-        border-bottom: 1px solid var(--p-surface-300);
-      }
-    </style>
+    <title>Magic Login</title>
+    <link rel="icon" href="/favicon.png" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
       <div class="w-full max-w-md">
-        <!-- Auth Method Form -->
+        <!-- Auth Method Tabs -->
         <div id="email-form" class="card p-8">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.svg" alt="Logo" />
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -343,6 +104,12 @@
               </button>
             </form>
           </div>
+
+          <div class="mt-6 text-center">
+            <a href="/password-login.html" class="text-sm" style="color: var(--p-surface-500);">
+              Mit Passwort einloggen...
+            </a>
+          </div>
         </div>
 
         <!-- Success Message -->
@@ -368,7 +135,7 @@
         <!-- Token Verification (Loading) -->
         <div id="verification" class="card p-8 hidden">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.svg" alt="Logo" />
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -386,7 +153,6 @@
     <div id="toast-container"></div>
 
     <script>
-      // Parse query string
       function parseQueryString() {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
@@ -394,69 +160,33 @@
         return { token, redirect };
       }
 
-      // Set cookie helper function
-      function setCookie(name, value, days = 7) {
-        const expires = new Date();
-        expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`;
-      }
-
-      // Show toast notification
       function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
         container.appendChild(toast);
-
         setTimeout(() => {
           toast.style.animation = 'slideDown 0.3s ease-out reverse';
           setTimeout(() => {
-            if (container.contains(toast)) {
-              container.removeChild(toast);
-            }
+            if (container.contains(toast)) container.removeChild(toast);
           }, 300);
         }, type === 'success' ? 3000 : 4000);
       }
 
-      // Show element
-      function showElement(id) {
-        document.getElementById(id).classList.remove('hidden');
-      }
+      function showElement(id) { document.getElementById(id).classList.remove('hidden'); }
+      function hideElement(id) { document.getElementById(id).classList.add('hidden'); }
 
-      // Hide element
-      function hideElement(id) {
-        document.getElementById(id).classList.add('hidden');
-      }
-
-      function base64UrlToUint8Array(value) {
-        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
-        const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
-        return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
-      }
-
-      function arrayBufferToBase64Url(buffer) {
-        const bytes = new Uint8Array(buffer);
-        const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
-        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-      }
-
-      // Send magic link
       async function sendMagicLink(email, invitationCode) {
         try {
           let url = `/api/v1/user/send-magic-link?email=${encodeURIComponent(email)}&createUserIfMissing=true`;
           if (invitationCode) {
             url += `&invitationCode=${encodeURIComponent(invitationCode)}`;
           }
-          
-          const response = await fetch(url, {
-            method: 'GET',
-          });
+          const response = await fetch(url, { method: 'GET' });
 
           if (!response.ok) {
             let errorMessage = '';
-            
-            // Read response body only once
             try {
               const contentType = response.headers.get('content-type') || '';
               if (contentType.includes('application/json')) {
@@ -465,121 +195,67 @@
               } else {
                 errorMessage = await response.text();
               }
-              
-              // Debug log
-              console.log('Error response:', {
-                status: response.status,
-                contentType: contentType,
-                errorMessage: errorMessage
-              });
-            } catch (parseError) {
-              console.error('Error parsing response:', parseError);
+            } catch (_) {
               errorMessage = 'Fehler beim Lesen der Antwort';
             }
-            
-            // Check if it's an invitation code error
             if (response.status === 400 && errorMessage.includes('Invitation code needed')) {
-              console.log('Invitation code needed detected');
-              return {
-                success: false,
-                requiresInvitationCode: true,
-                message: 'Invitation code needed',
-              };
+              return { success: false, requiresInvitationCode: true };
             }
-            
             throw new Error(errorMessage || 'Fehler beim Senden des Magic-Links');
           }
-
           return { success: true };
         } catch (error) {
-          // Check if error message contains invitation code needed
           if (error.message && error.message.includes('Invitation code needed')) {
-            return {
-              success: false,
-              requiresInvitationCode: true,
-              message: 'Invitation code needed',
-            };
+            return { success: false, requiresInvitationCode: true };
           }
-          return {
-            success: false,
-            message: error.message || 'Ein Fehler ist aufgetreten',
-          };
+          return { success: false, message: error.message || 'Ein Fehler ist aufgetreten' };
         }
       }
 
-      // Login with token
+      // The server sets the HttpOnly `jwt` cookie + the `jwt_present` marker itself.
       async function loginWithToken(token) {
         try {
           const response = await fetch('/api/v1/user/login', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: '',
-              password: '',
-              magicLinkToken: token,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: '', password: '', magicLinkToken: token }),
           });
-
           if (!response.ok) {
             const errorText = await response.text();
             throw new Error(errorText || 'Anmeldung fehlgeschlagen');
           }
-
           const data = await response.json();
-
-          if (data.token) {
-            // Set JWT cookie
-            setCookie('jwt', data.token);
-            return { login: true, redirectUrl: data.redirectUrl };
-          } else {
-            throw new Error('Kein Token erhalten');
-          }
+          if (data.token) return { login: true, redirectUrl: data.redirectUrl };
+          throw new Error('Kein Token erhalten');
         } catch (error) {
-          return {
-            login: false,
-            message: error.message || 'Ein Fehler ist aufgetreten',
-          };
+          return { login: false, message: error.message || 'Ein Fehler ist aufgetreten' };
         }
       }
 
-      // Handle magic link form submission
       document.getElementById('magic-link-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const emailInput = document.getElementById('email');
         const invitationCodeInput = document.getElementById('invitation-code');
-        const invitationCodeContainer = document.getElementById('invitation-code-container');
         const submitBtn = document.getElementById('submit-btn');
         const email = emailInput.value.trim();
         const invitationCode = invitationCodeInput.value.trim();
 
-        if (!email) {
-          showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error');
-          return;
-        }
+        if (!email) { showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error'); return; }
 
-        // Disable form
         emailInput.disabled = true;
         invitationCodeInput.disabled = true;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Wird gesendet...';
 
         const result = await sendMagicLink(email, invitationCode || undefined);
-        
-        // Debug log
-        console.log('Magic link result:', result);
 
         if (result.success) {
-          // Show success message
           hideElement('email-form');
           showElement('success-message');
           document.getElementById('sent-email').textContent = email;
           showToast('Magic-Link erfolgreich gesendet!', 'success');
         } else {
-          // Check if invitation code is required
           if (result.requiresInvitationCode) {
-            // Show invitation code field
             showElement('invitation-code-container');
             invitationCodeInput.required = true;
             invitationCodeInput.focus();
@@ -587,8 +263,6 @@
           } else {
             showToast(result.message || 'Fehler beim Senden des Magic-Links', 'error');
           }
-          
-          // Re-enable form
           emailInput.disabled = false;
           invitationCodeInput.disabled = false;
           submitBtn.disabled = false;
@@ -596,14 +270,11 @@
         }
       });
 
-      // Tab switching
       function switchTab(tabName) {
         hideElement('magic-link-content');
         hideElement('passkey-content');
-
         document.getElementById('magic-link-tab-btn').classList.remove('active');
         document.getElementById('passkey-tab-btn').classList.remove('active');
-
         if (tabName === 'magic-link') {
           showElement('magic-link-content');
           document.getElementById('magic-link-tab-btn').classList.add('active');
@@ -613,107 +284,67 @@
         }
       }
 
-      // Passkey authentication
       async function passkeyAuthenticate(email) {
         try {
           if (!navigator.credentials || !navigator.credentials.get) {
             throw new Error('Ihr Browser unterstützt Passkeys nicht');
           }
-
           const optionsResponse = await fetch('/api/v1/user/passkey/authentication/options', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
           });
-
           if (!optionsResponse.ok) {
-            const errorText = await optionsResponse.text();
-            throw new Error(errorText || 'Fehler beim Abrufen der Authentifizierungsoptionen');
+            throw new Error(await optionsResponse.text() || 'Fehler beim Abrufen der Authentifizierungsoptionen');
           }
-
           const { options, challengeToken } = await optionsResponse.json();
-
-          options.challenge = base64UrlToUint8Array(options.challenge);
+          options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
           if (options.allowCredentials) {
             options.allowCredentials = options.allowCredentials.map(cred => ({
               ...cred,
-              id: base64UrlToUint8Array(cred.id),
+              id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0)),
             }));
           }
-
           const assertion = await navigator.credentials.get({ publicKey: options });
-
-          if (!assertion) {
-            throw new Error('Authentifizierung abgebrochen');
-          }
-
+          if (!assertion) throw new Error('Authentifizierung abgebrochen');
           const credential = {
-            id: assertion.id,
-            rawId: arrayBufferToBase64Url(assertion.rawId),
+            id: Array.from(new Uint8Array(assertion.rawId)).map(b => String.fromCharCode(b)).join(''),
+            rawId: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId))),
             type: assertion.type,
             response: {
-              clientDataJSON: arrayBufferToBase64Url(assertion.response.clientDataJSON),
-              authenticatorData: arrayBufferToBase64Url(assertion.response.authenticatorData),
-              signature: arrayBufferToBase64Url(assertion.response.signature),
-              userHandle: assertion.response.userHandle ? arrayBufferToBase64Url(assertion.response.userHandle) : null,
+              clientDataJSON: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.clientDataJSON))),
+              authenticatorData: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.authenticatorData))),
+              signature: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.signature))),
+              userHandle: assertion.response.userHandle ? btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.userHandle))) : null,
             },
           };
-
           const verifyResponse = await fetch('/api/v1/user/passkey/authentication/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              challengeToken,
-              credential,
-            }),
+            body: JSON.stringify({ challengeToken, credential }),
           });
-
-          if (!verifyResponse.ok) {
-            const errorText = await verifyResponse.text();
-            throw new Error(errorText || 'Authentifizierung fehlgeschlagen');
-          }
-
+          if (!verifyResponse.ok) throw new Error(await verifyResponse.text() || 'Authentifizierung fehlgeschlagen');
           const data = await verifyResponse.json();
-          return {
-            success: true,
-            token: data.token,
-            redirectUrl: data.redirectUrl,
-          };
+          return { success: true, token: data.token, redirectUrl: data.redirectUrl };
         } catch (error) {
-          return {
-            success: false,
-            message: error.message || 'Ein Fehler ist aufgetreten',
-          };
+          return { success: false, message: error.message || 'Ein Fehler ist aufgetreten' };
         }
       }
 
-      document.getElementById('magic-link-tab-btn').addEventListener('click', () => {
-        switchTab('magic-link');
-      });
-
-      document.getElementById('passkey-tab-btn').addEventListener('click', () => {
-        switchTab('passkey');
-      });
+      document.getElementById('magic-link-tab-btn').addEventListener('click', () => switchTab('magic-link'));
+      document.getElementById('passkey-tab-btn').addEventListener('click', () => switchTab('passkey'));
 
       document.getElementById('passkey-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const emailInput = document.getElementById('passkey-email');
         const submitBtn = document.getElementById('passkey-submit-btn');
         const email = emailInput.value.trim();
-
-        if (!email) {
-          showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error');
-          return;
-        }
-
+        if (!email) { showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error'); return; }
         emailInput.disabled = true;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Wird verarbeitet...';
-
         const result = await passkeyAuthenticate(email);
-
         if (result.success) {
-          setCookie('jwt', result.token);
           showToast('Anmeldung erfolgreich', 'success');
           setTimeout(() => {
             const { redirect } = parseQueryString();
@@ -727,23 +358,17 @@
         }
       });
 
-      // Main execution - check for token
       (async () => {
         const { token, redirect } = parseQueryString();
-
         if (token) {
-          // Token found - verify and login
           hideElement('email-form');
           hideElement('success-message');
           showElement('verification');
-
           const result = await loginWithToken(token);
-
           if (result.login) {
             showToast('Anmeldung erfolgreich', 'success');
             setTimeout(() => {
-              const redirectUrl = result.redirectUrl || redirect || '/static/app/';
-              window.location.href = redirectUrl;
+              window.location.href = result.redirectUrl || redirect || '/static/app/';
             }, 2000);
           } else {
             hideElement('verification');
@@ -751,7 +376,6 @@
             showToast(result.message || 'Anmeldung fehlgeschlagen', 'error');
           }
         } else {
-          // No token - show email form
           showElement('email-form');
         }
       })();
