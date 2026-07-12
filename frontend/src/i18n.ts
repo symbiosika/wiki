@@ -1,5 +1,5 @@
 import { createI18n } from 'vue-i18n'
-const SUPPORTED_LANGUAGES = ['en']
+const SUPPORTED_LANGUAGES = ['en', 'de']
 
 type Messages = Record<string, any>
 

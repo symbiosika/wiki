@@ -9,11 +9,14 @@ declare global {
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
+  const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const customRef: typeof import('vue').customRef
   const defineAsyncComponent: typeof import('vue').defineAsyncComponent
   const defineComponent: typeof import('vue').defineComponent
+  const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
   const fetcher: typeof import('./utils/fetcher').fetcher
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
@@ -77,6 +80,7 @@ declare global {
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
+  const useWiki: typeof import('./stores/wiki').useWiki
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -87,6 +91,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult } from './types/wiki'
+  import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')

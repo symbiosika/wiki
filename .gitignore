@@ -1,2 +1,6 @@
 # Root-level temporary files only. App-specific ignores live in backend/.gitignore and frontend/.gitignore.
 /tmp/
+# generated local dev artifacts
+backend/dev-db/
+backend/.env.default
+backend/jwt-keys.generated.env

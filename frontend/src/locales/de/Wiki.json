@@ -1,0 +1,32 @@
+{
+  "appName": "Symbiosika Wiki",
+  "personal": "Persönlich",
+  "teams": "Teams",
+  "organisation": "Organisation",
+  "newPage": "Neue Seite",
+  "newSubPage": "Unterseite hinzufügen",
+  "untitled": "Ohne Titel",
+  "deletePage": "Seite löschen",
+  "deletePageConfirm": "\"{title}\" und alle Unterseiten löschen?",
+  "deletePageHeader": "Seite löschen",
+  "search": "Suchen…",
+  "searchNoResults": "Keine Seiten gefunden",
+  "emptyState": {
+    "title": "Willkommen in deinem Wiki",
+    "subtitle": "Wähle links eine Seite aus oder lege eine neue an.",
+    "createFirst": "Erste Seite anlegen"
+  },
+  "noPagesYet": "Noch keine Seiten",
+  "saved": "Gespeichert",
+  "saving": "Speichert…",
+  "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",
+  "pageNotFound": "Diese Seite konnte nicht geladen werden.",
+  "titlePlaceholder": "Ohne Titel",
+  "scope": {
+    "personal": "Privat",
+    "team": "Team",
+    "organisation": "Organisation"
+  },
+  "logout": "Abmelden",
+  "tenant": "Organisation"
+}

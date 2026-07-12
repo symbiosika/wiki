@@ -16,6 +16,16 @@ const router = createRouter({
           component: () => import('../views/index.vue'),
         },
         {
+          path: 'tenant/:tenantId/wiki',
+          name: 'Wiki',
+          component: () => import('../views/wiki/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/wiki/:pageId',
+          name: 'WikiPage',
+          component: () => import('../views/wiki/page.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),

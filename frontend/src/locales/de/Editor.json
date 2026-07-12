@@ -1,0 +1,31 @@
+{
+  "placeholder": "Tippe „/“ für Befehle…",
+  "placeholderHeading": "Überschrift",
+  "slash": {
+    "noResults": "Keine Treffer",
+    "text": "Text",
+    "textDescription": "Einfacher Absatz",
+    "h1": "Überschrift 1",
+    "h1Description": "Große Abschnittsüberschrift",
+    "h2": "Überschrift 2",
+    "h2Description": "Mittlere Abschnittsüberschrift",
+    "h3": "Überschrift 3",
+    "h3Description": "Kleine Abschnittsüberschrift",
+    "bulletList": "Aufzählung",
+    "bulletListDescription": "Einfache Liste mit Punkten",
+    "orderedList": "Nummerierte Liste",
+    "orderedListDescription": "Liste mit Nummern",
+    "taskList": "To-do-Liste",
+    "taskListDescription": "Liste mit Checkboxen",
+    "quote": "Zitat",
+    "quoteDescription": "Ein Zitat hervorheben",
+    "code": "Code-Block",
+    "codeDescription": "Code-Schnipsel in Monospace",
+    "divider": "Trennlinie",
+    "dividerDescription": "Horizontale Linie"
+  },
+  "bubble": {
+    "link": "Link",
+    "linkPlaceholder": "https://…"
+  }
+}
