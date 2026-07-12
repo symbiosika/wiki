@@ -15,9 +15,11 @@
       <Button @click="createFirstPage">
         {{ $t('Wiki.emptyState.createFirst') }}
       </Button>
-      <SecondaryButton @click="protocol.openDialog()">
-        <template #icon><IconMicrophone class="mr-1 h-4 w-4" /></template>
-        {{ $t('Protocol.recordButton') }}
+      <SecondaryButton
+        :label="$t('Protocol.recordButton')"
+        @click="protocol.openDialog()"
+      >
+        <template #icon><IconMicrophone class="h-4 w-4" /></template>
       </SecondaryButton>
     </div>
   </div>
