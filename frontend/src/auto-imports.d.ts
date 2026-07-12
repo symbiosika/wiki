@@ -74,6 +74,7 @@ declare global {
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
+  const useDocumentAssistant: typeof import('./stores/documentAssistant').useDocumentAssistant
   const useI18n: typeof import('vue-i18n').useI18n
   const useId: typeof import('vue').useId
   const useLayout: typeof import('./stores/layout').useLayout
@@ -96,6 +97,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
+  import('./stores/documentAssistant')
   // @ts-ignore
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
