@@ -75,6 +75,7 @@ declare global {
   const useCssVars: typeof import('vue').useCssVars
   const useI18n: typeof import('vue-i18n').useI18n
   const useId: typeof import('vue').useId
+  const useLayout: typeof import('./stores/layout').useLayout
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore

@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto flex h-full max-w-3xl flex-col px-6 lg:px-10">
+  <div class="mx-auto flex h-full max-w-3xl flex-col px-4 sm:px-6 lg:px-10">
     <!-- loading -->
     <div
       v-if="wiki.state.pageLoading"
@@ -21,7 +21,7 @@
     <template v-else-if="page">
       <!-- meta bar -->
       <div
-        class="sticky top-0 z-10 -mx-6 flex items-center gap-2 bg-surface-0/90 px-6 py-2 text-xs text-surface-400 backdrop-blur lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 flex items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
         <span
           class="rounded-full border border-surface-200 px-2 py-0.5 dark:border-surface-700"
@@ -42,7 +42,7 @@
         v-model="title"
         rows="1"
         :placeholder="$t('Wiki.titlePlaceholder')"
-        class="mt-8 w-full resize-none overflow-hidden bg-transparent text-4xl font-bold text-surface-900 outline-none placeholder:text-surface-300 dark:text-surface-0 dark:placeholder:text-surface-600"
+        class="mt-6 w-full resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:mt-8 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
         @input="onTitleInput"
         @keydown.enter.prevent="focusEditor"
       />

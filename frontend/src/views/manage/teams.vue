@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-4xl p-6">
+  <div class="mx-auto max-w-4xl px-4 py-5 sm:p-6">
     <ManageHeader :title="$t('UserTeams.title')">
       <template #actions>
         <Button
