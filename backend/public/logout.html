@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abmeldung</title>
+    <link rel="icon" href="/favicon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="min-h-screen flex items-center justify-center px-6 py-12">
+      <div class="w-full max-w-md">
+        <!-- Logout in progress (Loading) -->
+        <div id="logout-progress" class="card p-8">
+          <div class="text-center mb-8">
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <h1 class="text-2xl font-bold text-primary mb-2">
+              Abmeldung
+            </h1>
+            <p class="text-muted">
+              Bitte warten Sie, während wir Sie abmelden...
+            </p>
+          </div>
+          <div class="flex justify-center items-center py-8">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <!-- Logout Success -->
+        <div id="logout-success" class="card p-8 hidden">
+          <div class="text-center">
+            <div class="success-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-primary mb-2">
+              Abgemeldet
+            </h1>
+            <p class="text-muted mb-6">
+              Sie wurden erfolgreich abgemeldet.
+            </p>
+            <a href="/login.html" id="login-link" class="btn btn-primary inline-block">
+              Erneut anmelden
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+      function parseQueryString() {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirectUrl') || '/login.html';
+        return { redirect };
+      }
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'slideDown 0.3s ease-out reverse';
+          setTimeout(() => {
+            if (container.contains(toast)) container.removeChild(toast);
+          }, 300);
+        }, type === 'success' ? 3000 : 4000);
+      }
+
+      function showElement(id) { document.getElementById(id).classList.remove('hidden'); }
+      function hideElement(id) { document.getElementById(id).classList.add('hidden'); }
+
+      // The server revokes the server-side session and clears the HttpOnly
+      // `jwt` cookie + the `jwt_present` marker itself.
+      async function logout() {
+        try {
+          const response = await fetch('/api/v1/user/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Abmeldung fehlgeschlagen');
+          }
+          return { success: true };
+        } catch (error) {
+          return { success: false, message: error.message || 'Ein Fehler ist aufgetreten' };
+        }
+      }
+
+      (async () => {
+        const { redirect } = parseQueryString();
+        document.getElementById('login-link').href = redirect;
+
+        const result = await logout();
+
+        hideElement('logout-progress');
+        showElement('logout-success');
+
+        if (result.success) {
+          showToast('Erfolgreich abgemeldet', 'success');
+        } else {
+          showToast(result.message || 'Abmeldung fehlgeschlagen', 'error');
+        }
+
+        setTimeout(() => {
+          window.location.href = redirect;
+        }, 2000);
+      })();
+    </script>
+  </body>
+</html>

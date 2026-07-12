@@ -1,31 +1,24 @@
 <template>
-  <h1>Users Tenants</h1>
-  <div v-if="state.user">
-    <h2>User: {{ state.user.email }}</h2>
-  </div>
-  <div v-else>
-    <h2>No user found</h2>
-  </div>
-  <div v-if="state.tenants">
-    <h2>Tenants:</h2>
-    <ul>
-      <li v-for="tenant in state.tenants" :key="tenant.id">
-        {{ tenant.name }}
-        <button @click="gotoChat(tenant.id)">Go to chat</button>
-      </li>
-    </ul>
-  </div>
-  <div v-else>
-    <h2>No tenants found</h2>
+  <div class="flex h-full items-center justify-center">
+    <ProgressSpinner class="h-10 w-10" />
   </div>
 </template>
 
 <script setup lang="ts">
+/**
+ * Entry view: waits for the app to initialise, then forwards to the
+ * wiki of the user's active organisation.
+ */
 const app = useApp()
 const router = useRouter()
-const { state } = app
 
-const gotoChat = (tenantId: string) => {
-  router.push(`/tenant/${tenantId}/chat`)
-}
+onMounted(async () => {
+  await app.waitForInit()
+  if (app.state.selectedTenant) {
+    router.replace({
+      name: 'Wiki',
+      params: { tenantId: app.state.selectedTenant },
+    })
+  }
+})
 </script>

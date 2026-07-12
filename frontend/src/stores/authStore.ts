@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { hasAuthCookie } from '@/utils/authCookie'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -7,32 +8,23 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     /**
-     * Check if user has an existing JWT token in cookies
+     * Check if the user has a login session.
+     * The real `jwt` cookie is HttpOnly (invisible to JS); the backend sets
+     * the non-HttpOnly `jwt_present` marker alongside it for this check.
      */
     hasExistingToken(): boolean {
-      const cookies = document.cookie.split(';')
-      const jwtCookie = cookies.find((cookie) =>
-        cookie.trim().startsWith('jwt='),
-      )
-
-      if (jwtCookie) {
-        const token = jwtCookie.split('=')[1]
-        return !!token
-      }
-      return false
+      return hasAuthCookie()
     },
   },
 
   actions: {
     /**
-     * Logout
+     * Logout: the `jwt` cookie is HttpOnly, so only the server can clear
+     * it. /logout.html calls POST /user/logout (revokes the session and
+     * clears both cookies) and then offers the way back to the login.
      */
     logout() {
-      // Delete cookie
-      document.cookie =
-        'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure; samesite=strict'
-      // Redirect to Login page
-      window.location.href = '/login.html'
+      window.location.href = '/logout.html'
     },
   },
 })

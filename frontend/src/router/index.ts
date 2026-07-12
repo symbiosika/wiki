@@ -16,6 +16,36 @@ const router = createRouter({
           component: () => import('../views/index.vue'),
         },
         {
+          path: 'tenant/:tenantId/wiki',
+          name: 'Wiki',
+          component: () => import('../views/wiki/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/wiki/:pageId',
+          name: 'WikiPage',
+          component: () => import('../views/wiki/page.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/organisations',
+          name: 'Tenants',
+          component: () => import('../views/manage/organisations.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/organisations/:id',
+          name: 'TenantDetails',
+          component: () => import('../views/manage/organisation-details.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/teams',
+          name: 'Teams',
+          component: () => import('../views/manage/teams.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/manage/teams/:teamId',
+          name: 'TeamDetails',
+          component: () => import('../views/manage/team-details.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),
@@ -33,9 +63,16 @@ const router = createRouter({
 })
 
 const isAuthenticated = (): boolean => {
+  // The real `jwt` cookie is HttpOnly and invisible to document.cookie.
+  // The backend sets the non-HttpOnly `jwt_present` marker alongside it
+  // for exactly this check (plain `jwt` kept as fallback for tests/tools).
   return document.cookie
     .split(';')
-    .some((item) => item.trim().startsWith('jwt='))
+    .some(
+      (item) =>
+        item.trim().startsWith('jwt_present=') ||
+        item.trim().startsWith('jwt='),
+    )
 }
 
 const redirectToLogin = () => {

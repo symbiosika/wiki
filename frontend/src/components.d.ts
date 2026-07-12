@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     Avatar: typeof import('./volt/Avatar.vue')['default']
     Badge: typeof import('./volt/Badge.vue')['default']
+    BlockEditor: typeof import('./components/editor/BlockEditor.vue')['default']
     Breadcrumb: typeof import('./volt/Breadcrumb.vue')['default']
     Button: typeof import('./volt/Button.vue')['default']
     Card: typeof import('./volt/Card.vue')['default']
@@ -23,8 +24,12 @@ declare module 'vue' {
     DatePicker: typeof import('./volt/DatePicker.vue')['default']
     Default: typeof import('./components/layout/Default.vue')['default']
     Dialog: typeof import('./volt/Dialog.vue')['default']
+    EditorBubbleMenu: typeof import('./components/editor/EditorBubbleMenu.vue')['default']
     FileUpload: typeof import('./volt/FileUpload.vue')['default']
     InputText: typeof import('./volt/InputText.vue')['default']
+    InvitationsList: typeof import('./components/manage/InvitationsList.vue')['default']
+    ManageHeader: typeof import('./components/manage/ManageHeader.vue')['default']
+    ManageTabs: typeof import('./components/manage/ManageTabs.vue')['default']
     Menu: typeof import('./volt/Menu.vue')['default']
     Message: typeof import('./volt/Message.vue')['default']
     MultiSelect: typeof import('./volt/MultiSelect.vue')['default']
@@ -33,8 +38,12 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SecondaryButton: typeof import('./volt/SecondaryButton.vue')['default']
     Select: typeof import('./volt/Select.vue')['default']
+    SlashMenu: typeof import('./components/editor/SlashMenu.vue')['default']
     Textarea: typeof import('./volt/Textarea.vue')['default']
     Toast: typeof import('./volt/Toast.vue')['default']
     ToggleButton: typeof import('./volt/ToggleButton.vue')['default']
+    WikiSidebar: typeof import('./components/wiki/WikiSidebar.vue')['default']
+    WikiSidebarSection: typeof import('./components/wiki/WikiSidebarSection.vue')['default']
+    WikiTreeItem: typeof import('./components/wiki/WikiTreeItem.vue')['default']
   }
 }

@@ -19,6 +19,10 @@ export class FetcherError extends Error {
 
 const redirectToLogin = () => {
   const redirect = encodeURIComponent(window.location.href);
+  // Drop the readable session marker; the HttpOnly `jwt` cookie itself can
+  // only be cleared by the server (POST /user/logout).
+  document.cookie =
+    'jwt_present=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; samesite=lax';
   document.cookie =
     'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure; samesite=strict';
   window.location.href = `/login.html?redirectUrl=${redirect}`;

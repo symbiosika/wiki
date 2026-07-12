@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>E-Mail verifizieren</title>
+    <link rel="icon" href="/favicon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="min-h-screen flex items-center justify-center px-6 py-12">
+      <div class="w-full max-w-md">
+
+        <!-- Loading -->
+        <div id="loading" class="card p-8">
+          <div class="text-center mb-8">
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <h1 class="text-2xl font-bold text-primary mb-2">E-Mail wird verifiziert…</h1>
+            <p class="text-muted">Bitte warten Sie einen Moment.</p>
+          </div>
+          <div class="flex justify-center items-center py-8">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <!-- Success -->
+        <div id="success" class="card p-8 hidden">
+          <div class="text-center">
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="icon-circle success">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-primary mb-2">E-Mail verifiziert</h1>
+            <p class="text-muted">Ihr Konto wurde bestätigt. Sie werden zur Anmeldung weitergeleitet…</p>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div id="error" class="card p-8 hidden">
+          <div class="text-center">
+            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="icon-circle error">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-primary mb-2">Verifizierung fehlgeschlagen</h1>
+            <p class="text-muted mb-4" id="error-text">Der Link ist ungültig oder abgelaufen.</p>
+            <button onclick="window.location.href='/login.html'" class="btn btn-inline btn-secondary">
+              Zur Anmeldung
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+      function showEl(id) { document.getElementById(id).classList.remove('hidden'); }
+      function hideEl(id) { document.getElementById(id).classList.add('hidden'); }
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'slideDown 0.3s ease-out reverse';
+          setTimeout(() => { if (container.contains(toast)) container.removeChild(toast); }, 300);
+        }, type === 'success' ? 2500 : 4000);
+      }
+
+      (async () => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        if (!token) {
+          hideEl('loading');
+          showEl('error');
+          document.getElementById('error-text').textContent = 'Kein Token gefunden. Bitte verwenden Sie den Link aus der E-Mail.';
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/v1/user/verify-email?token=${encodeURIComponent(token)}`);
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'Verifizierung fehlgeschlagen');
+          }
+
+          hideEl('loading');
+          showEl('success');
+          showToast('E-Mail erfolgreich verifiziert', 'success');
+          setTimeout(() => { window.location.href = '/login.html'; }, 3000);
+        } catch (err) {
+          hideEl('loading');
+          showEl('error');
+          document.getElementById('error-text').textContent = err.message || 'Der Link ist ungültig oder abgelaufen.';
+          showToast('Verifizierung fehlgeschlagen', 'error');
+        }
+      })();
+    </script>
+  </body>
+</html>

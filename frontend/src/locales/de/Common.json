@@ -1,0 +1,41 @@
+{
+  "add": "Hinzufügen",
+  "back": "Zurück",
+  "cancel": "Abbrechen",
+  "confirm": "Bestätigen",
+  "select": "Auswählen",
+  "create": "Erstellen",
+  "success": "Erfolg",
+  "error": "Fehler",
+  "delete": "Löschen",
+  "remove": "Entfernen",
+  "close": "Schließen",
+  "name": "Name",
+  "next": "Weiter",
+  "description": "Beschreibung",
+  "save": "Speichern",
+  "edit": "Bearbeiten",
+  "updated": "Aktualisiert",
+  "actions": "Aktionen",
+  "required": "Dieses Feld ist erforderlich",
+  "yes": "Ja",
+  "no": "Nein",
+  "update": {
+    "success": "Erfolgreich aktualisiert",
+    "error": "Aktualisierung fehlgeschlagen"
+  },
+  "messages": {
+    "success": "Erfolgreich gelöscht",
+    "error": "Löschen fehlgeschlagen"
+  },
+  "sync": "Synchronisieren",
+  "justNow": "Gerade eben",
+  "minutesAgo": "vor {count} Minute(n)",
+  "hoursAgo": "vor {count} Stunde(n)",
+  "yesterday": "Gestern",
+  "daysAgo": "vor {count} Tag(en)",
+  "unselectAll": "Alle abwählen",
+  "view": "Ansehen",
+  "drop": "Löschen",
+  "alwaysEnabled": "Immer aktiviert"
+}

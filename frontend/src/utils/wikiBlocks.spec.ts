@@ -1,0 +1,108 @@
+import { describe, expect, test } from 'vitest'
+import {
+  blocksAreEqual,
+  blocksToEditorHtml,
+  editorHtmlToBlocks,
+} from './wikiBlocks'
+import type { WikiBlock } from '@/types/wiki'
+
+describe('blocksToEditorHtml', () => {
+  test('renders markdown blocks to html with the block id attached', () => {
+    const blocks: WikiBlock[] = [
+      { id: 'b1', type: 'markdown', content: '# Hello' },
+    ]
+    const html = blocksToEditorHtml(blocks)
+    expect(html).toContain('<h1')
+    expect(html).toContain('data-block-id="b1"')
+    expect(html).toContain('Hello')
+  })
+
+  test('passes html blocks through and tags the first element', () => {
+    const blocks: WikiBlock[] = [
+      { id: 'b1', type: 'html', content: '<p>One</p>' },
+      { id: 'b2', type: 'html', content: '<blockquote><p>Two</p></blockquote>' },
+    ]
+    const html = blocksToEditorHtml(blocks)
+    expect(html).toContain('<p data-block-id="b1">One</p>')
+    expect(html).toContain('<blockquote data-block-id="b2">')
+  })
+
+  test('a markdown block with several paragraphs keeps its id on the first', () => {
+    const blocks: WikiBlock[] = [
+      { id: 'b1', type: 'markdown', content: 'One\n\nTwo' },
+    ]
+    const html = blocksToEditorHtml(blocks)
+    const ids = html.match(/data-block-id/g) ?? []
+    expect(ids.length).toBe(1)
+    expect(html).toContain('Two')
+  })
+
+  test('skips blocks without renderable content and handles empty input', () => {
+    expect(blocksToEditorHtml([])).toBe('')
+    expect(
+      blocksToEditorHtml([{ id: 'b1', type: 'html', content: '' }]),
+    ).toBe('')
+  })
+})
+
+describe('editorHtmlToBlocks', () => {
+  test('splits top level elements into html blocks with their ids', () => {
+    const html =
+      '<h1 data-block-id="a">Title</h1><p data-block-id="b">Body</p>'
+    const blocks = editorHtmlToBlocks(html)
+    expect(blocks).toEqual([
+      { id: 'a', type: 'html', content: '<h1>Title</h1>' },
+      { id: 'b', type: 'html', content: '<p>Body</p>' },
+    ])
+  })
+
+  test('elements without an id become new blocks (id undefined)', () => {
+    const blocks = editorHtmlToBlocks('<p>New</p>')
+    expect(blocks.length).toBe(1)
+    expect(blocks[0]?.id).toBeUndefined()
+    expect(blocks[0]?.content).toBe('<p>New</p>')
+  })
+
+  test('duplicate ids (copy & paste) are only kept once', () => {
+    const html =
+      '<p data-block-id="dup">One</p><p data-block-id="dup">Two</p>'
+    const blocks = editorHtmlToBlocks(html)
+    expect(blocks[0]?.id).toBe('dup')
+    expect(blocks[1]?.id).toBeUndefined()
+  })
+
+  test('keeps inline marks inside the block content', () => {
+    const html = '<p data-block-id="a">Hi <strong>bold</strong></p>'
+    const blocks = editorHtmlToBlocks(html)
+    expect(blocks[0]?.content).toBe('<p>Hi <strong>bold</strong></p>')
+  })
+
+  test('roundtrip: html blocks survive load + save unchanged', () => {
+    const original: WikiBlock[] = [
+      { id: 'a', type: 'html', content: '<h2>Section</h2>' },
+      { id: 'b', type: 'html', content: '<p>Text with <em>italic</em></p>' },
+    ]
+    const roundtripped = editorHtmlToBlocks(blocksToEditorHtml(original))
+    expect(roundtripped).toEqual(original)
+  })
+})
+
+describe('blocksAreEqual', () => {
+  const a: WikiBlock[] = [{ id: '1', type: 'html', content: '<p>x</p>' }]
+
+  test('equal lists', () => {
+    expect(blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>x</p>' }])).toBe(
+      true,
+    )
+  })
+
+  test('different content', () => {
+    expect(blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>y</p>' }])).toBe(
+      false,
+    )
+  })
+
+  test('different length', () => {
+    expect(blocksAreEqual(a, [])).toBe(false)
+  })
+})
