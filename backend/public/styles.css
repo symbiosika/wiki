@@ -78,6 +78,7 @@ body {
 .mb-6  { margin-bottom: 1.5rem; }
 .mb-8  { margin-bottom: 2rem; }
 .mt-6  { margin-top: 1.5rem; }
+.ml-1  { margin-left: 0.25rem; }
 .mx-auto { margin-left: auto; margin-right: auto; }
 
 /* ── Gap ─────────────────────────────────────────────────────────────────── */
@@ -86,15 +87,18 @@ body {
 
 /* ── Space-y ─────────────────────────────────────────────────────────────── */
 .space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
 .space-y-5 > * + * { margin-top: 1.25rem; }
 .space-y-6 > * + * { margin-top: 1.5rem; }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
 .text-center { text-align: center; }
+.text-xs  { font-size: 0.75rem;  line-height: 1rem; }
 .text-sm  { font-size: 0.875rem; line-height: 1.25rem; }
 .text-2xl { font-size: 1.5rem;   line-height: 2rem; }
 .font-bold   { font-weight: 700; }
 .font-medium { font-weight: 500; }
+.underline { text-decoration: underline; }
 
 .text-primary { color: var(--p-surface-800); }
 .text-muted   { color: var(--p-surface-500); }

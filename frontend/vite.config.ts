@@ -85,6 +85,14 @@ export default defineConfig(({ mode }) => {
           target: DEV_SERVER,
           changeOrigin: true,
         },
+        '/logout.html': {
+          target: DEV_SERVER,
+          changeOrigin: true,
+        },
+        '/oauth-callback.html': {
+          target: DEV_SERVER,
+          changeOrigin: true,
+        },
         '/favicon.png': {
           target: DEV_SERVER,
           changeOrigin: true,

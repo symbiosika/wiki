@@ -11,6 +11,7 @@ declare global {
   const FetcherError: typeof import('./utils/fetcher').FetcherError
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
+  const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const customRef: typeof import('vue').customRef
@@ -25,6 +26,7 @@ declare global {
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const h: typeof import('vue').h
+  const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive

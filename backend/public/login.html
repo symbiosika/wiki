@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Magic Login</title>
+    <title>Anmeldung - Symbiosika Wiki</title>
     <link rel="icon" href="/favicon.png" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
       <div class="w-full max-w-md">
-        <!-- Auth Method Tabs -->
+        <!-- Login card -->
         <div id="email-form" class="card p-8">
           <div class="text-center mb-8">
             <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
@@ -19,30 +19,13 @@
             </h1>
           </div>
 
-          <!-- Tab buttons -->
-          <div class="flex gap-2 mb-6 tabs-divider">
-            <button
-              type="button"
-              id="magic-link-tab-btn"
-              class="flex-1 py-3 px-4 font-medium text-center cursor-pointer tab-btn active"
-            >
-              Magic Link
-            </button>
-            <button
-              type="button"
-              id="passkey-tab-btn"
-              class="flex-1 py-3 px-4 font-medium text-center cursor-pointer tab-btn"
-            >
-              Passkey
-            </button>
-          </div>
-
-          <!-- Magic Link Form -->
-          <div id="magic-link-content" class="space-y-6">
+          <!-- Step 1: E-Mail-Adresse eingeben -->
+          <div id="step-email" class="space-y-6">
             <p class="text-muted text-sm text-center mb-4">
-              Geben Sie Ihre E-Mail-Adresse ein, um einen Magic-Link zu erhalten
+              Für die Anmeldung genügt Ihre E-Mail-Adresse. Ein Passwort ist
+              nicht nötig.
             </p>
-            <form id="magic-link-form" class="space-y-6">
+            <form id="email-check-form" class="space-y-6">
               <div>
                 <label for="email" class="block text-sm font-medium text-primary mb-2">
                   E-Mail-Adresse
@@ -58,57 +41,36 @@
                 />
               </div>
 
-              <div id="invitation-code-container" class="hidden">
-                <label for="invitation-code" class="block text-sm font-medium text-primary mb-2">
-                  Invitation Code
-                </label>
-                <input
-                  type="text"
-                  id="invitation-code"
-                  name="invitation-code"
-                  class="input"
-                  placeholder="Geben Sie Ihren Invitation Code ein"
-                  autocomplete="off"
-                />
-              </div>
-
-              <button type="submit" id="submit-btn" class="btn btn-primary">
-                Magic Link senden
+              <button type="submit" id="continue-btn" class="btn btn-primary">
+                Weiter
               </button>
             </form>
           </div>
 
-          <!-- Passkey Form -->
-          <div id="passkey-content" class="space-y-6 hidden">
-            <p class="text-muted text-sm text-center mb-4">
-              Melden Sie sich mit Ihrem Passkey an
+          <!-- Step 2: Anmeldeart wählen -->
+          <div id="step-method" class="space-y-4 hidden">
+            <p class="text-muted text-sm text-center mb-2">
+              Anmeldung für
+              <strong id="method-email-label" class="text-primary"></strong>
+              <button
+                type="button"
+                id="change-email-btn"
+                class="ml-1 underline cursor-pointer"
+                style="color: var(--p-primary-500); background: none; border: none; padding: 0; font-size: inherit;"
+              >
+                ändern
+              </button>
             </p>
-            <form id="passkey-form" class="space-y-6">
-              <div>
-                <label for="passkey-email" class="block text-sm font-medium text-primary mb-2">
-                  E-Mail-Adresse
-                </label>
-                <input
-                  type="email"
-                  id="passkey-email"
-                  name="passkey-email"
-                  required
-                  class="input"
-                  placeholder="ihre.email@beispiel.de"
-                  autocomplete="email"
-                />
-              </div>
 
-              <button type="submit" id="passkey-submit-btn" class="btn btn-primary">
-                Mit Passkey anmelden
-              </button>
-            </form>
-          </div>
+            <button type="button" id="passkey-login-btn" class="btn btn-primary hidden">
+              Mit Passkey anmelden
+            </button>
 
-          <div class="mt-6 text-center">
-            <a href="/password-login.html" class="text-sm" style="color: var(--p-surface-500);">
-              Mit Passwort einloggen...
-            </a>
+            <button type="button" id="email-login-btn" class="btn btn-primary">
+              Anmeldelink per E-Mail senden
+            </button>
+
+            <p id="method-hint" class="text-muted text-xs text-center"></p>
           </div>
         </div>
 
@@ -124,7 +86,7 @@
               E-Mail gesendet!
             </h1>
             <p class="text-muted mb-4">
-              Wir haben Ihnen einen Magic-Link an <strong id="sent-email"></strong> gesendet.
+              Wir haben Ihnen einen Anmeldelink an <strong id="sent-email"></strong> gesendet.
             </p>
             <p class="text-muted text-sm">
               Bitte überprüfen Sie Ihr Postfach und klicken Sie auf den Link in der E-Mail.
@@ -153,222 +115,369 @@
     <div id="toast-container"></div>
 
     <script>
+      // Parse query string
       function parseQueryString() {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
         const redirect = params.get('redirectUrl') || '/static/app/';
-        return { token, redirect };
+        const email = params.get('email');
+        return { token, redirect, email };
       }
 
+      // Show toast notification
       function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
         container.appendChild(toast);
+
         setTimeout(() => {
           toast.style.animation = 'slideDown 0.3s ease-out reverse';
           setTimeout(() => {
-            if (container.contains(toast)) container.removeChild(toast);
+            if (container.contains(toast)) {
+              container.removeChild(toast);
+            }
           }, 300);
         }, type === 'success' ? 3000 : 4000);
       }
 
-      function showElement(id) { document.getElementById(id).classList.remove('hidden'); }
-      function hideElement(id) { document.getElementById(id).classList.add('hidden'); }
+      // Show element
+      function showElement(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
 
-      async function sendMagicLink(email, invitationCode) {
+      // Hide element
+      function hideElement(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      // Send login link (e-mail based sign-in, no password needed)
+      async function sendLoginLink(email) {
         try {
-          let url = `/api/v1/user/send-magic-link?email=${encodeURIComponent(email)}&createUserIfMissing=true`;
-          if (invitationCode) {
-            url += `&invitationCode=${encodeURIComponent(invitationCode)}`;
-          }
-          const response = await fetch(url, { method: 'GET' });
+          const url = `/api/v1/user/send-magic-link?email=${encodeURIComponent(email)}&createUserIfMissing=true`;
+          const response = await fetch(url, {
+            method: 'GET',
+          });
 
           if (!response.ok) {
-            let errorMessage = '';
-            try {
-              const contentType = response.headers.get('content-type') || '';
-              if (contentType.includes('application/json')) {
-                const errorData = await response.json();
-                errorMessage = errorData.message || errorData.error || '';
-              } else {
-                errorMessage = await response.text();
-              }
-            } catch (_) {
-              errorMessage = 'Fehler beim Lesen der Antwort';
-            }
-            if (response.status === 400 && errorMessage.includes('Invitation code needed')) {
-              return { success: false, requiresInvitationCode: true };
-            }
-            throw new Error(errorMessage || 'Fehler beim Senden des Magic-Links');
+            const errorText = await response.text();
+            throw new Error(errorText || 'Fehler beim Senden des Anmeldelinks');
           }
+
           return { success: true };
         } catch (error) {
-          if (error.message && error.message.includes('Invitation code needed')) {
-            return { success: false, requiresInvitationCode: true };
-          }
-          return { success: false, message: error.message || 'Ein Fehler ist aufgetreten' };
+          return {
+            success: false,
+            message: error.message || 'Ein Fehler ist aufgetreten',
+          };
         }
       }
 
-      // The server sets the HttpOnly `jwt` cookie + the `jwt_present` marker itself.
+      // Login with token
       async function loginWithToken(token) {
         try {
           const response = await fetch('/api/v1/user/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: '', password: '', magicLinkToken: token }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: '',
+              password: '',
+              magicLinkToken: token,
+            }),
           });
+
           if (!response.ok) {
             const errorText = await response.text();
             throw new Error(errorText || 'Anmeldung fehlgeschlagen');
           }
+
           const data = await response.json();
-          if (data.token) return { login: true, redirectUrl: data.redirectUrl };
-          throw new Error('Kein Token erhalten');
-        } catch (error) {
-          return { login: false, message: error.message || 'Ein Fehler ist aufgetreten' };
-        }
-      }
 
-      document.getElementById('magic-link-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const emailInput = document.getElementById('email');
-        const invitationCodeInput = document.getElementById('invitation-code');
-        const submitBtn = document.getElementById('submit-btn');
-        const email = emailInput.value.trim();
-        const invitationCode = invitationCodeInput.value.trim();
-
-        if (!email) { showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error'); return; }
-
-        emailInput.disabled = true;
-        invitationCodeInput.disabled = true;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Wird gesendet...';
-
-        const result = await sendMagicLink(email, invitationCode || undefined);
-
-        if (result.success) {
-          hideElement('email-form');
-          showElement('success-message');
-          document.getElementById('sent-email').textContent = email;
-          showToast('Magic-Link erfolgreich gesendet!', 'success');
-        } else {
-          if (result.requiresInvitationCode) {
-            showElement('invitation-code-container');
-            invitationCodeInput.required = true;
-            invitationCodeInput.focus();
-            showToast('Bitte geben Sie einen Invitation Code ein', 'error');
+          // Server sets the HttpOnly `jwt` cookie + `jwt_present` marker itself.
+          if (data.token) {
+            return { login: true, redirectUrl: data.redirectUrl };
           } else {
-            showToast(result.message || 'Fehler beim Senden des Magic-Links', 'error');
+            throw new Error('Kein Token erhalten');
           }
-          emailInput.disabled = false;
-          invitationCodeInput.disabled = false;
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Magic Link senden';
-        }
-      });
-
-      function switchTab(tabName) {
-        hideElement('magic-link-content');
-        hideElement('passkey-content');
-        document.getElementById('magic-link-tab-btn').classList.remove('active');
-        document.getElementById('passkey-tab-btn').classList.remove('active');
-        if (tabName === 'magic-link') {
-          showElement('magic-link-content');
-          document.getElementById('magic-link-tab-btn').classList.add('active');
-        } else if (tabName === 'passkey') {
-          showElement('passkey-content');
-          document.getElementById('passkey-tab-btn').classList.add('active');
+        } catch (error) {
+          return {
+            login: false,
+            message: error.message || 'Ein Fehler ist aufgetreten',
+          };
         }
       }
 
-      async function passkeyAuthenticate(email) {
+      // Single-page auth flow elements
+      const emailInput = document.getElementById('email');
+      const continueBtn = document.getElementById('continue-btn');
+      const emailCheckForm = document.getElementById('email-check-form');
+      const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+      const emailLoginBtn = document.getElementById('email-login-btn');
+      const changeEmailBtn = document.getElementById('change-email-btn');
+      const methodEmailLabel = document.getElementById('method-email-label');
+      const methodHint = document.getElementById('method-hint');
+
+      // The e-mail address the user is currently signing in with
+      let currentEmail = '';
+
+      // Quick backend probe: does this account have a passkey?
+      // Re-uses the existing authentication/options endpoint, which returns
+      // 200 when at least one passkey is registered and an error otherwise
+      // (unknown user, unverified e-mail, passkeys disabled, none registered).
+      async function hasPasskey(email) {
         try {
-          if (!navigator.credentials || !navigator.credentials.get) {
-            throw new Error('Ihr Browser unterstützt Passkeys nicht');
-          }
-          const optionsResponse = await fetch('/api/v1/user/passkey/authentication/options', {
+          const response = await fetch('/api/v1/user/passkey/authentication/options', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
           });
-          if (!optionsResponse.ok) {
-            throw new Error(await optionsResponse.text() || 'Fehler beim Abrufen der Authentifizierungsoptionen');
-          }
-          const { options, challengeToken } = await optionsResponse.json();
-          options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
-          if (options.allowCredentials) {
-            options.allowCredentials = options.allowCredentials.map(cred => ({
-              ...cred,
-              id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0)),
-            }));
-          }
-          const assertion = await navigator.credentials.get({ publicKey: options });
-          if (!assertion) throw new Error('Authentifizierung abgebrochen');
-          const credential = {
-            id: Array.from(new Uint8Array(assertion.rawId)).map(b => String.fromCharCode(b)).join(''),
-            rawId: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId))),
-            type: assertion.type,
-            response: {
-              clientDataJSON: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.clientDataJSON))),
-              authenticatorData: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.authenticatorData))),
-              signature: btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.signature))),
-              userHandle: assertion.response.userHandle ? btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.response.userHandle))) : null,
-            },
-          };
-          const verifyResponse = await fetch('/api/v1/user/passkey/authentication/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ challengeToken, credential }),
-          });
-          if (!verifyResponse.ok) throw new Error(await verifyResponse.text() || 'Authentifizierung fehlgeschlagen');
-          const data = await verifyResponse.json();
-          return { success: true, token: data.token, redirectUrl: data.redirectUrl };
+          return response.ok;
         } catch (error) {
-          return { success: false, message: error.message || 'Ein Fehler ist aufgetreten' };
+          return false;
         }
       }
 
-      document.getElementById('magic-link-tab-btn').addEventListener('click', () => switchTab('magic-link'));
-      document.getElementById('passkey-tab-btn').addEventListener('click', () => switchTab('passkey'));
+      // Reveal the method-selection step, adapting to whether a passkey exists.
+      function showMethodStep(passkeyAvailable) {
+        methodEmailLabel.textContent = currentEmail;
+        hideElement('step-email');
+        showElement('step-method');
 
-      document.getElementById('passkey-form').addEventListener('submit', async (e) => {
+        if (passkeyAvailable) {
+          showElement('passkey-login-btn');
+          passkeyLoginBtn.className = 'btn btn-primary';
+          emailLoginBtn.className = 'btn btn-secondary';
+          methodHint.textContent =
+            'Kein Passkey zur Hand? Nutzen Sie den Anmeldelink per E-Mail.';
+        } else {
+          hideElement('passkey-login-btn');
+          emailLoginBtn.className = 'btn btn-primary';
+          methodHint.textContent =
+            'Wir senden Ihnen einen Anmeldelink per E-Mail – ein Klick genügt.';
+        }
+      }
+
+      // Step 1: e-mail entered -> probe backend -> Step 2
+      emailCheckForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const emailInput = document.getElementById('passkey-email');
-        const submitBtn = document.getElementById('passkey-submit-btn');
         const email = emailInput.value.trim();
-        if (!email) { showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error'); return; }
+
+        if (!email) {
+          showToast('Bitte geben Sie eine E-Mail-Adresse ein', 'error');
+          return;
+        }
+
+        currentEmail = email;
         emailInput.disabled = true;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Wird verarbeitet...';
-        const result = await passkeyAuthenticate(email);
+        continueBtn.disabled = true;
+        continueBtn.textContent = 'Einen Moment...';
+
+        const passkeyAvailable = await hasPasskey(email);
+
+        continueBtn.disabled = false;
+        continueBtn.textContent = 'Weiter';
+        showMethodStep(passkeyAvailable);
+      });
+
+      // "ändern": go back to the e-mail step
+      changeEmailBtn.addEventListener('click', () => {
+        hideElement('step-method');
+        showElement('step-email');
+        // Only re-enable when the field isn't locked by an invitation link
+        if (!emailInput.readOnly) {
+          emailInput.disabled = false;
+          emailInput.focus();
+        }
+      });
+
+      // Method: sign in with passkey
+      passkeyLoginBtn.addEventListener('click', async () => {
+        passkeyLoginBtn.disabled = true;
+        emailLoginBtn.disabled = true;
+        passkeyLoginBtn.textContent = 'Wird verarbeitet...';
+
+        const result = await passkeyAuthenticate(currentEmail);
+
         if (result.success) {
+          // Server sets the HttpOnly `jwt` cookie + `jwt_present` marker itself.
           showToast('Anmeldung erfolgreich', 'success');
           setTimeout(() => {
             const { redirect } = parseQueryString();
             window.location.href = result.redirectUrl || redirect || '/static/app/';
           }, 1500);
         } else {
-          emailInput.disabled = false;
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Mit Passkey anmelden';
+          passkeyLoginBtn.disabled = false;
+          emailLoginBtn.disabled = false;
+          passkeyLoginBtn.textContent = 'Mit Passkey anmelden';
           showToast(result.message || 'Anmeldung fehlgeschlagen', 'error');
         }
       });
 
+      // Method: send a login link by e-mail
+      emailLoginBtn.addEventListener('click', async () => {
+        const originalLabel = emailLoginBtn.textContent;
+        passkeyLoginBtn.disabled = true;
+        emailLoginBtn.disabled = true;
+        emailLoginBtn.textContent = 'Wird gesendet...';
+
+        const result = await sendLoginLink(currentEmail);
+
+        if (result.success) {
+          hideElement('email-form');
+          showElement('success-message');
+          document.getElementById('sent-email').textContent = currentEmail;
+          showToast('Anmeldelink gesendet!', 'success');
+        } else {
+          passkeyLoginBtn.disabled = false;
+          emailLoginBtn.disabled = false;
+          emailLoginBtn.textContent = originalLabel;
+          showToast(result.message || 'Fehler beim Senden des Anmeldelinks', 'error');
+        }
+      });
+
+      // Passkey authentication
+      async function passkeyAuthenticate(email) {
+        try {
+          // Check browser support
+          if (!navigator.credentials || !navigator.credentials.get) {
+            throw new Error('Ihr Browser unterstützt Passkeys nicht');
+          }
+
+          // Step 1: Get authentication options
+          const optionsResponse = await fetch('/api/v1/user/passkey/authentication/options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+
+          if (!optionsResponse.ok) {
+            const errorText = await optionsResponse.text();
+            throw new Error(errorText || 'Fehler beim Abrufen der Authentifizierungsoptionen');
+          }
+
+          const { options, challengeToken } = await optionsResponse.json();
+
+          // Convert base64url strings to Uint8Array for WebAuthn.
+          // The server sends base64url (RFC 4648 §5: '-'/'_' and no padding),
+          // so plain atob() would choke on those characters.
+          const b64urlToBytes = (value) => {
+            let s = String(value).replace(/-/g, '+').replace(/_/g, '/');
+            const pad = s.length % 4;
+            if (pad) s += '='.repeat(4 - pad);
+            return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+          };
+          // Encode raw bytes as base64url (NOT standard base64):
+          // @simplewebauthn/server validates authenticatorData/signature with
+          // isBase64URL() and rejects '+'/'/'/'=' from btoa().
+          const bytesToB64url = (buffer) => {
+            const bytes = new Uint8Array(buffer);
+            let str = '';
+            for (let i = 0; i < bytes.length; i++) {
+              str += String.fromCharCode(bytes[i]);
+            }
+            return btoa(str)
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_')
+              .replace(/=+$/, '');
+          };
+          options.challenge = b64urlToBytes(options.challenge);
+          if (options.allowCredentials) {
+            options.allowCredentials = options.allowCredentials.map(cred => ({
+              ...cred,
+              id: b64urlToBytes(cred.id),
+            }));
+          }
+
+          // Step 2: Use native WebAuthn API to get credential
+          const assertion = await navigator.credentials.get({ publicKey: options });
+
+          if (!assertion) {
+            throw new Error('Authentifizierung abgebrochen');
+          }
+
+          // Convert response back to transmissible format.
+          // `assertion.id` is already the base64url credential id the server
+          // stored during registration, so it must be used verbatim for lookup.
+          // `id` and `rawId` must be the identical base64url string:
+          // @simplewebauthn/server rejects the response with
+          // "Credential ID was not base64url-encoded" when id !== rawId.
+          // `assertion.id` is already the base64url encoding of rawId.
+          const credential = {
+            id: assertion.id,
+            rawId: assertion.id,
+            type: assertion.type,
+            response: {
+              clientDataJSON: bytesToB64url(assertion.response.clientDataJSON),
+              authenticatorData: bytesToB64url(assertion.response.authenticatorData),
+              signature: bytesToB64url(assertion.response.signature),
+              userHandle: assertion.response.userHandle ? bytesToB64url(assertion.response.userHandle) : null,
+            },
+          };
+
+          // Step 3: Verify authentication
+          const verifyResponse = await fetch('/api/v1/user/passkey/authentication/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              challengeToken,
+              credential,
+            }),
+          });
+
+          if (!verifyResponse.ok) {
+            const errorText = await verifyResponse.text();
+            throw new Error(errorText || 'Authentifizierung fehlgeschlagen');
+          }
+
+          const data = await verifyResponse.json();
+          return {
+            success: true,
+            token: data.token,
+            redirectUrl: data.redirectUrl,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            message: error.message || 'Ein Fehler ist aufgetreten',
+          };
+        }
+      }
+
+      // Main execution - check for token
       (async () => {
-        const { token, redirect } = parseQueryString();
+        const { token, redirect, email } = parseQueryString();
+
+        // Prefill email from URL (invitation links) and lock the field
+        if (email) {
+          if (emailInput) {
+            emailInput.value = email;
+            emailInput.readOnly = true;
+            emailInput.setAttribute('aria-readonly', 'true');
+            emailInput.style.background = 'var(--p-surface-100)';
+            emailInput.style.cursor = 'not-allowed';
+          }
+          // The address is fixed by the invitation link – hide "ändern"
+          if (changeEmailBtn) {
+            changeEmailBtn.classList.add('hidden');
+          }
+        }
+
         if (token) {
+          // Token found - verify and login
           hideElement('email-form');
           hideElement('success-message');
           showElement('verification');
+
           const result = await loginWithToken(token);
+
           if (result.login) {
             showToast('Anmeldung erfolgreich', 'success');
             setTimeout(() => {
-              window.location.href = result.redirectUrl || redirect || '/static/app/';
+              const redirectUrl = result.redirectUrl || redirect || '/static/app/';
+              window.location.href = redirectUrl;
             }, 2000);
           } else {
             hideElement('verification');
@@ -376,6 +485,7 @@
             showToast(result.message || 'Anmeldung fehlgeschlagen', 'error');
           }
         } else {
+          // No token - show email form
           showElement('email-form');
         }
       })();

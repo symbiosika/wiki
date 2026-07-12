@@ -43,9 +43,16 @@ const router = createRouter({
 })
 
 const isAuthenticated = (): boolean => {
+  // The real `jwt` cookie is HttpOnly and invisible to document.cookie.
+  // The backend sets the non-HttpOnly `jwt_present` marker alongside it
+  // for exactly this check (plain `jwt` kept as fallback for tests/tools).
   return document.cookie
     .split(';')
-    .some((item) => item.trim().startsWith('jwt='))
+    .some(
+      (item) =>
+        item.trim().startsWith('jwt_present=') ||
+        item.trim().startsWith('jwt='),
+    )
 }
 
 const redirectToLogin = () => {
