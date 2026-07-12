@@ -31,6 +31,7 @@
           :tenant-id="tenantId"
           :show-result="false"
           size="lg"
+          @transcription-update="onTranscribed"
           @transcription-complete="onTranscribed"
           @error="onError"
         />
@@ -45,7 +46,7 @@
         :placeholder="$t('Protocol.textPlaceholder')"
       />
 
-      <!-- transcript preview (voice) -->
+      <!-- live transcript (voice): fills in as the user speaks -->
       <Textarea
         v-if="mode === 'voice' && content"
         v-model="content"
