@@ -1,0 +1,22 @@
+{
+  "title": "Tagesprotokoll",
+  "recordButton": "Tagesprotokoll",
+  "record": "Aufnahme starten",
+  "stop": "Aufnahme stoppen",
+  "recording": "Aufnahme läuft…",
+  "transcribing": "Transkribiere…",
+  "clickToRecord": "Zum Aufnehmen tippen",
+  "voice": "Sprache",
+  "text": "Text",
+  "textPlaceholder": "Protokoll hier eingeben oder das Transkript bearbeiten…",
+  "applyToBrain": "In Wissensbasis übernehmen",
+  "submit": "Aufbereiten",
+  "processing": "Wird aufbereitet…",
+  "created": "Protokoll erstellt",
+  "openPage": "Seite öffnen",
+  "brainApplied": "{facts} Fakt(en) in die Wissensbasis übernommen.",
+  "brainError": "Übernahme in die Wissensbasis fehlgeschlagen – das Protokoll wurde trotzdem gespeichert.",
+  "submitError": "Aufbereitung fehlgeschlagen. Bitte erneut versuchen.",
+  "microphoneError": "Kein Zugriff auf das Mikrofon.",
+  "transcriptionError": "Transkription fehlgeschlagen."
+}

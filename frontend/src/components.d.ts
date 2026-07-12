@@ -34,6 +34,8 @@ declare module 'vue' {
     Message: typeof import('./volt/Message.vue')['default']
     MultiSelect: typeof import('./volt/MultiSelect.vue')['default']
     OverlayBadge: typeof import('./volt/OverlayBadge.vue')['default']
+    ProtocolDialog: typeof import('./components/protocol/ProtocolDialog.vue')['default']
+    ProtocolRecorder: typeof import('./components/protocol/ProtocolRecorder.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SecondaryButton: typeof import('./volt/SecondaryButton.vue')['default']

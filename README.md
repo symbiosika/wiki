@@ -16,6 +16,13 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
 - **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
   den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
   Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
+- **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
+  aufnehmen → Transkription (Mistral/Voxtral) → KI-Aufbereitung (Zusammenfassung,
+  Kernpunkte, Aufgaben) → datierte Seite unter „Tagesprotokolle". Optionaler
+  „Digital-Twin-Brain": ein Agent extrahiert Fakten in eine kuratierte
+  Themen-Hierarchie unter „Wissensbasis". Keys: `OPENROUTER_API_KEY`
+  (LLM/Agents über OpenRouter mit einem Mistral-Modell) und `MISTRAL_API_KEY`
+  (Live-Transkription).
 
 ## Setup
 

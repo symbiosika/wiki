@@ -1,0 +1,22 @@
+{
+  "title": "Daily protocol",
+  "recordButton": "Daily protocol",
+  "record": "Start recording",
+  "stop": "Stop recording",
+  "recording": "Recording…",
+  "transcribing": "Transcribing…",
+  "clickToRecord": "Tap to record",
+  "voice": "Voice",
+  "text": "Text",
+  "textPlaceholder": "Type the protocol here or edit the transcript…",
+  "applyToBrain": "Apply to knowledge base",
+  "submit": "Work up",
+  "processing": "Working it up…",
+  "created": "Protocol created",
+  "openPage": "Open page",
+  "brainApplied": "Merged {facts} fact(s) into the knowledge base.",
+  "brainError": "Could not merge into the knowledge base – the protocol was saved anyway.",
+  "submitError": "Workup failed. Please try again.",
+  "microphoneError": "Could not access the microphone.",
+  "transcriptionError": "Transcription failed."
+}

@@ -78,6 +78,7 @@ declare global {
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
+  const useProtocol: typeof import('./stores/protocol').useProtocol
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
@@ -93,6 +94,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { CreatedProtocol, ProcessResult } from './stores/protocol'
+  import('./stores/protocol')
   // @ts-ignore
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')

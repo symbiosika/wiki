@@ -2,6 +2,7 @@ import { defineServer } from "@framework/index";
 import * as appDbSchema from "./db/schema";
 import defineChatRoutes from "./routes/tenant/[tenantId]/chat";
 import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
+import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 
 const server = defineServer({
   port: 3000,
@@ -31,6 +32,7 @@ const server = defineServer({
       app: (app) => {
         defineChatRoutes(app);
         defineWikiRoutes(app);
+        defineProtocolRoutes(app);
       },
     },
   ],

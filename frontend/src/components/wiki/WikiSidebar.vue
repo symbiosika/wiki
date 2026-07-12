@@ -47,6 +47,18 @@
       />
     </div>
 
+    <!-- record daily protocol -->
+    <div class="px-3 pb-2">
+      <button
+        type="button"
+        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis"
+        @click="protocol.openDialog()"
+      >
+        <IconMicrophone class="h-4 w-4" />
+        {{ $t('Protocol.recordButton') }}
+      </button>
+    </div>
+
     <!-- search results -->
     <div v-if="searchQuery.trim()" class="flex-1 overflow-y-auto px-2 pb-4">
       <div
@@ -200,6 +212,7 @@
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
 import IconMagnify from '~icons/mdi/magnify'
+import IconMicrophone from '~icons/mdi/microphone'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
 import type {
@@ -209,6 +222,7 @@ import type {
 } from '@/types/wiki'
 
 const app = useApp()
+const protocol = useProtocol()
 const auth = useAuthStore()
 const wiki = useWiki()
 const route = useRoute()
