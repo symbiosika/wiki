@@ -2,6 +2,8 @@ import { defineServer } from "@framework/index";
 import * as appDbSchema from "./db/schema";
 import defineChatRoutes from "./routes/tenant/[tenantId]/chat";
 import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
+import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
+import { websocket } from "./lib/ws/bun-ws";
 
 const server = defineServer({
   port: 3000,
@@ -31,9 +33,17 @@ const server = defineServer({
       app: (app) => {
         defineChatRoutes(app);
         defineWikiRoutes(app);
+        defineProtocolRoutes(app);
       },
     },
   ],
 });
 
-export default server;
+// `defineServer` returns a Bun.serve config (`{ fetch, port, … }`) but is itself
+// WebSocket-agnostic. Adding the `websocket` handler here makes Bun dispatch
+// socket events to the handlers registered by `upgradeWebSocket` (see the
+// protocol realtime route). Both halves come from the same shared instance.
+export default {
+  ...server,
+  websocket,
+};

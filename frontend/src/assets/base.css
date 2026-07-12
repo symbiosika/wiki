@@ -83,3 +83,19 @@
     --p-text-hover-muted-color: var(--p-surface-300);
   }
 }
+
+/* Mobile polish: no grey tap flash, no double-tap zoom on controls,
+   stable font size when rotating iOS devices */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  touch-action: manipulation;
+}

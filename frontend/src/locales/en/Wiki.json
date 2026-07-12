@@ -29,5 +29,11 @@
   },
   "logout": "Log out",
   "tenant": "Organisation",
-  "manage": "Manage"
+  "manage": "Manage",
+  "openMenu": "Open menu",
+  "closeMenu": "Close menu",
+  "goHome": "Go to home",
+  "switchTenant": "Switch organisation",
+  "collapseSidebar": "Hide sidebar",
+  "expandSidebar": "Show sidebar"
 }

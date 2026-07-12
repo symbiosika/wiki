@@ -29,5 +29,11 @@
   },
   "logout": "Abmelden",
   "tenant": "Organisation",
-  "manage": "Verwaltung"
+  "manage": "Verwaltung",
+  "openMenu": "Menü öffnen",
+  "closeMenu": "Menü schließen",
+  "goHome": "Zur Startseite",
+  "switchTenant": "Organisation wechseln",
+  "collapseSidebar": "Seitenleiste ausblenden",
+  "expandSidebar": "Seitenleiste einblenden"
 }

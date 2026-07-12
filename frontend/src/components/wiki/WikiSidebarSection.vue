@@ -1,7 +1,7 @@
 <template>
   <div :class="nested ? 'mt-1' : 'mt-4'">
     <div
-      class="group flex items-center justify-between rounded-md px-2 py-1"
+      class="group flex items-center justify-between rounded-md px-2 py-1.5 lg:py-1"
       :class="
         nested
           ? 'text-surface-600 dark:text-surface-300'
@@ -20,9 +20,7 @@
         <span
           class="truncate font-semibold"
           :class="
-            nested
-              ? 'text-[13px]'
-              : 'text-[11px] tracking-wider uppercase'
+            nested ? 'text-[13px]' : 'text-[11px] tracking-wider uppercase'
           "
         >
           {{ label }}
@@ -31,7 +29,7 @@
       <button
         type="button"
         :title="$t('Wiki.newPage')"
-        class="invisible flex h-5 w-5 shrink-0 items-center justify-center rounded text-surface-400 group-hover:visible hover:bg-surface-200 hover:text-surface-600 dark:hover:bg-surface-700 dark:hover:text-surface-300"
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-600 active:bg-surface-200 lg:invisible lg:h-5 lg:w-5 lg:group-hover:visible dark:hover:bg-surface-700 dark:hover:text-surface-300 dark:active:bg-surface-700"
         @click="$emit('add')"
       >
         <IconPlus class="h-3.5 w-3.5" />

@@ -11,14 +11,25 @@
     <p class="max-w-sm text-center text-sm text-surface-500 dark:text-surface-400">
       {{ $t('Wiki.emptyState.subtitle') }}
     </p>
-    <Button class="mt-2" @click="createFirstPage">
-      {{ $t('Wiki.emptyState.createFirst') }}
-    </Button>
+    <div class="mt-2 flex flex-col items-center gap-2 sm:flex-row">
+      <Button @click="createFirstPage">
+        {{ $t('Wiki.emptyState.createFirst') }}
+      </Button>
+      <SecondaryButton
+        :label="$t('Protocol.recordButton')"
+        @click="protocol.openDialog()"
+      >
+        <template #icon><IconMicrophone class="h-4 w-4" /></template>
+      </SecondaryButton>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import IconMicrophone from '~icons/mdi/microphone'
+
 const wiki = useWiki()
+const protocol = useProtocol()
 const route = useRoute()
 const router = useRouter()
 

@@ -13,7 +13,7 @@ onMounted(async () => {
   <ConfirmDialog />
   <main
     v-if="!appStore.state.loading && appStore.state.initError"
-    class="flex min-h-screen items-center justify-center p-6"
+    class="flex min-h-dvh items-center justify-center p-6"
   >
     <section class="max-w-md rounded-lg border border-red-200 p-6 text-center">
       <h1 class="mb-2 text-xl font-semibold">App could not be loaded</h1>

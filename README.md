@@ -16,6 +16,20 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
 - **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
   den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
   Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
+- **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
+  aufnehmen → **Live-Transkription** (der Text erscheint schon während des
+  Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →
+  datierte Seite unter „Tagesprotokolle". Optionaler „Digital-Twin-Brain": ein
+  Agent extrahiert Fakten in eine kuratierte Themen-Hierarchie unter
+  „Wissensbasis". Keys: `OPENROUTER_API_KEY` (LLM/Agents über OpenRouter mit
+  einem Mistral-Modell) und `MISTRAL_API_KEY` (Live-Transkription).
+  - Die Live-Transkription streamt 16-kHz-PCM (`pcm_s16le`) vom Browser über
+    einen Backend-WebSocket-Relay (`GET …/protocol/realtime`) an Mistrals
+    Realtime-Endpoint (Voxtral). Der `MISTRAL_API_KEY` bleibt serverseitig.
+    Modell konfigurierbar über `MISTRAL_REALTIME_MODEL`
+    (Default `voxtral-mini-transcribe-realtime-2602`). Browser ohne
+    Web-Audio-/AudioWorklet-Unterstützung fallen automatisch auf die
+    asynchrone Aufnahme (`POST …/protocol/transcribe`) zurück.
 
 ## Setup
 
