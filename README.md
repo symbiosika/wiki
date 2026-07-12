@@ -11,7 +11,11 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
 - **Frontend**: Vue 3 SPA mit Notion-artigem TipTap-Block-Editor
   (Slash-Befehle, Bubble-Menü, Drag-Handle, Markdown-Input-Rules,
   To-do-Listen) und einklappbarem Seitenbaum
-  (Persönlich / Teams / Organisation).
+  (Persönlich / Teams / Organisation) plus Organisations-/Team-/
+  Einladungsverwaltung.
+- **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
+  den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
+  Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
 
 ## Setup
 
