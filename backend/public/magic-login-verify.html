@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Magic Login Verifizierung - Symbiosika</title>
+    <link rel="icon" href="/favicon.svg" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --p-primary-50: #eff6ff;
+        --p-primary-100: #dbeafe;
+        --p-primary-200: #bfdbfe;
+        --p-primary-300: #93c5fd;
+        --p-primary-400: #60a5fa;
+        --p-primary-500: #1d459f;
+        --p-primary-600: #1e3a8a;
+        --p-primary-700: #1e40af;
+        --p-primary-800: #1e3a8a;
+        --p-primary-900: #172554;
+        --p-primary-950: #0f172a;
+        --p-surface-0: #ffffff;
+        --p-surface-50: #fafafa;
+        --p-surface-100: #f4f4f5;
+        --p-surface-200: #e4e4e7;
+        --p-surface-300: #d4d4d8;
+        --p-surface-400: #a1a1aa;
+        --p-surface-500: #71717a;
+        --p-surface-600: #52525b;
+        --p-surface-700: #3f3f46;
+        --p-surface-800: #27272a;
+        --p-surface-900: #18181b;
+        --p-surface-950: #09090b;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --p-primary-color: var(--p-primary-400);
+          --p-text-color: var(--p-surface-0);
+          --p-text-muted-color: var(--p-surface-400);
+        }
+      }
+
+      body {
+        background: linear-gradient(to bottom right, var(--p-surface-50), var(--p-surface-100));
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: linear-gradient(to bottom right, var(--p-surface-950), var(--p-surface-900));
+        }
+      }
+
+      .card {
+        background: var(--p-surface-0);
+        border: 1px solid var(--p-surface-200);
+        border-radius: 0.75rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .card {
+          background: var(--p-surface-900);
+          border-color: var(--p-surface-700);
+        }
+      }
+
+      .text-primary {
+        color: var(--p-surface-800);
+      }
+
+      .text-muted {
+        color: var(--p-surface-500);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .text-primary {
+          color: var(--p-surface-100);
+        }
+        .text-muted {
+          color: var(--p-surface-400);
+        }
+      }
+
+      .spinner {
+        border: 3px solid var(--p-surface-200);
+        border-top: 3px solid var(--p-primary-500);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        animation: slideDown 0.3s ease-out;
+        max-width: 90%;
+      }
+
+      .toast.success {
+        background-color: #10b981;
+        color: white;
+      }
+
+      .toast.error {
+        background-color: #ef4444;
+        color: white;
+      }
+
+      .toast.info {
+        background-color: var(--p-primary-500);
+        color: white;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .error-message {
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .btn {
+        padding: 0.625rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        margin-top: 1rem;
+      }
+
+      .btn-secondary {
+        background: var(--p-surface-200);
+        color: var(--p-surface-800);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .btn-secondary {
+          background: var(--p-surface-700);
+          color: var(--p-surface-0);
+        }
+      }
+
+      .btn-secondary:hover {
+        background: var(--p-surface-300);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .btn-secondary:hover {
+          background: var(--p-surface-600);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="min-h-screen flex items-center justify-center px-6 py-12">
+      <div class="w-full max-w-md">
+        <!-- Token Verification (Loading) -->
+        <div id="verification" class="card p-8">
+          <div class="text-center mb-8">
+            <img class="mx-auto w-48 mb-6" src="/favicon.svg" alt="Logo" />
+            <h1 class="text-2xl font-bold text-primary mb-2">
+              Anmeldung
+            </h1>
+            <p class="text-muted">
+              Bitte warten Sie, während wir Sie anmelden...
+            </p>
+          </div>
+          <div class="flex justify-center items-center py-8">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="card p-8 hidden">
+          <div class="error-message">
+            <img class="mx-auto w-48 mb-6" src="/favicon.svg" alt="Logo" />
+            <h1 class="text-2xl font-bold text-primary mb-2">
+              Fehler bei der Anmeldung
+            </h1>
+            <p class="text-muted mb-4" id="error-text">
+              Ein Fehler ist aufgetreten
+            </p>
+            <button onclick="window.location.href='/login.html'" class="btn btn-secondary">
+              Zurück zur Anmeldung
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+      // Parse query string
+      function parseQueryString() {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const redirect = params.get('redirectUrl') || '/static/app/';
+        return { token, redirect };
+      }
+
+      // Set cookie helper function
+      function setCookie(name, value, days = 7) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`;
+      }
+
+      // Show toast notification
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.animation = 'slideDown 0.3s ease-out reverse';
+          setTimeout(() => {
+            if (container.contains(toast)) {
+              container.removeChild(toast);
+            }
+          }, 300);
+        }, type === 'success' ? 2000 : 4000);
+      }
+
+      // Show element
+      function showElement(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
+
+      // Hide element
+      function hideElement(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      // Login with token
+      async function loginWithToken(token) {
+        try {
+          const response = await fetch('/api/v1/user/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: '',
+              password: '',
+              magicLinkToken: token,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Anmeldung fehlgeschlagen');
+          }
+
+          const data = await response.json();
+
+          if (data.token) {
+            // Set JWT cookie
+            setCookie('jwt', data.token);
+            return { login: true, redirectUrl: data.redirectUrl };
+          } else {
+            throw new Error('Kein Token erhalten');
+          }
+        } catch (error) {
+          return {
+            login: false,
+            message: error.message || 'Ein Fehler ist aufgetreten',
+          };
+        }
+      }
+
+      // Main execution
+      (async () => {
+        const { token, redirect } = parseQueryString();
+
+        if (!token) {
+          // No token - show error
+          hideElement('verification');
+          showElement('error-message');
+          document.getElementById('error-text').textContent = 'Kein Token gefunden. Bitte verwenden Sie den Link aus der E-Mail.';
+          showToast('Fehler: Kein Token gefunden', 'error');
+          return;
+        }
+
+        // Token found - verify and login
+        const result = await loginWithToken(token);
+
+        if (result.login) {
+          showToast('Anmeldung erfolgreich', 'success');
+          setTimeout(() => {
+            const redirectUrl = result.redirectUrl || redirect || '/static/app/';
+            window.location.href = redirectUrl;
+          }, 2000);
+        } else {
+          hideElement('verification');
+          showElement('error-message');
+          document.getElementById('error-text').textContent = result.message || 'Anmeldung fehlgeschlagen';
+          showToast(result.message || 'Anmeldung fehlgeschlagen', 'error');
+        }
+      })();
+    </script>
+  </body>
+</html>
+

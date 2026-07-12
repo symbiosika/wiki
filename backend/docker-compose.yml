@@ -1,0 +1,40 @@
+# Start the local development database and environment
+# This will NOT contain the webserver or any other services
+# Project name: set PROJECT_NAME in .env to customize (default: app)
+name: ${PROJECT_NAME:-app}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    command: -p ${POSTGRES_PORT:-5432}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      PGPORT: ${POSTGRES_PORT}
+    ports:
+      - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -p ${POSTGRES_PORT:-5432}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: no
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@symbiosika.de"
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: no
+
+volumes:
+  pg_data:
+    driver: local

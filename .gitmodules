@@ -1,0 +1,9 @@
+[submodule "backend/framework"]
+	path = backend/framework
+	url = https://github.com/symbiosika/symbiosika-framework
+
+# add submodule backend/framework
+# git submodule add https://github.com/symbiosika/symbiosika-framework backend/framework
+
+# load all submodules
+# git submodule update --init --recursive

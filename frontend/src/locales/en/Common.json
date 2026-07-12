@@ -1,0 +1,41 @@
+{
+  "add": "Add",
+  "back": "Back",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "select": "Select",
+  "create": "Create",
+  "success": "Success",
+  "error": "Error",
+  "delete": "Delete",
+  "remove": "Remove",
+  "close": "Close",
+  "name": "Name",
+  "next": "Next",
+  "description": "Description",
+  "save": "Save",
+  "edit": "Edit",
+  "updated": "Updated",
+  "actions": "Actions",
+  "required": "This field is required",
+  "yes": "Yes",
+  "no": "No",
+  "update": {
+    "success": "Updated successfully",
+    "error": "Failed to update"
+  },
+  "messages": {
+    "success": "Deleted successfully",
+    "error": "Failed to delete"
+  },
+  "sync": "Syncronize",
+  "justNow": "Just now",
+  "minutesAgo": "{count} minute(s) ago",
+  "hoursAgo": "{count} hour(s) ago",
+  "yesterday": "Yesterday",
+  "daysAgo": "{count} day(s) ago",
+  "unselectAll": "Unselect all",
+  "view": "View",
+  "drop": "Delete",
+  "alwaysEnabled": "Always enabled"
+}
