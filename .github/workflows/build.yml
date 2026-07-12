@@ -16,6 +16,11 @@ permissions:
 
 env:
   REGISTRY: symbiosika.azurecr.io
+  COOLIFY_BASE_URL: https://my-coolify.my-domain.com
+  # Coolify app that main/production deploys to
+  COOLIFY_UUID_PROD: kj7g...
+  # Coolify app that develop/staging deploys to
+  COOLIFY_UUID_STAGING: st4g...
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -243,3 +248,43 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}-mcp:${{ github.sha }}
           cache-from: type=gha,scope=${{ github.event.repository.name }}-mcp
           cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-mcp
+
+  # ---------------------------------------------------------------------------
+  # COOLIFY DEPLOY TRIGGERS
+  # After the images are pushed, ask Coolify to redeploy. Each job runs only
+  # for its own branch (and never for pull_request builds, whose images are
+  # tagged pr_<n> and not meant to be deployed).
+  # ---------------------------------------------------------------------------
+  deploy-prod:
+    needs: [build-docker-app, build-docker-mcp]
+    if: github.event_name != 'pull_request' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy (production)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          COOLIFY_UUID: ${{ env.COOLIFY_UUID_PROD }}
+        continue-on-error: true
+        run: |
+          curl -sS -X GET \
+            --max-time 2 --retry 2 --retry-all-errors \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
+            || true
+
+  deploy-staging:
+    needs: [build-docker-app, build-docker-mcp]
+    if: github.event_name != 'pull_request' && github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy (staging)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          COOLIFY_UUID: ${{ env.COOLIFY_UUID_STAGING }}
+        continue-on-error: true
+        run: |
+          curl -sS -X GET \
+            --max-time 2 --retry 2 --retry-all-errors \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
+            || true
