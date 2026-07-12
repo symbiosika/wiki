@@ -3,7 +3,12 @@
 FROM oven/bun:1 AS base
 WORKDIR /usr/src/app
 
-# Install Drizzle-kit
+# drizzle-kit runs at container start (DB migrations) and is not part of the
+# bundled app, so install it globally. NODE_PATH lets the drizzle config files
+# (which `import { defineConfig } from "drizzle-kit"`) resolve it from the
+# global install at runtime — the artifact itself carries no node_modules.
+ENV BUN_INSTALL=/root/.bun
+ENV NODE_PATH=/root/.bun/install/global/node_modules
 RUN bun i -g drizzle-orm pg drizzle-kit
 
 # Expose the port your app runs on
