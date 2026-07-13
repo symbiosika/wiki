@@ -83,4 +83,40 @@ describe("agent post-processor bridge", () => {
     }
     expect(threw).toBe(true);
   });
+
+  test("skips oversized input, preserves text + page mapping, records skipped meta", async () => {
+    const prev = process.env.POSTPROCESSING_MAX_INPUT_TOKENS;
+    process.env.POSTPROCESSING_MAX_INPUT_TOKENS = "1"; // ~4 chars
+    try {
+      const result = await applyPostProcessors(
+        {
+          ...input(org, "this text is well over four characters"),
+          pages: [{ page: 1, text: "this text is well over four characters" }],
+        },
+        [agentProcessorName(agentId)],
+      );
+      // unchanged text (no dev-stub marker) and page mapping preserved
+      expect(result.text).toBe("this text is well over four characters");
+      expect(result.pages).toEqual([
+        { page: 1, text: "this text is well over four characters" },
+      ]);
+      expect((result.meta as any).postProcessing.skipped).toBe("too_large");
+    } finally {
+      process.env.POSTPROCESSING_MAX_INPUT_TOKENS = prev;
+    }
+  });
+
+  test("a disabled agent fails cleanly (throws)", async () => {
+    const disabled = await createAgent(
+      { organisationId: org },
+      { name: "Disabled one", prompt: "x", enabled: false },
+    );
+    let threw = false;
+    try {
+      await applyPostProcessors(input(org), [agentProcessorName(disabled.id)]);
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+  });
 });

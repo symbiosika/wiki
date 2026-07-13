@@ -78,8 +78,9 @@ export const buildAgentPostProcessor = (agentId: string): PostProcessor => ({
       );
       return {
         text: input.text,
-        // omit pages — but text is unchanged so the previous mapping is fine;
-        // still drop it to stay consistent with the "agent may rewrite" model.
+        // Text is unchanged, so the parser's page mapping is still valid — keep
+        // it (unlike an actual agentic rewrite, which invalidates it).
+        pages: input.pages,
         title: input.title,
         meta: {
           postProcessing: {
