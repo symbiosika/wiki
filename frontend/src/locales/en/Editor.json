@@ -30,5 +30,10 @@
     "link": "Link",
     "linkPlaceholder": "https://…"
   },
+  "image": {
+    "alignLeft": "Align left",
+    "alignCenter": "Center",
+    "alignRight": "Align right"
+  },
   "imageUploadError": "Image upload failed. Please try again."
 }

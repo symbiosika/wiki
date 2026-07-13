@@ -30,5 +30,10 @@
     "link": "Link",
     "linkPlaceholder": "https://…"
   },
+  "image": {
+    "alignLeft": "Linksbündig",
+    "alignCenter": "Zentriert",
+    "alignRight": "Rechtsbündig"
+  },
   "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen."
 }
