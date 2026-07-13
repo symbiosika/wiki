@@ -4,7 +4,49 @@
     :options="{ placement: 'top', offset: 8 }"
     :should-show="shouldShow"
   >
+    <!-- image selected: size + alignment controls -->
     <div
+      v-if="editor.isActive('image')"
+      class="flex items-center gap-0.5 rounded-lg border border-surface-200 bg-surface-0 p-1 shadow-lg dark:border-surface-700 dark:bg-surface-900"
+    >
+      <button
+        v-for="size in sizes"
+        :key="size.value"
+        type="button"
+        :title="size.label"
+        class="flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors"
+        :class="
+          imageSize() === size.value
+            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+        "
+        @click="setSize(size.value)"
+      >
+        {{ size.label }}
+      </button>
+
+      <span class="mx-1 h-5 w-px bg-surface-200 dark:bg-surface-700" />
+
+      <button
+        v-for="align in aligns"
+        :key="align.value"
+        type="button"
+        :title="align.label"
+        class="flex h-7 min-w-7 items-center justify-center rounded transition-colors"
+        :class="
+          imageAlign() === align.value
+            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+        "
+        @click="setAlign(align.value)"
+      >
+        <component :is="align.icon" class="h-4 w-4" />
+      </button>
+    </div>
+
+    <!-- text selected: inline formatting -->
+    <div
+      v-else
       class="flex items-center gap-0.5 rounded-lg border border-surface-200 bg-surface-0 p-1 shadow-lg dark:border-surface-700 dark:bg-surface-900"
     >
       <button
@@ -67,8 +109,14 @@ import type { Editor as CoreEditor } from '@tiptap/core'
 import type { EditorState } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { isTextSelection } from '@tiptap/core'
+import IconAlignLeft from '~icons/mdi/format-align-left'
+import IconAlignCenter from '~icons/mdi/format-align-center'
+import IconAlignRight from '~icons/mdi/format-align-right'
+import { IMAGE_SIZES, type ImageSize, type ImageAlign } from './wikiImage'
 
 const props = defineProps<{ editor: Editor }>()
+
+const { t } = useI18n()
 
 const showLinkInput = ref(false)
 const linkUrl = ref('')
@@ -117,7 +165,45 @@ const marks = [
   },
 ]
 
-/** only show for non-empty text selections (not node selections, not code blocks) */
+// ----- image controls --------------------------------------------------------
+
+const sizes = IMAGE_SIZES.map((value) => ({
+  value,
+  label: value.toUpperCase(),
+}))
+
+const aligns: { value: ImageAlign; label: string; icon: unknown }[] = [
+  { value: 'left', label: t('Editor.image.alignLeft'), icon: IconAlignLeft },
+  {
+    value: 'center',
+    label: t('Editor.image.alignCenter'),
+    icon: IconAlignCenter,
+  },
+  { value: 'right', label: t('Editor.image.alignRight'), icon: IconAlignRight },
+]
+
+const imageSize = () =>
+  (props.editor.getAttributes('image').size as ImageSize | null) ?? null
+const imageAlign = () =>
+  (props.editor.getAttributes('image').align as ImageAlign | null) ?? null
+
+const setSize = (size: ImageSize) => {
+  props.editor
+    .chain()
+    .focus()
+    .updateAttributes('image', { size: imageSize() === size ? null : size })
+    .run()
+}
+
+const setAlign = (align: ImageAlign) => {
+  props.editor
+    .chain()
+    .focus()
+    .updateAttributes('image', { align: imageAlign() === align ? null : align })
+    .run()
+}
+
+/** show for non-empty text selections OR when an image node is selected */
 const shouldShow = ({
   editor,
   state,
@@ -125,6 +211,7 @@ const shouldShow = ({
   editor: CoreEditor
   state: EditorState
 }) => {
+  if (editor.isActive('image')) return true
   const { selection } = state
   if (selection.empty) return false
   if (!isTextSelection(selection)) return false

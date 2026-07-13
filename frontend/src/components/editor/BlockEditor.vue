@@ -34,8 +34,8 @@ import { Placeholder } from '@tiptap/extensions'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import UniqueID from '@tiptap/extension-unique-id'
-import Image from '@tiptap/extension-image'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
+import { WikiImage } from './wikiImage'
 import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
 import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
@@ -155,7 +155,7 @@ onMounted(() => {
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Image,
+      WikiImage,
       UniqueID.configure({
         attributeName: 'block-id',
         types: [
@@ -297,10 +297,44 @@ defineExpose({ flush })
 }
 
 .wiki-editor .wiki-prose img {
-  @apply my-2 h-auto max-w-full rounded-lg;
+  @apply my-2 block h-auto max-w-full rounded-lg;
 }
 .wiki-editor .wiki-prose img.ProseMirror-selectednode {
   @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* image size (XS … XXL) — width relative to the content column */
+.wiki-editor .wiki-prose img[data-size='xs'] {
+  width: 25%;
+}
+.wiki-editor .wiki-prose img[data-size='sm'] {
+  width: 40%;
+}
+.wiki-editor .wiki-prose img[data-size='md'] {
+  width: 55%;
+}
+.wiki-editor .wiki-prose img[data-size='lg'] {
+  width: 70%;
+}
+.wiki-editor .wiki-prose img[data-size='xl'] {
+  width: 85%;
+}
+.wiki-editor .wiki-prose img[data-size='xxl'] {
+  width: 100%;
+}
+
+/* image alignment within the content column */
+.wiki-editor .wiki-prose img[data-align='left'] {
+  margin-left: 0;
+  margin-right: auto;
+}
+.wiki-editor .wiki-prose img[data-align='center'] {
+  margin-left: auto;
+  margin-right: auto;
+}
+.wiki-editor .wiki-prose img[data-align='right'] {
+  margin-left: auto;
+  margin-right: 0;
 }
 
 /* Placeholder */
