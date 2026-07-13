@@ -29,8 +29,12 @@
     "scopeLabel": "Wo soll die Seite liegen?",
     "underSelected": "Unter ausgewählte Seite",
     "splitIntoBlocks": "An Überschriften in Abschnitte aufteilen",
+    "postProcessingLabel": "KI-Nachbearbeitung",
+    "postProcessingNone": "Keine",
+    "postProcessingHint": "Optional ein KI-Agent das Dokument vor dem Speichern bereinigen und neu strukturieren lassen.",
     "processing": "Wird importiert…",
     "processingHint": "Bei PDFs und großen Webseiten kann das einen Moment dauern.",
+    "processingHintAi": "Die KI-Nachbearbeitung kann bei großen Dokumenten mehrere Minuten dauern.",
     "submit": "Importieren",
     "error": "Import fehlgeschlagen. Bitte erneut versuchen."
   },

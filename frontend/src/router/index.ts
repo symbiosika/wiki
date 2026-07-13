@@ -46,6 +46,12 @@ const router = createRouter({
           component: () => import('../views/manage/team-details.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/post-processing-agents',
+          name: 'PostProcessingAgents',
+          component: () =>
+            import('../views/manage/post-processing-agents.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),

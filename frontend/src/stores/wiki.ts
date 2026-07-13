@@ -32,6 +32,11 @@ export interface WikiImportOptions {
   parentId?: string
   /** split the imported markdown at top-level headings into blocks */
   splitIntoBlocks?: boolean
+  /**
+   * Post processors to run on the parsed markdown before storing. For tenant
+   * post-processing agents these are `agent:<uuid>` names.
+   */
+  postProcessorNames?: string[]
 }
 
 /** Result of an image upload for a wiki page. */
@@ -185,6 +190,10 @@ export const useWiki = defineStore('wiki', () => {
     if (teamId) form.append('teamId', teamId)
     if (tenantWide) form.append('tenantWide', 'true')
     form.append('splitIntoBlocks', String(options.splitIntoBlocks ?? true))
+    // the framework file route parses usePostProcessors as a comma-separated list
+    if (options.postProcessorNames && options.postProcessorNames.length > 0) {
+      form.append('usePostProcessors', options.postProcessorNames.join(','))
+    }
 
     const response = await fetcher.postFormData<{ knowledgeText: WikiPage }>(
       `${api(tenantId)}/knowledge/texts/import`,
@@ -211,6 +220,11 @@ export const useWiki = defineStore('wiki', () => {
         teamId,
         tenantWide,
         splitIntoBlocks: options.splitIntoBlocks ?? true,
+        // the framework URL route parses usePostProcessors as a string array
+        usePostProcessors:
+          options.postProcessorNames && options.postProcessorNames.length > 0
+            ? options.postProcessorNames
+            : undefined,
       },
     )
     await loadTree(tenantId)
