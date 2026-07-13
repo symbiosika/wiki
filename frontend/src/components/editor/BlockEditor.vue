@@ -214,7 +214,11 @@ onBeforeUnmount(() => {
   editor.value?.destroy()
 })
 
-defineExpose({ flush })
+/** Current editor content as blocks (used e.g. for PDF export). */
+const getBlocks = (): WikiBlock[] =>
+  editor.value ? editorHtmlToBlocks(editor.value.getHTML()) : [...props.blocks]
+
+defineExpose({ flush, getBlocks })
 </script>
 
 <style>
