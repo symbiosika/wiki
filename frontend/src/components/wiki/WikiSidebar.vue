@@ -88,30 +88,6 @@
       />
     </div>
 
-    <!-- record daily protocol -->
-    <div class="px-3 pb-2">
-      <button
-        type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
-        @click="protocol.openDialog()"
-      >
-        <IconMicrophone class="h-4 w-4" />
-        {{ $t('Protocol.recordButton') }}
-      </button>
-    </div>
-
-    <!-- import a page from a file or URL -->
-    <div class="px-3 pb-2">
-      <button
-        type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md border border-surface-200 px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 active:bg-surface-100 lg:py-2 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-        @click="wiki.openImportDialog()"
-      >
-        <IconUpload class="h-4 w-4" />
-        {{ $t('Wiki.import.button') }}
-      </button>
-    </div>
-
     <!-- search results -->
     <div
       v-if="searchQuery.trim()"
@@ -225,6 +201,29 @@
         </p>
       </WikiSidebarSection>
     </nav>
+
+    <!-- actions: pinned above the user footer -->
+    <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
+      <!-- record daily protocol -->
+      <button
+        type="button"
+        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
+        @click="protocol.openDialog()"
+      >
+        <IconMicrophone class="h-4 w-4" />
+        {{ $t('Protocol.recordButton') }}
+      </button>
+
+      <!-- import a page from a file or URL -->
+      <button
+        type="button"
+        class="flex w-full items-center justify-center gap-2 rounded-md border border-surface-200 px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 active:bg-surface-100 lg:py-2 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="wiki.openImportDialog()"
+      >
+        <IconUpload class="h-4 w-4" />
+        {{ $t('Wiki.import.button') }}
+      </button>
+    </div>
 
     <!-- footer: user -->
     <div
