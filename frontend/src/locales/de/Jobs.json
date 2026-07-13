@@ -1,0 +1,63 @@
+{
+  "menu": "Jobs",
+  "title": "Jobs",
+  "urlImport": {
+    "tab": "URL Batch-Import",
+    "addJob": "Neuer Job",
+    "createTitle": "Neuer URL-Import-Job",
+    "name": "Name",
+    "namePlaceholder": "z. B. Nachrichtenquellen",
+    "schedule": "Zeitplan",
+    "scope": "Wo die importierten Seiten liegen",
+    "cron": "Zeitplan (Cron)",
+    "cronHint": "Standard-Cron mit 5 Feldern: Minute Stunde Tag-des-Monats Monat Wochentag.",
+    "presets": {
+      "hourly": "Stündlich",
+      "every6h": "Alle 6 Std.",
+      "daily": "Täglich 06:00",
+      "weekly": "Wöchentlich (Mo)"
+    },
+    "enabled": "Aktiv",
+    "disabled": "Inaktiv",
+    "enabledLabel": "Nach Zeitplan ausführen",
+    "lastRun": "Letzte Ausführung",
+    "never": "Noch nie",
+    "empty": "Noch keine URL-Import-Jobs.",
+    "createError": "Job konnte nicht angelegt werden.",
+    "jobFallback": "Job",
+    "notFound": "Dieser Job konnte nicht geladen werden.",
+    "settings": "Einstellungen",
+    "urls": "URLs",
+    "urlCount": "{count} URL(s)",
+    "editUrls": "Liste bearbeiten",
+    "urlsPlaceholder": "https://example.com/seite\nhttps://example.com/andere | Optionaler Titel",
+    "urlsHint": "Eine URL pro Zeile. Optionaler Titel nach einem \" | \".",
+    "saveUrls": "URLs speichern",
+    "runs": "Ausführungen",
+    "runNow": "Jetzt ausführen",
+    "runStatus": "Status",
+    "result": "Ergebnis",
+    "trigger": "Auslöser",
+    "started": "Gestartet",
+    "failed": "fehlgeschlagen",
+    "noRuns": "Noch keine Ausführungen.",
+    "runDetail": "Ausführungsdetails",
+    "runEmpty": "Diese Ausführung hat keine Ergebnisse.",
+    "refresh": "Aktualisieren",
+    "saveError": "Konnte nicht gespeichert werden.",
+    "runError": "Ausführung konnte nicht gestartet werden.",
+    "runStarted": "Ausführung gestartet",
+    "runStartedHint": "Der Import läuft im Hintergrund – zum Aktualisieren neu laden.",
+    "noUrlsWarning": "Füge mindestens eine URL hinzu, bevor du den Job ausführst.",
+    "status": {
+      "running": "Läuft",
+      "success": "Erfolg",
+      "partial": "Teilweise",
+      "error": "Fehler"
+    },
+    "triggers": {
+      "manual": "Manuell",
+      "scheduled": "Geplant"
+    }
+  }
+}
