@@ -16,11 +16,6 @@ permissions:
 
 env:
   REGISTRY: symbiosika.azurecr.io
-  COOLIFY_BASE_URL: https://my-coolify.my-domain.com
-  # Coolify app that main/production deploys to
-  COOLIFY_UUID_PROD: kj7g...
-  # Coolify app that develop/staging deploys to
-  COOLIFY_UUID_STAGING: st4g...
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -254,6 +249,14 @@ jobs:
   # After the images are pushed, ask Coolify to redeploy. Each job runs only
   # for its own branch (and never for pull_request builds, whose images are
   # tagged pr_<n> and not meant to be deployed).
+  #
+  # Config lives in repository settings, NOT in this file:
+  #   Variables (Settings → Secrets and variables → Actions → Variables):
+  #     COOLIFY_BASE_URL, COOLIFY_UUID_PROD, COOLIFY_UUID_STAGING
+  #   Secret:
+  #     COOLIFY_DEPLOY_TOKEN
+  # If they are not set, the job self-skips with a clear log line instead of
+  # failing — so the build stays green until deploys are configured.
   # ---------------------------------------------------------------------------
   deploy-prod:
     needs: [build-docker-app, build-docker-mcp]
@@ -261,11 +264,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Coolify deploy (production)
-        env:
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-          COOLIFY_UUID: ${{ env.COOLIFY_UUID_PROD }}
         continue-on-error: true
+        env:
+          COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
+          COOLIFY_UUID: ${{ vars.COOLIFY_UUID_PROD }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
+          if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
+            echo "Coolify production deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_PROD / COOLIFY_DEPLOY_TOKEN missing) — skipping."
+            exit 0
+          fi
           curl -sS -X GET \
             --max-time 2 --retry 2 --retry-all-errors \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
@@ -278,11 +286,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Coolify deploy (staging)
-        env:
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-          COOLIFY_UUID: ${{ env.COOLIFY_UUID_STAGING }}
         continue-on-error: true
+        env:
+          COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
+          COOLIFY_UUID: ${{ vars.COOLIFY_UUID_STAGING }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
+          if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
+            echo "Coolify staging deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_STAGING / COOLIFY_DEPLOY_TOKEN missing) — skipping."
+            exit 0
+          fi
           curl -sS -X GET \
             --max-time 2 --retry 2 --retry-all-errors \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
