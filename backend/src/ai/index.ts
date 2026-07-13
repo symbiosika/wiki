@@ -33,6 +33,14 @@ const openrouter = createOpenAICompatible({
 /** Shared language model for generateObject / generateText / agents. */
 export const STANDARD_AI_MODEL = openrouter.chatModel(AI_MODEL_ID);
 
+/**
+ * Resolve a language model by OpenRouter model id, falling back to the
+ * configured default (`AI_MODEL_ID`) when no id is given. Use this when a call
+ * site needs a per-request model override (e.g. a tenant-configured agent).
+ */
+export const getModel = (modelId?: string) =>
+  modelId ? openrouter.chatModel(modelId) : STANDARD_AI_MODEL;
+
 /** Throws a clear error if the OpenRouter key is missing. */
 export const assertOpenRouterConfigured = (): void => {
   if (!OPENROUTER_API_KEY) {

@@ -22,10 +22,27 @@
     "code": "Code-Block",
     "codeDescription": "Code-Schnipsel in Monospace",
     "divider": "Trennlinie",
-    "dividerDescription": "Horizontale Linie"
+    "dividerDescription": "Horizontale Linie",
+    "image": "Bild",
+    "imageDescription": "Ein Bild hochladen und einfügen",
+    "reference": "Seitenreferenz",
+    "referenceDescription": "Auf eine andere Wiki-Seite verlinken"
   },
   "bubble": {
     "link": "Link",
     "linkPlaceholder": "https://…"
-  }
+  },
+  "wikiLink": {
+    "searching": "Zum Suchen tippen…",
+    "createNew": "Verlinke „{title}“",
+    "createNewHint": "Referenz anlegen (wird aufgelöst, sobald die Seite existiert)",
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFound": "Es gibt noch keine Seite mit dem Titel „{title}“."
+  },
+  "image": {
+    "alignLeft": "Linksbündig",
+    "alignCenter": "Zentriert",
+    "alignRight": "Rechtsbündig"
+  },
+  "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen."
 }

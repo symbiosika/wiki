@@ -34,4 +34,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 # public static files
-public/manage/**/*
+public/manage/**/*aes-keys.generated.env

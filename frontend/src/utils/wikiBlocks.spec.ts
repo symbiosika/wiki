@@ -20,7 +20,11 @@ describe('blocksToEditorHtml', () => {
   test('passes html blocks through and tags the first element', () => {
     const blocks: WikiBlock[] = [
       { id: 'b1', type: 'html', content: '<p>One</p>' },
-      { id: 'b2', type: 'html', content: '<blockquote><p>Two</p></blockquote>' },
+      {
+        id: 'b2',
+        type: 'html',
+        content: '<blockquote><p>Two</p></blockquote>',
+      },
     ]
     const html = blocksToEditorHtml(blocks)
     expect(html).toContain('<p data-block-id="b1">One</p>')
@@ -39,16 +43,15 @@ describe('blocksToEditorHtml', () => {
 
   test('skips blocks without renderable content and handles empty input', () => {
     expect(blocksToEditorHtml([])).toBe('')
-    expect(
-      blocksToEditorHtml([{ id: 'b1', type: 'html', content: '' }]),
-    ).toBe('')
+    expect(blocksToEditorHtml([{ id: 'b1', type: 'html', content: '' }])).toBe(
+      '',
+    )
   })
 })
 
 describe('editorHtmlToBlocks', () => {
   test('splits top level elements into html blocks with their ids', () => {
-    const html =
-      '<h1 data-block-id="a">Title</h1><p data-block-id="b">Body</p>'
+    const html = '<h1 data-block-id="a">Title</h1><p data-block-id="b">Body</p>'
     const blocks = editorHtmlToBlocks(html)
     expect(blocks).toEqual([
       { id: 'a', type: 'html', content: '<h1>Title</h1>' },
@@ -64,11 +67,21 @@ describe('editorHtmlToBlocks', () => {
   })
 
   test('duplicate ids (copy & paste) are only kept once', () => {
-    const html =
-      '<p data-block-id="dup">One</p><p data-block-id="dup">Two</p>'
+    const html = '<p data-block-id="dup">One</p><p data-block-id="dup">Two</p>'
     const blocks = editorHtmlToBlocks(html)
     expect(blocks[0]?.id).toBe('dup')
     expect(blocks[1]?.id).toBeUndefined()
+  })
+
+  test('preserves image size/alignment attributes through the round-trip', () => {
+    const html =
+      '<img data-block-id="img1" src="/api/v1/tenant/t/files/db/wiki/x.png" alt="x" data-size="lg" data-align="center">'
+    const blocks = editorHtmlToBlocks(html)
+    expect(blocks[0]?.id).toBe('img1')
+    expect(blocks[0]?.content).toContain('data-size="lg"')
+    expect(blocks[0]?.content).toContain('data-align="center"')
+    // and back into the editor without losing them
+    expect(blocksToEditorHtml(blocks)).toContain('data-size="lg"')
   })
 
   test('keeps inline marks inside the block content', () => {
@@ -91,15 +104,15 @@ describe('blocksAreEqual', () => {
   const a: WikiBlock[] = [{ id: '1', type: 'html', content: '<p>x</p>' }]
 
   test('equal lists', () => {
-    expect(blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>x</p>' }])).toBe(
-      true,
-    )
+    expect(
+      blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>x</p>' }]),
+    ).toBe(true)
   })
 
   test('different content', () => {
-    expect(blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>y</p>' }])).toBe(
-      false,
-    )
+    expect(
+      blocksAreEqual(a, [{ id: '1', type: 'html', content: '<p>y</p>' }]),
+    ).toBe(false)
   })
 
   test('different length', () => {

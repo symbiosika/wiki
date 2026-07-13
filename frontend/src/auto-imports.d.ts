@@ -7,8 +7,11 @@
 export {}
 declare global {
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
+  const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const THEME_KEY: typeof import('./utils/theme').THEME_KEY
+  const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
@@ -19,6 +22,7 @@ declare global {
   const defineComponent: typeof import('vue').defineComponent
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
+  const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
@@ -26,6 +30,7 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getStoredTheme: typeof import('./utils/theme').getStoredTheme
   const h: typeof import('vue').h
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
@@ -52,6 +57,7 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const prefersDark: typeof import('./utils/theme').prefersDark
   const provide: typeof import('vue').provide
   const ptViewMerge: typeof import('./volt/utils').ptViewMerge
   const reactive: typeof import('vue').reactive
@@ -59,10 +65,12 @@ declare global {
   const ref: typeof import('vue').ref
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
   const resolveComponent: typeof import('vue').resolveComponent
+  const resolveDark: typeof import('./utils/theme').resolveDark
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
+  const storeTheme: typeof import('./utils/theme').storeTheme
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
@@ -81,11 +89,14 @@ declare global {
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
+  const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
+  const useTheme: typeof import('./stores/theme').useTheme
+  const useUrlImportJobs: typeof import('./stores/urlImportJobs').useUrlImportJobs
   const useWiki: typeof import('./stores/wiki').useWiki
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
@@ -104,12 +115,27 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
+  export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
+  import('./stores/wiki')
+  // @ts-ignore
+  export type { PostProcessingAgent, PostProcessingAgentInput, PostProcessingAgentTestRun } from './types/postProcessingAgents'
+  import('./types/postProcessingAgents')
+  // @ts-ignore
+  export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
+  import('./types/urlImport')
+  // @ts-ignore
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult } from './types/wiki'
+  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
+  // @ts-ignore
+  export type { ThemePreference } from './utils/theme'
+  import('./utils/theme')
+  // @ts-ignore
+  export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
+  import('./utils/wikiPdf')
 }

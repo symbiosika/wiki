@@ -17,6 +17,41 @@
     "createFirst": "Erste Seite anlegen"
   },
   "noPagesYet": "Noch keine Seiten",
+  "import": {
+    "button": "Seite importieren",
+    "title": "Seite importieren",
+    "fromFile": "Datei / PDF",
+    "fromUrl": "Webseite",
+    "dropHint": "Klicken, um eine Datei zu wählen, oder hier ablegen",
+    "fileTypes": "Markdown, HTML, Text, PDF, Word",
+    "titleLabel": "Titel (optional)",
+    "titlePlaceholder": "Standard: Datei- bzw. Seitenname",
+    "scopeLabel": "Wo soll die Seite liegen?",
+    "underSelected": "Unter ausgewählte Seite",
+    "splitIntoBlocks": "An Überschriften in Abschnitte aufteilen",
+    "postProcessingLabel": "KI-Nachbearbeitung",
+    "postProcessingNone": "Keine",
+    "postProcessingHint": "Optional ein KI-Agent das Dokument vor dem Speichern bereinigen und neu strukturieren lassen.",
+    "processing": "Wird importiert…",
+    "processingHint": "Bei PDFs und großen Webseiten kann das einen Moment dauern.",
+    "processingHintAi": "Die KI-Nachbearbeitung kann bei großen Dokumenten mehrere Minuten dauern.",
+    "submit": "Importieren",
+    "error": "Import fehlgeschlagen. Bitte erneut versuchen."
+  },
+  "export": {
+    "button": "PDF-Export",
+    "title": "Als PDF exportieren",
+    "exporting": "PDF wird erstellt…",
+    "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
+    "pageOf": "{current} von {total}"
+  },
+  "references": {
+    "backlinks": "Verlinkt von",
+    "outgoing": "Verweist auf",
+    "related": "Verwandte Seiten",
+    "phantom": "noch nicht angelegt",
+    "phantomHint": "Diese Referenz wird automatisch aufgelöst, sobald eine Seite mit diesem Titel existiert."
+  },
   "saved": "Gespeichert",
   "saving": "Speichert…",
   "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",

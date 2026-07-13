@@ -15,26 +15,42 @@
       <EditorBubbleMenu :editor="editor" />
     </template>
     <EditorContent :editor="editor" />
+    <!-- hidden picker for the "/image" slash command -->
+    <input
+      ref="imageInputRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="onImageInputChange"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
+import type { Editor as CoreEditor, Range } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import UniqueID from '@tiptap/extension-unique-id'
-import Image from '@tiptap/extension-image'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
+import { WikiImage } from './wikiImage'
+import { WikiLink, type WikiLinkAttrs } from './wikiLink'
+import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
+import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
 import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
+import { useWiki } from '@/stores/wiki'
 import type { WikiBlock } from '@/types/wiki'
 
 const props = withDefaults(
   defineProps<{
     blocks: WikiBlock[]
     editable?: boolean
+    /** enables image uploads (both required to upload) */
+    tenantId?: string
+    pageId?: string
   }>(),
   { editable: true },
 )
@@ -45,6 +61,104 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const toast = useToast()
+const wiki = useWiki()
+const router = useRouter()
+
+const canUploadImages = computed(() => !!props.tenantId && !!props.pageId)
+
+// ----- page references ("[[wikilinks]]") -------------------------------------
+
+/** Search wiki pages for the "[[" reference picker. */
+const searchReferences = async (query: string): Promise<WikiPageRef[]> => {
+  if (!props.tenantId || !query.trim()) return []
+  const results = await wiki.search(props.tenantId, query)
+  return results.map((result) => ({ id: result.id, title: result.title }))
+}
+
+/**
+ * "/" slash command for a page reference: drop the "[[" trigger so the
+ * wikilink picker opens (same flow as typing "[[").
+ */
+const openReferencePicker = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).insertContent('[[').run()
+}
+
+/** Open a referenced page; resolve phantom links (no id yet) by title. */
+const openReference = async (attrs: WikiLinkAttrs) => {
+  if (!props.tenantId) return
+  let pageId = attrs.pageId
+  if (!pageId) {
+    const results = await wiki.search(props.tenantId, attrs.target)
+    pageId =
+      results.find(
+        (result) => result.title.toLowerCase() === attrs.target.toLowerCase(),
+      )?.id ?? null
+  }
+  if (pageId) {
+    router.push({
+      name: 'WikiPage',
+      params: { tenantId: props.tenantId, pageId },
+    })
+  } else {
+    toast.add({
+      severity: 'info',
+      summary: t('Editor.wikiLink.notFoundTitle'),
+      detail: t('Editor.wikiLink.notFound', { title: attrs.target }),
+      life: 4000,
+    })
+  }
+}
+
+// ----- image upload ----------------------------------------------------------
+
+const imageInputRef = ref<HTMLInputElement | null>(null)
+
+/** Opened by the "/image" slash command: strip the command text, then pick. */
+const openImagePicker = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).run()
+  imageInputRef.value?.click()
+}
+
+const onImageInputChange = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // allow re-selecting the same file later
+  if (file) uploadAndInsertImage(file)
+}
+
+/** Upload an image and insert it at the current cursor position. */
+const uploadAndInsertImage = async (file: File) => {
+  if (!editor.value || !props.tenantId || !props.pageId) return
+  if (!file.type.startsWith('image/')) return
+  try {
+    const result = await wiki.uploadImage(props.tenantId, props.pageId, file)
+    editor.value
+      .chain()
+      .focus()
+      .setImage({ src: result.path, alt: file.name })
+      .run()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Editor.imageUploadError'),
+      life: 5000,
+    })
+  }
+}
 
 const DEBOUNCE_MS = 700
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -93,7 +207,9 @@ onMounted(() => {
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Image,
+      WikiImage,
+      WikiLink.configure({ onNavigate: openReference }),
+      WikiLinkSuggestion.configure({ search: searchReferences }),
       UniqueID.configure({
         attributeName: 'block-id',
         types: [
@@ -108,11 +224,34 @@ onMounted(() => {
           'image',
         ],
       }),
-      SlashCommands,
+      SlashCommands.configure({
+        onImage: canUploadImages.value ? openImagePicker : undefined,
+        onReference: openReferencePicker,
+      }),
     ],
     editorProps: {
       attributes: {
         class: 'wiki-prose focus:outline-none',
+      },
+      handlePaste: (_view, event) => {
+        if (!canUploadImages.value) return false
+        const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
+          f.type.startsWith('image/'),
+        )
+        if (!file) return false
+        event.preventDefault()
+        uploadAndInsertImage(file)
+        return true
+      },
+      handleDrop: (_view, event) => {
+        if (!canUploadImages.value) return false
+        const file = Array.from(event.dataTransfer?.files ?? []).find((f) =>
+          f.type.startsWith('image/'),
+        )
+        if (!file) return false
+        event.preventDefault()
+        uploadAndInsertImage(file)
+        return true
       },
     },
     onUpdate: scheduleEmit,
@@ -130,7 +269,11 @@ onBeforeUnmount(() => {
   editor.value?.destroy()
 })
 
-defineExpose({ flush })
+/** Current editor content as blocks (used e.g. for PDF export). */
+const getBlocks = (): WikiBlock[] =>
+  editor.value ? editorHtmlToBlocks(editor.value.getHTML()) : [...props.blocks]
+
+defineExpose({ flush, getBlocks })
 </script>
 
 <style>
@@ -162,6 +305,29 @@ defineExpose({ flush })
 
 .wiki-editor .wiki-prose code {
   @apply rounded bg-surface-100 px-1.5 py-0.5 font-mono text-[0.85em] text-pink-600 dark:bg-surface-800 dark:text-pink-400;
+}
+
+/* page reference ("[[wikilink]]") chip — never rendered as code */
+.wiki-editor .wiki-prose .wiki-link {
+  @apply cursor-pointer rounded px-1 font-sans text-[0.95em] font-normal text-primary no-underline transition-colors;
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+.wiki-editor .wiki-prose .wiki-link:hover {
+  background-color: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+}
+.wiki-editor .wiki-prose code.wiki-link {
+  @apply bg-transparent p-0 text-primary;
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+.wiki-editor .wiki-prose .wiki-link.ProseMirror-selectednode {
+  @apply outline outline-2 outline-offset-1 outline-primary;
+}
+/* phantom reference: target page doesn't exist yet */
+.wiki-editor .wiki-prose .wiki-link--phantom {
+  @apply text-surface-500 dark:text-surface-400;
+  background-color: color-mix(in srgb, var(--p-surface-500) 12%, transparent);
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
 }
 
 .wiki-editor .wiki-prose pre {
@@ -213,10 +379,44 @@ defineExpose({ flush })
 }
 
 .wiki-editor .wiki-prose img {
-  @apply my-2 h-auto max-w-full rounded-lg;
+  @apply my-2 block h-auto max-w-full rounded-lg;
 }
 .wiki-editor .wiki-prose img.ProseMirror-selectednode {
   @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* image size (XS … XXL) — width relative to the content column */
+.wiki-editor .wiki-prose img[data-size='xs'] {
+  width: 25%;
+}
+.wiki-editor .wiki-prose img[data-size='sm'] {
+  width: 40%;
+}
+.wiki-editor .wiki-prose img[data-size='md'] {
+  width: 55%;
+}
+.wiki-editor .wiki-prose img[data-size='lg'] {
+  width: 70%;
+}
+.wiki-editor .wiki-prose img[data-size='xl'] {
+  width: 85%;
+}
+.wiki-editor .wiki-prose img[data-size='xxl'] {
+  width: 100%;
+}
+
+/* image alignment within the content column */
+.wiki-editor .wiki-prose img[data-align='left'] {
+  margin-left: 0;
+  margin-right: auto;
+}
+.wiki-editor .wiki-prose img[data-align='center'] {
+  margin-left: auto;
+  margin-right: auto;
+}
+.wiki-editor .wiki-prose img[data-align='right'] {
+  margin-left: auto;
+  margin-right: 0;
 }
 
 /* Placeholder */

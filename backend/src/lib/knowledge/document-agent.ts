@@ -28,6 +28,7 @@ import {
   syncKnowledgeTextBlocks,
 } from "@framework/lib/knowledge/knowledge-text-blocks";
 import { STANDARD_AI_MODEL, assertOpenRouterConfigured } from "../../ai";
+import { formatWithLineNumbers } from "../post-processing-agents/virtual-document";
 
 const DEV_STUB = process.env.PROTOCOL_DEV_STUB === "true";
 const MAX_STEPS = 12;
@@ -45,16 +46,11 @@ export interface DocumentAssistantResult {
   appliedEdits: number;
 }
 
-/** Format a document's content with 1-based, right-padded line numbers. */
-export const formatWithLineNumbers = (
-  content: string,
-  fromLine = 1,
-): string => {
-  const lines = content.split("\n");
-  return lines
-    .map((line, idx) => `${(fromLine + idx).toString().padStart(4, " ")}| ${line}`)
-    .join("\n");
-};
+/**
+ * Format a document's content with 1-based, right-padded line numbers.
+ * Re-exported from the post-processing-agents module (single source of truth).
+ */
+export { formatWithLineNumbers };
 
 /** Append a new markdown block to the end of a page (keeps blocks in sync). */
 const appendMarkdownBlock = async (

@@ -46,9 +46,30 @@ const router = createRouter({
           component: () => import('../views/manage/team-details.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/post-processing-agents',
+          name: 'PostProcessingAgents',
+          component: () =>
+            import('../views/manage/post-processing-agents.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/profile',
+          name: 'Profile',
+          component: () => import('../views/profile.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/jobs',
+          name: 'Jobs',
+          component: () => import('../views/jobs/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/jobs/url-import/:jobId',
+          name: 'UrlImportJob',
+          component: () => import('../views/jobs/url-import-job.vue'),
         },
       ],
     },

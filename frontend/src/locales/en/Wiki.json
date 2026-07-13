@@ -17,6 +17,41 @@
     "createFirst": "Create your first page"
   },
   "noPagesYet": "No pages yet",
+  "import": {
+    "button": "Import page",
+    "title": "Import page",
+    "fromFile": "File / PDF",
+    "fromUrl": "Web page",
+    "dropHint": "Click to choose a file or drop it here",
+    "fileTypes": "Markdown, HTML, text, PDF, Word",
+    "titleLabel": "Title (optional)",
+    "titlePlaceholder": "Defaults to the file or page name",
+    "scopeLabel": "Where should it live?",
+    "underSelected": "Under selected page",
+    "splitIntoBlocks": "Split into sections at headings",
+    "postProcessingLabel": "AI post-processing",
+    "postProcessingNone": "None",
+    "postProcessingHint": "Optionally let an AI agent clean up and restructure the document before it is saved.",
+    "processing": "Importing…",
+    "processingHint": "This can take a moment for PDFs and large web pages.",
+    "processingHintAi": "AI post-processing can take several minutes for large documents.",
+    "submit": "Import",
+    "error": "Import failed. Please try again."
+  },
+  "export": {
+    "button": "Export PDF",
+    "title": "Export as PDF",
+    "exporting": "Preparing PDF…",
+    "error": "PDF export failed. Please try again.",
+    "pageOf": "{current} of {total}"
+  },
+  "references": {
+    "backlinks": "Linked from",
+    "outgoing": "Links to",
+    "related": "Related pages",
+    "phantom": "not created yet",
+    "phantomHint": "This reference resolves automatically once a page with this title exists."
+  },
   "saved": "Saved",
   "saving": "Saving…",
   "saveError": "Saving failed. Your changes are kept locally – try again.",

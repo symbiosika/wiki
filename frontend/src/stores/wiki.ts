@@ -2,8 +2,11 @@ import { defineStore } from 'pinia'
 import { fetcher } from '@/utils/fetcher'
 import { blocksAreEqual } from '@/utils/wikiBlocks'
 import type {
+  WikiBacklink,
   WikiBlock,
+  WikiOutgoingLink,
   WikiPage,
+  WikiRelatedPage,
   WikiScope,
   WikiSearchResult,
   WikiTree,
@@ -19,7 +22,39 @@ interface WikiState {
   saving: boolean
   lastSavedAt: string | null
   saveError: string | null
+  /** UI: whether the "import page" dialog is open (mounted once in the layout) */
+  importDialogOpen: boolean
 }
+
+/** Options shared by the file and URL import endpoints. */
+export interface WikiImportOptions {
+  title?: string
+  parentId?: string
+  /** split the imported markdown at top-level headings into blocks */
+  splitIntoBlocks?: boolean
+  /**
+   * Post processors to run on the parsed markdown before storing. For tenant
+   * post-processing agents these are `agent:<uuid>` names.
+   */
+  postProcessorNames?: string[]
+}
+
+/** Result of an image upload for a wiki page. */
+export interface WikiImageUpload {
+  fileId: string
+  /** auth-protected API path to embed as the image src */
+  path: string
+  /** ready-to-insert markdown snippet */
+  markdown: string
+}
+
+/** Translate a scope into the team/organisation fields the backend expects. */
+const scopeFields = (
+  scope: WikiScope,
+): { teamId?: string; tenantWide?: boolean } => ({
+  teamId: scope.kind === 'team' ? scope.teamId : undefined,
+  tenantWide: scope.kind === 'organisation' ? true : undefined,
+})
 
 const emptyTree = (): WikiTree => ({
   personal: [],
@@ -49,7 +84,12 @@ export const useWiki = defineStore('wiki', () => {
     saving: false,
     lastSavedAt: null,
     saveError: null,
+    importDialogOpen: false,
   })
+
+  const openImportDialog = () => {
+    state.value.importDialogOpen = true
+  }
 
   // ----- tree -------------------------------------------------------------
 
@@ -135,6 +175,76 @@ export const useWiki = defineStore('wiki', () => {
     return page
   }
 
+  /** Import an uploaded file (markdown, html, txt, PDF, …) as a new page. */
+  const importFile = async (
+    tenantId: string,
+    scope: WikiScope,
+    file: File,
+    options: WikiImportOptions = {},
+  ): Promise<WikiPage> => {
+    const { teamId, tenantWide } = scopeFields(scope)
+    const form = new FormData()
+    form.append('file', file)
+    if (options.title) form.append('title', options.title)
+    if (options.parentId) form.append('parentId', options.parentId)
+    if (teamId) form.append('teamId', teamId)
+    if (tenantWide) form.append('tenantWide', 'true')
+    form.append('splitIntoBlocks', String(options.splitIntoBlocks ?? true))
+    // the framework file route parses usePostProcessors as a comma-separated list
+    if (options.postProcessorNames && options.postProcessorNames.length > 0) {
+      form.append('usePostProcessors', options.postProcessorNames.join(','))
+    }
+
+    const response = await fetcher.postFormData<{ knowledgeText: WikiPage }>(
+      `${api(tenantId)}/knowledge/texts/import`,
+      form,
+    )
+    await loadTree(tenantId)
+    return response.knowledgeText
+  }
+
+  /** Import a web page (Readability + Turndown) as a new page. */
+  const importUrl = async (
+    tenantId: string,
+    scope: WikiScope,
+    url: string,
+    options: WikiImportOptions = {},
+  ): Promise<WikiPage> => {
+    const { teamId, tenantWide } = scopeFields(scope)
+    const response = await fetcher.post<{ knowledgeText: WikiPage }>(
+      `${api(tenantId)}/knowledge/texts/import-url`,
+      {
+        url,
+        title: options.title || undefined,
+        parentId: options.parentId,
+        teamId,
+        tenantWide,
+        splitIntoBlocks: options.splitIntoBlocks ?? true,
+        // the framework URL route parses usePostProcessors as a string array
+        usePostProcessors:
+          options.postProcessorNames && options.postProcessorNames.length > 0
+            ? options.postProcessorNames
+            : undefined,
+      },
+    )
+    await loadTree(tenantId)
+    return response.knowledgeText
+  }
+
+  /** Upload an image for a page; returns its auth-protected path + markdown. */
+  const uploadImage = async (
+    tenantId: string,
+    pageId: string,
+    file: File,
+  ): Promise<WikiImageUpload> => {
+    const form = new FormData()
+    form.append('file', file)
+    return await fetcher.postFormData<WikiImageUpload>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/images`,
+      form,
+    )
+  }
+
   const saveTitle = async (tenantId: string, pageId: string, title: string) => {
     state.value.saving = true
     state.value.saveError = null
@@ -204,16 +314,52 @@ export const useWiki = defineStore('wiki', () => {
     )
   }
 
+  // ----- references (links / backlinks / related) ---------------------------
+
+  /** Outgoing `[[wikilinks]]` of a page (resolved + phantom). */
+  const getLinks = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiOutgoingLink[]> =>
+    await fetcher.get<WikiOutgoingLink[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/links`,
+    )
+
+  /** Pages that link to this page. */
+  const getBacklinks = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiBacklink[]> =>
+    await fetcher.get<WikiBacklink[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/backlinks`,
+    )
+
+  /** Semantically related pages (empty unless embeddings are enabled). */
+  const getRelated = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiRelatedPage[]> =>
+    await fetcher.get<WikiRelatedPage[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/related`,
+    )
+
   return {
     state,
+    openImportDialog,
     loadTree,
     findTreeNode,
     loadPage,
     closePage,
     createPage,
+    importFile,
+    importUrl,
+    uploadImage,
     saveTitle,
     saveBlocks,
     deletePage,
     search,
+    getLinks,
+    getBacklinks,
+    getRelated,
   }
 })

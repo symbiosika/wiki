@@ -27,6 +27,10 @@ const { t } = useI18n()
 const tabs = computed(() => [
   { label: t('UserTenants.tabTitle'), routeName: 'Tenants' },
   { label: t('UserTeams.tabTitle'), routeName: 'Teams' },
+  {
+    label: t('PostProcessingAgents.tabTitle'),
+    routeName: 'PostProcessingAgents',
+  },
 ])
 
 const isActive = (routeName: string) =>

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { useApp } from '@/stores/main'
+import { useTheme } from '@/stores/theme'
 
 const appStore = useApp()
+const theme = useTheme()
+
+theme.init()
 
 onMounted(async () => {
   await appStore.init()

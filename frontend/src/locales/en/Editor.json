@@ -22,10 +22,27 @@
     "code": "Code block",
     "codeDescription": "Code snippet with monospace font",
     "divider": "Divider",
-    "dividerDescription": "Horizontal line"
+    "dividerDescription": "Horizontal line",
+    "image": "Image",
+    "imageDescription": "Upload and embed an image",
+    "reference": "Page reference",
+    "referenceDescription": "Link to another wiki page"
   },
   "bubble": {
     "link": "Link",
     "linkPlaceholder": "https://…"
-  }
+  },
+  "wikiLink": {
+    "searching": "Type to search pages…",
+    "createNew": "Link to \"{title}\"",
+    "createNewHint": "Create a reference (resolves when the page exists)",
+    "notFoundTitle": "Page not found",
+    "notFound": "There is no page titled \"{title}\" yet."
+  },
+  "image": {
+    "alignLeft": "Align left",
+    "alignCenter": "Center",
+    "alignRight": "Align right"
+  },
+  "imageUploadError": "Image upload failed. Please try again."
 }

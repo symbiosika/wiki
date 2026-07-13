@@ -88,18 +88,6 @@
       />
     </div>
 
-    <!-- record daily protocol -->
-    <div class="px-3 pb-2">
-      <button
-        type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
-        @click="protocol.openDialog()"
-      >
-        <IconMicrophone class="h-4 w-4" />
-        {{ $t('Protocol.recordButton') }}
-      </button>
-    </div>
-
     <!-- search results -->
     <div
       v-if="searchQuery.trim()"
@@ -214,20 +202,76 @@
       </WikiSidebarSection>
     </nav>
 
+    <!-- actions: pinned above the user footer -->
+    <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
+      <!-- record daily protocol -->
+      <button
+        type="button"
+        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
+        @click="protocol.openDialog()"
+      >
+        <IconMicrophone class="h-4 w-4" />
+        {{ $t('Protocol.recordButton') }}
+      </button>
+
+      <!-- import a page from a file or URL -->
+      <button
+        type="button"
+        class="flex w-full items-center justify-center gap-2 rounded-md border border-surface-200 px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 active:bg-surface-100 lg:py-2 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="wiki.openImportDialog()"
+      >
+        <IconUpload class="h-4 w-4" />
+        {{ $t('Wiki.import.button') }}
+      </button>
+
+      <!-- jobs (scheduled automations) -->
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+        :class="
+          isJobsActive
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+        "
+        @click="gotoJobs"
+      >
+        <IconJobs class="h-4 w-4" />
+        {{ $t('Jobs.menu') }}
+      </button>
+    </div>
+
     <!-- footer: user -->
     <div
       class="flex items-center gap-2 border-t border-surface-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-surface-800"
     >
-      <span
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-contrast"
+      <button
+        type="button"
+        :title="$t('Profile.title')"
+        class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="gotoProfile"
       >
-        {{ userInitials }}
-      </span>
-      <span
-        class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-300"
-      >
-        {{ app.state.user?.email }}
-      </span>
+        <span
+          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+          :class="
+            app.state.user?.profileImageName
+              ? 'bg-transparent'
+              : 'bg-primary text-primary-contrast'
+          "
+        >
+          <img
+            v-if="app.state.user?.profileImageName"
+            :src="profileImageUrl"
+            alt=""
+            class="h-full w-full object-cover"
+          />
+          <template v-else>{{ userInitials }}</template>
+        </span>
+        <span
+          class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-300"
+        >
+          {{ app.state.user?.email }}
+        </span>
+      </button>
       <button
         type="button"
         :title="$t('Wiki.manage')"
@@ -257,6 +301,8 @@
 import { useConfirm } from 'primevue/useconfirm'
 import IconMagnify from '~icons/mdi/magnify'
 import IconMicrophone from '~icons/mdi/microphone'
+import IconUpload from '~icons/mdi/tray-arrow-up'
+import IconJobs from '~icons/mdi/calendar-sync-outline'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
 import IconChevronDown from '~icons/mdi/chevron-down'
@@ -429,6 +475,22 @@ const switchTenant = async (newTenantId: string) => {
 
 const gotoManage = () => {
   router.push({ name: 'Tenants', params: { tenantId: tenantId.value } })
+}
+
+const gotoProfile = () => {
+  router.push({ name: 'Profile', params: { tenantId: tenantId.value } })
+}
+
+const profileImageUrl = '/api/v1/user/profile-image'
+
+const isJobsActive = computed(
+  () =>
+    String(route.name ?? '').startsWith('Jobs') ||
+    String(route.name ?? '').startsWith('UrlImportJob'),
+)
+
+const gotoJobs = () => {
+  router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
 }
 
 // open invitations are surfaced as a badge on the manage button

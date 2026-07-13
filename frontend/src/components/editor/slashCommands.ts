@@ -23,7 +23,17 @@ export interface SlashCommandItem {
 
 const t = (key: string) => i18n.global.t(key)
 
-export const getSlashCommandItems = (query: string): SlashCommandItem[] => {
+export interface SlashCommandOptions {
+  /** invoked by the "image" command; opens the host's image picker */
+  onImage?: (ctx: { editor: Editor; range: Range }) => void
+  /** invoked by the "page reference" command; opens the "[[" picker */
+  onReference?: (ctx: { editor: Editor; range: Range }) => void
+}
+
+export const getSlashCommandItems = (
+  query: string,
+  options: SlashCommandOptions = {},
+): SlashCommandItem[] => {
   const items: SlashCommandItem[] = [
     {
       key: 'text',
@@ -132,6 +142,39 @@ export const getSlashCommandItems = (query: string): SlashCommandItem[] => {
     },
   ]
 
+  // only offered when the host wired up the reference picker
+  if (options.onReference) {
+    items.push({
+      key: 'reference',
+      title: t('Editor.slash.reference'),
+      description: t('Editor.slash.referenceDescription'),
+      icon: '🔗',
+      keywords: [
+        'link',
+        'reference',
+        'page',
+        'wiki',
+        'verweis',
+        'referenz',
+        'seite',
+        'verlinken',
+      ],
+      command: ({ editor, range }) => options.onReference!({ editor, range }),
+    })
+  }
+
+  // only offered when the host wired up an upload handler (needs a page id)
+  if (options.onImage) {
+    items.push({
+      key: 'image',
+      title: t('Editor.slash.image'),
+      description: t('Editor.slash.imageDescription'),
+      icon: '🖼',
+      keywords: ['image', 'bild', 'photo', 'foto', 'picture', 'grafik'],
+      command: ({ editor, range }) => options.onImage!({ editor, range }),
+    })
+  }
+
   const q = query.toLowerCase().trim()
   if (!q) return items
   return items.filter(
@@ -157,10 +200,19 @@ const updateMenuPosition = (
   })
 }
 
-export const SlashCommands = Extension.create({
+export const SlashCommands = Extension.create<SlashCommandOptions>({
   name: 'slashCommands',
 
+  addOptions() {
+    return {
+      onImage: undefined,
+      onReference: undefined,
+    }
+  },
+
   addProseMirrorPlugins() {
+    const onImage = this.options.onImage
+    const onReference = this.options.onReference
     return [
       Suggestion<SlashCommandItem>({
         editor: this.editor,
@@ -170,7 +222,8 @@ export const SlashCommands = Extension.create({
         command: ({ editor, range, props }) => {
           props.command({ editor, range })
         },
-        items: ({ query }) => getSlashCommandItems(query),
+        items: ({ query }) =>
+          getSlashCommandItems(query, { onImage, onReference }),
         render: () => {
           let renderer: VueRenderer | null = null
 
