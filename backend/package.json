@@ -54,7 +54,7 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:remove": "docker compose down -v",
-    "dev": "bun --hot run src/index.ts",
+    "dev": "infisical run -- bun --hot run src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --minify",
     "clean": "rm -rf ./lib/",
     "app:migrate": "drizzle-kit migrate",
