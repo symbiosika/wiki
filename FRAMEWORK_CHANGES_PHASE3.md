@@ -3,6 +3,34 @@
 **Target repo:** `symbiosika/symbiosika-framework` (the `backend/framework`
 submodule). **Not** `symbiosika/wiki`.
 
+> ## STATUS: implemented + tested locally in this environment
+>
+> The change below is **already applied and committed in the local
+> `backend/framework` submodule** on branch `claude/plan-construction-wd37sk`
+> (local commit `f6567693`) and verified — `bun test
+> framework/src/lib/knowledge/parsing/post-processors.test.ts` → 15 pass — and
+> the wiki app already consumes it end-to-end (37 app tests green).
+>
+> **Line-precise export:** `framework-phase3-resolver.patch` at the wiki repo
+> root is a `git diff` of exactly these changes. Apply it in a clean framework
+> checkout with `git apply framework-phase3-resolver.patch` (or `git am` after
+> wrapping), review, commit, push.
+>
+> **⚠️ Submodule pointer reconciliation:** I cannot push to the framework repo
+> (session scope is `symbiosika/wiki` only), so the framework commit
+> `f6567693` is **local-only**. The wiki submodule pointer currently references
+> it. Once you land the framework change upstream (via the patch), the upstream
+> commit will have a *different* SHA — then re-point the wiki submodule to that
+> SHA:
+> ```bash
+> cd backend/framework && git fetch origin && git checkout <upstream-sha>
+> cd ../.. && git add backend/framework && git commit -m "chore: bump framework to upstream post-processor resolver"
+> ```
+> (Or push the local commit `f6567693` as-is to preserve the SHA — then no
+> re-point is needed.)
+>
+> The detailed walk-through below documents what the patch does, for review.
+
 **Why:** The wiki app manages per-tenant "post-processing agents" (LLM document
 reworkers) that must be selectable on import via `usePostProcessors:
 ["agent:<uuid>"]`. Today `applyPostProcessors` only consults a static registry,
@@ -256,37 +284,29 @@ submodule pointer (see below).
 
 ---
 
-## 6. After the framework lands — the app-side switch (I will do this)
+## 6. App-side switch — ALREADY DONE in this environment
 
-Once the framework change is merged and available, ping me. On the
-`symbiosika/wiki` side I will:
+On the `symbiosika/wiki` side this is **already implemented** (it works against
+the local framework commit above): `backend/src/index.ts` passes
+`customPostProcessorResolvers: [agentPostProcessorResolver]`, and
+`agentPostProcessorResolver` in
+`backend/src/lib/post-processing-agents/processor.ts` resolves any
+`agent:<uuid>` name to a tenant-safe `buildAgentPostProcessor(id)`. The old
+static-registration helpers (boot + register-on-create) were removed. Tenant
+agent UUIDs no longer appear in the global `GET …/knowledge/post-processors`
+listing — the whole point of 3.1.
 
-1. **Bump the submodule pointer** to the new framework commit:
-   ```bash
-   cd backend/framework && git fetch && git checkout <new-sha>
-   cd ../.. && git add backend/framework && git commit -m "chore: bump framework (post-processor resolvers)"
-   ```
-2. **Replace static registration with a single resolver** in
-   `backend/src/index.ts` — remove `registerAllAgentPostProcessorsAtBoot()` and
-   the register-on-create call, and instead pass:
-   ```ts
-   customPostProcessorResolvers: [
-     async (name) =>
-       name.startsWith("agent:")
-         ? buildAgentPostProcessor(name.slice("agent:".length))
-         : undefined,
-   ],
-   ```
-   `buildAgentPostProcessor` already exists in
-   `backend/src/lib/post-processing-agents/processor.ts` and is fully
-   tenant-safe (it loads the agent scoped to `input.context.tenantId`). This
-   removes agent UUIDs from the global `GET …/knowledge/post-processors`
-   listing — the whole point of 3.1.
-3. Keep `buildAgentPostProcessor`; delete only the now-unused
-   `registerAgentPostProcessor` / `registerAllAgentPostProcessorsAtBoot`
-   helpers and their boot/create call sites. Tests
-   (`processor.test.ts`) will be updated to register a resolver instead of
-   calling `registerAgentPostProcessor`.
+For reference, the switch consisted of:
 
-Until then the app runs the 3.2 fallback (static registration), which is fully
-functional and tested — nothing is blocked while the framework work happens.
+1. **A single resolver** in `backend/src/index.ts` —
+   `customPostProcessorResolvers: [agentPostProcessorResolver]`.
+2. **`agentPostProcessorResolver`** in
+   `backend/src/lib/post-processing-agents/processor.ts` — matches
+   `agent:<uuid>` and returns `buildAgentPostProcessor(id)`, which is fully
+   tenant-safe (loads the agent scoped to `input.context.tenantId`).
+3. Removed the now-unused static-registration helpers
+   (`registerAgentPostProcessor` / `registerAllAgentPostProcessorsAtBoot`) and
+   their boot/create call sites; `processor.test.ts` registers the resolver.
+
+The only outstanding item is the **submodule pointer reconciliation** in the
+STATUS box at the top — once the framework commit exists upstream.

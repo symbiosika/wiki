@@ -8,15 +8,15 @@ import {
   waitForDbConnection,
   getDb,
 } from "@framework/lib/db/db-connection";
-import { applyPostProcessors } from "@framework/index";
+import {
+  applyPostProcessors,
+  registerPostProcessorResolver,
+} from "@framework/index";
 import { eq } from "drizzle-orm";
 import { initTests, TEST_ORGANISATION_1, TEST_ORGANISATION_2 } from "@framework/test/init.test";
 import { postProcessingAgents } from "../../db/schema";
 import { createAgent } from "./store";
-import {
-  registerAgentPostProcessor,
-  agentProcessorName,
-} from "./processor";
+import { agentPostProcessorResolver, agentProcessorName } from "./processor";
 
 const org = TEST_ORGANISATION_1.id;
 const org2 = TEST_ORGANISATION_2.id;
@@ -44,7 +44,7 @@ describe("agent post-processor bridge", () => {
       { name: "Bridge test", prompt: "clean it up" },
     );
     agentId = agent.id;
-    registerAgentPostProcessor(agentId);
+    registerPostProcessorResolver(agentPostProcessorResolver);
   });
 
   afterAll(() => {

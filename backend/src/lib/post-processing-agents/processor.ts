@@ -16,13 +16,12 @@
  */
 import log from "@framework/lib/log";
 import {
-  registerPostProcessor,
-  getAllPostProcessors,
   type PostProcessor,
   type PostProcessorInput,
   type PostProcessorOutput,
+  type PostProcessorResolver,
 } from "@framework/index";
-import { getAgentForTenant, listAllAgentIds } from "./store";
+import { getAgentForTenant } from "./store";
 import { runPostProcessingAgent } from "./runner";
 
 /** Conventional post-processor name for a tenant agent. */
@@ -132,35 +131,16 @@ export const buildAgentPostProcessor = (agentId: string): PostProcessor => ({
   },
 });
 
-/** True if a post-processor with this name is already registered. */
-const isRegistered = (name: string): boolean =>
-  getAllPostProcessors().some((p) => p.name === name);
-
 /**
- * Register the `agent:<id>` post-processor for one agent, idempotently. Safe to
- * call from the create route; a no-op if already registered.
+ * A single resolver for every tenant agent. Registered once at app start via
+ * `customPostProcessorResolvers`. It matches the `agent:<uuid>` naming
+ * convention and builds a tenant-safe processor on the fly — so tenant agents
+ * are never entered into the global registry (no cross-tenant leakage through
+ * the global post-processors listing) and CRUD needs no registry mutation.
  */
-export const registerAgentPostProcessor = (agentId: string): void => {
-  const name = agentProcessorName(agentId);
-  if (isRegistered(name)) return;
-  registerPostProcessor(buildAgentPostProcessor(agentId));
-};
-
-/**
- * Register one post-processor per existing agent. Call once after defineServer,
- * at app boot. Failures are logged, never thrown — a registry hiccup must not
- * stop the server from starting.
- */
-export const registerAllAgentPostProcessorsAtBoot = async (): Promise<void> => {
-  try {
-    const ids = await listAllAgentIds();
-    for (const id of ids) registerAgentPostProcessor(id);
-    log.info(
-      `[post-processing-agent] registered ${ids.length} agent post-processor(s) at boot`,
-    );
-  } catch (e) {
-    log.error(
-      `[post-processing-agent] boot registration failed: ${(e as Error).message}`,
-    );
-  }
+export const agentPostProcessorResolver: PostProcessorResolver = (name) => {
+  if (!name.startsWith("agent:")) return undefined;
+  const agentId = name.slice("agent:".length);
+  if (!agentId) return undefined;
+  return buildAgentPostProcessor(agentId);
 };

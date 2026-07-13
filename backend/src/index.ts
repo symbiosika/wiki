@@ -7,7 +7,7 @@ import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-a
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
-import { registerAllAgentPostProcessorsAtBoot } from "./lib/post-processing-agents/processor";
+import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
 import { websocket } from "./lib/ws/bun-ws";
 
 const server = defineServer({
@@ -32,6 +32,11 @@ const server = defineServer({
   customDbSchema: {
     ...appDbSchema,
   },
+  // Resolve tenant-managed post-processing agents named `agent:<uuid>` on
+  // import. A single resolver keeps them out of the global registry (no
+  // cross-tenant leakage) and needs no registry mutation on CRUD; the built
+  // processor is tenant-safe (loads the agent scoped to the importing tenant).
+  customPostProcessorResolvers: [agentPostProcessorResolver],
   customHonoAppsWithAuth: [
     {
       baseRoute: "",
@@ -56,12 +61,6 @@ const server = defineServer({
     },
   ],
 });
-
-// Register one `agent:<id>` post-processor per existing tenant agent so they
-// are selectable via `usePostProcessors` on import. New agents self-register on
-// create (see the create route). Runs after defineServer so the DB client and
-// custom schema are ready; failures are logged, never fatal.
-void registerAllAgentPostProcessorsAtBoot();
 
 // `defineServer` returns a Bun.serve config (`{ fetch, port, … }`) but is itself
 // WebSocket-agnostic. Adding the `websocket` handler here makes Bun dispatch

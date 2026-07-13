@@ -71,19 +71,6 @@ export const listEnabledAgents = async (
     .orderBy(desc(postProcessingAgents.updatedAt));
 
 /**
- * All agent ids across every tenant — boot-only, NOT org-scoped. Used to
- * pre-register one `agent:<id>` post-processor per existing agent at startup
- * (see ./processor.ts). The processor itself is tenant-safe: it re-loads the
- * agent scoped to the importing tenant on every run.
- */
-export const listAllAgentIds = async (): Promise<string[]> => {
-  const rows = await getDb()
-    .select({ id: postProcessingAgents.id })
-    .from(postProcessingAgents);
-  return rows.map((r) => r.id);
-};
-
-/**
  * Load an agent by id scoped to a tenant. Unlike getAgentById this is used by
  * the post-processor at import time, where the tenant comes from the import
  * context — so a foreign tenant can never run or probe another tenant's agent.

@@ -30,7 +30,6 @@ import {
   deleteAgent,
 } from "../../../../lib/post-processing-agents/store";
 import { runPostProcessingAgent } from "../../../../lib/post-processing-agents/runner";
-import { registerAgentPostProcessor } from "../../../../lib/post-processing-agents/processor";
 
 const tenantParam = v.object({ tenantId: v.pipe(v.string(), v.uuid()) });
 const agentParam = v.object({
@@ -120,9 +119,8 @@ export default function definePostProcessingAgentRoutes(
           { organisationId: tenantId, userId: c.get("usersId") },
           body,
         );
-        // Make it immediately selectable via usePostProcessors: ["agent:<id>"]
-        // without waiting for a restart. Idempotent + tenant-safe at run time.
-        registerAgentPostProcessor(agent.id);
+        // Immediately selectable via usePostProcessors: ["agent:<id>"] — the
+        // resolver builds the processor on demand, so no registration needed.
         return c.json(agent);
       } catch (e) {
         throw new HTTPException(400, { message: e + "" });
