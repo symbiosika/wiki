@@ -30,6 +30,13 @@
     "link": "Link",
     "linkPlaceholder": "https://…"
   },
+  "wikiLink": {
+    "searching": "Zum Suchen tippen…",
+    "createNew": "Verlinke „{title}“",
+    "createNewHint": "Referenz anlegen (wird aufgelöst, sobald die Seite existiert)",
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFound": "Es gibt noch keine Seite mit dem Titel „{title}“."
+  },
   "image": {
     "alignLeft": "Linksbündig",
     "alignCenter": "Zentriert",

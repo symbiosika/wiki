@@ -41,6 +41,13 @@
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
   },
+  "references": {
+    "backlinks": "Linked from",
+    "outgoing": "Links to",
+    "related": "Related pages",
+    "phantom": "not created yet",
+    "phantomHint": "This reference resolves automatically once a page with this title exists."
+  },
   "saved": "Saved",
   "saving": "Saving…",
   "saveError": "Saving failed. Your changes are kept locally – try again.",

@@ -48,6 +48,8 @@ declare module 'vue' {
     Toast: typeof import('./volt/Toast.vue')['default']
     ToggleButton: typeof import('./volt/ToggleButton.vue')['default']
     WikiImportDialog: typeof import('./components/wiki/WikiImportDialog.vue')['default']
+    WikiLinkMenu: typeof import('./components/editor/WikiLinkMenu.vue')['default']
+    WikiReferences: typeof import('./components/wiki/WikiReferences.vue')['default']
     WikiSidebar: typeof import('./components/wiki/WikiSidebar.vue')['default']
     WikiSidebarSection: typeof import('./components/wiki/WikiSidebarSection.vue')['default']
     WikiTreeItem: typeof import('./components/wiki/WikiTreeItem.vue')['default']

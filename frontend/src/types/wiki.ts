@@ -65,3 +65,26 @@ export interface WikiSearchResult {
   snippet: string
   matchedBy: string[]
 }
+
+/** An outgoing `[[wikilink]]` of a page (resolved target or phantom link). */
+export interface WikiOutgoingLink {
+  targetTitle: string
+  resolved: boolean
+  /** target page — null for phantom links or targets the user cannot see */
+  page: { id: string; title: string } | null
+}
+
+/** A page that links to the current page. */
+export interface WikiBacklink {
+  page: { id: string; title: string }
+  /** the link target as written in the linking page */
+  targetTitle: string
+}
+
+/** A semantically related page (embedding similarity). */
+export interface WikiRelatedPage {
+  id: string
+  title: string
+  /** distance of the closest chunk pair (smaller = more similar) */
+  distance: number
+}

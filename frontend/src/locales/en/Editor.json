@@ -30,6 +30,13 @@
     "link": "Link",
     "linkPlaceholder": "https://…"
   },
+  "wikiLink": {
+    "searching": "Type to search pages…",
+    "createNew": "Link to \"{title}\"",
+    "createNewHint": "Create a reference (resolves when the page exists)",
+    "notFoundTitle": "Page not found",
+    "notFound": "There is no page titled \"{title}\" yet."
+  },
   "image": {
     "alignLeft": "Align left",
     "alignCenter": "Center",

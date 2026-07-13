@@ -36,6 +36,8 @@ import TaskItem from '@tiptap/extension-task-item'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage } from './wikiImage'
+import { WikiLink, type WikiLinkAttrs } from './wikiLink'
+import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
 import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
@@ -61,8 +63,44 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const toast = useToast()
 const wiki = useWiki()
+const router = useRouter()
 
 const canUploadImages = computed(() => !!props.tenantId && !!props.pageId)
+
+// ----- page references ("[[wikilinks]]") -------------------------------------
+
+/** Search wiki pages for the "[[" reference picker. */
+const searchReferences = async (query: string): Promise<WikiPageRef[]> => {
+  if (!props.tenantId || !query.trim()) return []
+  const results = await wiki.search(props.tenantId, query)
+  return results.map((result) => ({ id: result.id, title: result.title }))
+}
+
+/** Open a referenced page; resolve phantom links (no id yet) by title. */
+const openReference = async (attrs: WikiLinkAttrs) => {
+  if (!props.tenantId) return
+  let pageId = attrs.pageId
+  if (!pageId) {
+    const results = await wiki.search(props.tenantId, attrs.target)
+    pageId =
+      results.find(
+        (result) => result.title.toLowerCase() === attrs.target.toLowerCase(),
+      )?.id ?? null
+  }
+  if (pageId) {
+    router.push({
+      name: 'WikiPage',
+      params: { tenantId: props.tenantId, pageId },
+    })
+  } else {
+    toast.add({
+      severity: 'info',
+      summary: t('Editor.wikiLink.notFoundTitle'),
+      detail: t('Editor.wikiLink.notFound', { title: attrs.target }),
+      life: 4000,
+    })
+  }
+}
 
 // ----- image upload ----------------------------------------------------------
 
@@ -156,6 +194,8 @@ onMounted(() => {
       TaskList,
       TaskItem.configure({ nested: true }),
       WikiImage,
+      WikiLink.configure({ onNavigate: openReference }),
+      WikiLinkSuggestion.configure({ search: searchReferences }),
       UniqueID.configure({
         attributeName: 'block-id',
         types: [
@@ -250,6 +290,29 @@ defineExpose({ flush, getBlocks })
 
 .wiki-editor .wiki-prose code {
   @apply rounded bg-surface-100 px-1.5 py-0.5 font-mono text-[0.85em] text-pink-600 dark:bg-surface-800 dark:text-pink-400;
+}
+
+/* page reference ("[[wikilink]]") chip — never rendered as code */
+.wiki-editor .wiki-prose .wiki-link {
+  @apply cursor-pointer rounded px-1 font-sans text-[0.95em] font-normal text-primary no-underline transition-colors;
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+.wiki-editor .wiki-prose .wiki-link:hover {
+  background-color: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+}
+.wiki-editor .wiki-prose code.wiki-link {
+  @apply bg-transparent p-0 text-primary;
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+.wiki-editor .wiki-prose .wiki-link.ProseMirror-selectednode {
+  @apply outline outline-2 outline-offset-1 outline-primary;
+}
+/* phantom reference: target page doesn't exist yet */
+.wiki-editor .wiki-prose .wiki-link--phantom {
+  @apply text-surface-500 dark:text-surface-400;
+  background-color: color-mix(in srgb, var(--p-surface-500) 12%, transparent);
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
 }
 
 .wiki-editor .wiki-prose pre {
