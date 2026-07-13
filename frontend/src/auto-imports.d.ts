@@ -104,6 +104,9 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
+  export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
+  import('./stores/wiki')
+  // @ts-ignore
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore

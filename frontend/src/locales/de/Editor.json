@@ -22,10 +22,13 @@
     "code": "Code-Block",
     "codeDescription": "Code-Schnipsel in Monospace",
     "divider": "Trennlinie",
-    "dividerDescription": "Horizontale Linie"
+    "dividerDescription": "Horizontale Linie",
+    "image": "Bild",
+    "imageDescription": "Ein Bild hochladen und einfügen"
   },
   "bubble": {
     "link": "Link",
     "linkPlaceholder": "https://…"
-  }
+  },
+  "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen."
 }

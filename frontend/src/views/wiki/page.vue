@@ -68,6 +68,8 @@
           :key="`${page.id}:${reloadKey}`"
           ref="editorRef"
           :blocks="wiki.state.blocks"
+          :tenant-id="tenantId"
+          :page-id="page.id"
           @change="onBlocksChange"
         />
       </div>

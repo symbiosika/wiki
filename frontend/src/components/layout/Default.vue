@@ -56,15 +56,24 @@
       v-model:visible="protocol.dialogOpen"
       :tenant-id="tenantId"
     />
+
+    <!-- mounted once; opened from the sidebar import button -->
+    <WikiImportDialog
+      v-if="showSidebar"
+      v-model:visible="wiki.state.importDialogOpen"
+      :tenant-id="tenantId"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import IconPanelLeft from '~icons/mdi/dock-left'
 import ProtocolDialog from '@/components/protocol/ProtocolDialog.vue'
+import WikiImportDialog from '@/components/wiki/WikiImportDialog.vue'
 
 const route = useRoute()
 const protocol = useProtocol()
+const wiki = useWiki()
 const layout = useLayout()
 
 // the sidebar needs a tenant context; plain routes (redirect, 404) go without
