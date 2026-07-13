@@ -44,6 +44,19 @@
           <IconRobot class="h-3.5 w-3.5" />
           <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
         </button>
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+          :title="$t('Wiki.export.title')"
+          :disabled="exporting"
+          @click="exportPdf"
+        >
+          <IconSpinner v-if="exporting" class="h-3.5 w-3.5 animate-spin" />
+          <IconFilePdf v-else class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{
+            exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
+          }}</span>
+        </button>
       </div>
 
       <!-- title -->
@@ -87,12 +100,19 @@
 <script setup lang="ts">
 import type { WikiBlock } from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
+import IconFilePdf from '~icons/mdi/file-pdf-box'
+import IconSpinner from '~icons/mdi/loading'
+import { useToast } from 'primevue/usetoast'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
+import { useApp } from '@/stores/main'
+import { exportWikiPageToPdf } from '@/utils/wikiPdf'
 
 const wiki = useWiki()
+const app = useApp()
 const assistant = useDocumentAssistant()
 const route = useRoute()
+const toast = useToast()
 const { t } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId))
@@ -103,13 +123,46 @@ const loadError = ref(false)
 
 const title = ref('')
 const titleRef = ref<HTMLTextAreaElement | null>(null)
-const editorRef = ref<{ flush: () => void } | null>(null)
+const editorRef = ref<{
+  flush: () => void
+  getBlocks: () => WikiBlock[]
+} | null>(null)
+const exporting = ref(false)
 // bumped to remount the editor after the assistant edits the page server-side
 const reloadKey = ref(0)
 
 const toggleAssistant = () => {
   if (assistant.open) assistant.closePanel()
   else assistant.openPanel()
+}
+
+// ----- PDF export -----------------------------------------------------------
+
+const exportPdf = async () => {
+  if (!page.value || exporting.value) return
+  exporting.value = true
+  try {
+    // use the live editor content so unsaved edits are included
+    const blocks = editorRef.value?.getBlocks() ?? wiki.state.blocks
+    await exportWikiPageToPdf({
+      title: title.value.trim() || page.value.title || t('Wiki.untitled'),
+      blocks,
+      organisationName: app.currentTenant?.name,
+      dateLabel: new Date().toLocaleDateString(),
+      pageLabel: (current, total) =>
+        t('Wiki.export.pageOf', { current, total }),
+    })
+  } catch (error) {
+    console.error('PDF export failed', error)
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Wiki.export.error'),
+      life: 5000,
+    })
+  } finally {
+    exporting.value = false
+  }
 }
 
 // After the assistant applies edits, pull the fresh content and remount the
