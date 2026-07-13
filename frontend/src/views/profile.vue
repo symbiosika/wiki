@@ -17,7 +17,10 @@
       <!-- avatar + upload -->
       <div class="mb-6 flex items-center gap-4">
         <span
-          class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xl font-semibold text-primary-contrast"
+          class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl font-semibold"
+          :class="
+            hasImage ? 'bg-transparent' : 'bg-primary text-primary-contrast'
+          "
         >
           <img
             v-if="hasImage"

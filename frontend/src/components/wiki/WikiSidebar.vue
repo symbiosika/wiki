@@ -236,7 +236,12 @@
         @click="gotoProfile"
       >
         <span
-          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-contrast"
+          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+          :class="
+            app.state.user?.profileImageName
+              ? 'bg-transparent'
+              : 'bg-primary text-primary-contrast'
+          "
         >
           <img
             v-if="app.state.user?.profileImageName"
