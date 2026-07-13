@@ -27,8 +27,10 @@
     "titleLabel": "Title (optional)",
     "titlePlaceholder": "Defaults to the file or page name",
     "scopeLabel": "Where should it live?",
+    "underSelected": "Under selected page",
     "splitIntoBlocks": "Split into sections at headings",
     "processing": "Importing…",
+    "processingHint": "This can take a moment for PDFs and large web pages.",
     "submit": "Import",
     "error": "Import failed. Please try again."
   },

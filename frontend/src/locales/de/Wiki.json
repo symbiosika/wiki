@@ -27,8 +27,10 @@
     "titleLabel": "Titel (optional)",
     "titlePlaceholder": "Standard: Datei- bzw. Seitenname",
     "scopeLabel": "Wo soll die Seite liegen?",
+    "underSelected": "Unter ausgewählte Seite",
     "splitIntoBlocks": "An Überschriften in Abschnitte aufteilen",
     "processing": "Wird importiert…",
+    "processingHint": "Bei PDFs und großen Webseiten kann das einen Moment dauern.",
     "submit": "Importieren",
     "error": "Import fehlgeschlagen. Bitte erneut versuchen."
   },

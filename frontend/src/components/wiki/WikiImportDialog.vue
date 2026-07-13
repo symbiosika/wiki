@@ -112,11 +112,34 @@
     <!-- Step: processing -->
     <div
       v-else-if="step === 'processing'"
-      class="flex flex-col items-center gap-3 py-10"
+      class="flex flex-col items-center gap-4 py-10 text-center"
     >
-      <ProgressSpinner class="h-10 w-10" />
-      <span class="text-sm text-surface-500 dark:text-surface-400">
-        {{ $t('Wiki.import.processing') }}
+      <span
+        class="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+      >
+        <IconImport class="h-7 w-7 animate-pulse text-primary" />
+      </span>
+      <div class="flex flex-col items-center gap-1">
+        <span
+          class="text-sm font-medium text-surface-800 dark:text-surface-100"
+        >
+          {{ $t('Wiki.import.processing') }}
+        </span>
+        <span
+          v-if="sourceLabel"
+          class="max-w-[22rem] truncate text-xs text-surface-500 dark:text-surface-400"
+        >
+          {{ sourceLabel }}
+        </span>
+      </div>
+      <!-- indeterminate progress bar -->
+      <div
+        class="h-1 w-48 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700"
+      >
+        <div class="import-bar h-full w-1/3 rounded-full bg-primary" />
+      </div>
+      <span class="text-xs text-surface-400 dark:text-surface-500">
+        {{ $t('Wiki.import.processingHint') }}
       </span>
     </div>
 
@@ -139,11 +162,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import IconUpload from '~icons/mdi/tray-arrow-up'
+import IconImport from '~icons/mdi/file-import-outline'
 import { useWiki } from '@/stores/wiki'
 import { FetcherError } from '@/utils/fetcher'
 import type { WikiScope } from '@/types/wiki'
@@ -152,6 +176,7 @@ const props = defineProps<{ tenantId: string }>()
 const visible = defineModel<boolean>('visible', { required: true })
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const wiki = useWiki()
@@ -170,18 +195,53 @@ const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// scope: "personal" | "organisation" | "team:<id>"
+// the page currently open in the editor (i.e. selected in the tree), if any —
+// offered as an import parent. Only counts while a page route is actually
+// open, so a stale store page doesn't leak onto the home screen.
+const currentPage = computed(() =>
+  route.name === 'WikiPage' && wiki.state.page?.id === route.params.pageId
+    ? wiki.state.page
+    : null,
+)
+
+/** Scope of a page, derived from its team/organisation flags. */
+const pageScope = (page: {
+  teamId: string | null
+  tenantWide: boolean
+}): WikiScope =>
+  page.teamId
+    ? { kind: 'team', teamId: page.teamId }
+    : page.tenantWide
+      ? { kind: 'organisation' }
+      : { kind: 'personal' }
+
+// scope: "current" | "personal" | "organisation" | "team:<id>"
 const scopeValue = ref('personal')
-const scopeOptions = computed(() => [
-  { label: t('Wiki.scope.personal'), value: 'personal' },
-  ...wiki.state.tree.teams.map((team) => ({
-    label: `${t('Wiki.scope.team')}: ${team.name}`,
-    value: `team:${team.teamId}`,
-  })),
-  { label: t('Wiki.scope.organisation'), value: 'organisation' },
-])
+const scopeOptions = computed(() => {
+  const options: { label: string; value: string }[] = []
+  const page = currentPage.value
+  if (page) {
+    const name = page.title?.trim() || t('Wiki.untitled')
+    options.push({
+      label: `${t('Wiki.import.underSelected')}: ${name}`,
+      value: 'current',
+    })
+  }
+  options.push(
+    { label: t('Wiki.scope.personal'), value: 'personal' },
+    ...wiki.state.tree.teams.map((team) => ({
+      label: `${t('Wiki.scope.team')}: ${team.name}`,
+      value: `team:${team.teamId}`,
+    })),
+    { label: t('Wiki.scope.organisation'), value: 'organisation' },
+  )
+  return options
+})
 
 const scope = computed<WikiScope>(() => {
+  if (scopeValue.value === 'current' && currentPage.value) {
+    return pageScope(currentPage.value)
+  }
   if (scopeValue.value === 'organisation') return { kind: 'organisation' }
   if (scopeValue.value.startsWith('team:')) {
     return { kind: 'team', teamId: scopeValue.value.slice('team:'.length) }
@@ -189,8 +249,18 @@ const scope = computed<WikiScope>(() => {
   return { kind: 'personal' }
 })
 
+// when importing under the selected page, nest the new page beneath it
+const parentId = computed(() =>
+  scopeValue.value === 'current' ? currentPage.value?.id : undefined,
+)
+
 const canSubmit = computed(() =>
   mode.value === 'file' ? !!file.value : url.value.trim().length > 0,
+)
+
+/** Human-readable source shown in the processing view. */
+const sourceLabel = computed(() =>
+  mode.value === 'file' ? (file.value?.name ?? '') : url.value.trim(),
 )
 
 const onFileSelected = (event: Event) => {
@@ -210,6 +280,7 @@ const submit = async () => {
   const options = {
     title: title.value.trim() || undefined,
     splitIntoBlocks: splitIntoBlocks.value,
+    parentId: parentId.value,
   }
   try {
     const page =
@@ -256,4 +327,32 @@ const reset = () => {
   scopeValue.value = 'personal'
   dragOver.value = false
 }
+
+// On open, default to nesting under the page the user just had selected.
+watch(visible, (open) => {
+  if (open) {
+    reset()
+    if (currentPage.value) scopeValue.value = 'current'
+  }
+})
 </script>
+
+<style scoped>
+/* indeterminate progress bar for the import processing view */
+.import-bar {
+  animation: import-slide 1.1s ease-in-out infinite;
+}
+@keyframes import-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(360%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .import-bar {
+    animation: none;
+  }
+}
+</style>
