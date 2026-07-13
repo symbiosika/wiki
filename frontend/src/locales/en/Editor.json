@@ -22,10 +22,13 @@
     "code": "Code block",
     "codeDescription": "Code snippet with monospace font",
     "divider": "Divider",
-    "dividerDescription": "Horizontal line"
+    "dividerDescription": "Horizontal line",
+    "image": "Image",
+    "imageDescription": "Upload and embed an image"
   },
   "bubble": {
     "link": "Link",
     "linkPlaceholder": "https://…"
-  }
+  },
+  "imageUploadError": "Image upload failed. Please try again."
 }

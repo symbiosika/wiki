@@ -17,6 +17,21 @@
     "createFirst": "Erste Seite anlegen"
   },
   "noPagesYet": "Noch keine Seiten",
+  "import": {
+    "button": "Seite importieren",
+    "title": "Seite importieren",
+    "fromFile": "Datei / PDF",
+    "fromUrl": "Webseite",
+    "dropHint": "Klicken, um eine Datei zu wählen, oder hier ablegen",
+    "fileTypes": "Markdown, HTML, Text, PDF, Word",
+    "titleLabel": "Titel (optional)",
+    "titlePlaceholder": "Standard: Datei- bzw. Seitenname",
+    "scopeLabel": "Wo soll die Seite liegen?",
+    "splitIntoBlocks": "An Überschriften in Abschnitte aufteilen",
+    "processing": "Wird importiert…",
+    "submit": "Importieren",
+    "error": "Import fehlgeschlagen. Bitte erneut versuchen."
+  },
   "saved": "Gespeichert",
   "saving": "Speichert…",
   "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",

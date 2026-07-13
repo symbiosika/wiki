@@ -15,11 +15,20 @@
       <EditorBubbleMenu :editor="editor" />
     </template>
     <EditorContent :editor="editor" />
+    <!-- hidden picker for the "/image" slash command -->
+    <input
+      ref="imageInputRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="onImageInputChange"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
+import type { Editor as CoreEditor, Range } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import TaskList from '@tiptap/extension-task-list'
@@ -27,14 +36,19 @@ import TaskItem from '@tiptap/extension-task-item'
 import UniqueID from '@tiptap/extension-unique-id'
 import Image from '@tiptap/extension-image'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
+import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
 import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
+import { useWiki } from '@/stores/wiki'
 import type { WikiBlock } from '@/types/wiki'
 
 const props = withDefaults(
   defineProps<{
     blocks: WikiBlock[]
     editable?: boolean
+    /** enables image uploads (both required to upload) */
+    tenantId?: string
+    pageId?: string
   }>(),
   { editable: true },
 )
@@ -45,6 +59,54 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const toast = useToast()
+const wiki = useWiki()
+
+const canUploadImages = computed(() => !!props.tenantId && !!props.pageId)
+
+// ----- image upload ----------------------------------------------------------
+
+const imageInputRef = ref<HTMLInputElement | null>(null)
+
+/** Opened by the "/image" slash command: strip the command text, then pick. */
+const openImagePicker = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).run()
+  imageInputRef.value?.click()
+}
+
+const onImageInputChange = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // allow re-selecting the same file later
+  if (file) uploadAndInsertImage(file)
+}
+
+/** Upload an image and insert it at the current cursor position. */
+const uploadAndInsertImage = async (file: File) => {
+  if (!editor.value || !props.tenantId || !props.pageId) return
+  if (!file.type.startsWith('image/')) return
+  try {
+    const result = await wiki.uploadImage(props.tenantId, props.pageId, file)
+    editor.value
+      .chain()
+      .focus()
+      .setImage({ src: result.path, alt: file.name })
+      .run()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Editor.imageUploadError'),
+      life: 5000,
+    })
+  }
+}
 
 const DEBOUNCE_MS = 700
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -108,11 +170,33 @@ onMounted(() => {
           'image',
         ],
       }),
-      SlashCommands,
+      SlashCommands.configure({
+        onImage: canUploadImages.value ? openImagePicker : undefined,
+      }),
     ],
     editorProps: {
       attributes: {
         class: 'wiki-prose focus:outline-none',
+      },
+      handlePaste: (_view, event) => {
+        if (!canUploadImages.value) return false
+        const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
+          f.type.startsWith('image/'),
+        )
+        if (!file) return false
+        event.preventDefault()
+        uploadAndInsertImage(file)
+        return true
+      },
+      handleDrop: (_view, event) => {
+        if (!canUploadImages.value) return false
+        const file = Array.from(event.dataTransfer?.files ?? []).find((f) =>
+          f.type.startsWith('image/'),
+        )
+        if (!file) return false
+        event.preventDefault()
+        uploadAndInsertImage(file)
+        return true
       },
     },
     onUpdate: scheduleEmit,

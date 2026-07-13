@@ -17,6 +17,21 @@
     "createFirst": "Create your first page"
   },
   "noPagesYet": "No pages yet",
+  "import": {
+    "button": "Import page",
+    "title": "Import page",
+    "fromFile": "File / PDF",
+    "fromUrl": "Web page",
+    "dropHint": "Click to choose a file or drop it here",
+    "fileTypes": "Markdown, HTML, text, PDF, Word",
+    "titleLabel": "Title (optional)",
+    "titlePlaceholder": "Defaults to the file or page name",
+    "scopeLabel": "Where should it live?",
+    "splitIntoBlocks": "Split into sections at headings",
+    "processing": "Importing…",
+    "submit": "Import",
+    "error": "Import failed. Please try again."
+  },
   "saved": "Saved",
   "saving": "Saving…",
   "saveError": "Saving failed. Your changes are kept locally – try again.",
