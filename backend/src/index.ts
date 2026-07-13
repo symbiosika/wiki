@@ -3,6 +3,7 @@ import * as appDbSchema from "./db/schema";
 import defineChatRoutes from "./routes/tenant/[tenantId]/chat";
 import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
 import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
+import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
 import { websocket } from "./lib/ws/bun-ws";
 
 const server = defineServer({
@@ -34,6 +35,7 @@ const server = defineServer({
         defineChatRoutes(app);
         defineWikiRoutes(app);
         defineProtocolRoutes(app);
+        defineDocumentAssistantRoutes(app);
       },
     },
   ],

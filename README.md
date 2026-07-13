@@ -30,6 +30,14 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
     (Default `voxtral-mini-transcribe-realtime-2602`). Browser ohne
     Web-Audio-/AudioWorklet-Unterstützung fallen automatisch auf die
     asynchrone Aufnahme (`POST …/protocol/transcribe`) zurück.
+- **Dokument-Assistent**: auf jeder Seite ein „Assistent"-Button, der ein Panel
+  öffnet, in dem man per Sprache oder Text mit dem Dokument interagiert. Man
+  beschreibt eine Änderung in natürlicher Sprache, ein Agent arbeitet sie ins
+  Dokument ein (anpassen bestehender Inhalte per String-Replace oder Anhängen
+  neuer Blöcke) – strukturerhaltend und direkt angewendet. Jede Änderung wird
+  als Version gespeichert (über die Historie revertierbar). LLM über OpenRouter,
+  Spracheingabe über die Live-Transkription. Endpoint: `POST
+  …/document-assistant` (`{ entryId, instruction }`).
 
 ## Setup
 

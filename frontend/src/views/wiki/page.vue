@@ -34,6 +34,16 @@
         </span>
         <span v-else-if="wiki.state.saving">{{ $t('Wiki.saving') }}</span>
         <span v-else-if="wiki.state.lastSavedAt">{{ $t('Wiki.saved') }}</span>
+        <button
+          type="button"
+          class="ml-1 flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': assistant.open }"
+          :title="$t('Assistant.title')"
+          @click="toggleAssistant"
+        >
+          <IconRobot class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
+        </button>
       </div>
 
       <!-- title -->
@@ -55,20 +65,31 @@
           so a local copy would still be stale when the editor mounts.
         -->
         <BlockEditor
-          :key="page.id"
+          :key="`${page.id}:${reloadKey}`"
           ref="editorRef"
           :blocks="wiki.state.blocks"
           @change="onBlocksChange"
         />
       </div>
+
+      <!-- talk-to-your-document assistant -->
+      <DocumentAssistantPanel
+        :tenant-id="tenantId"
+        :entry-id="page.id"
+        @applied="onAssistantApplied"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { WikiBlock } from '@/types/wiki'
+import IconRobot from '~icons/mdi/robot-outline'
+import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
+import { useDocumentAssistant } from '@/stores/documentAssistant'
 
 const wiki = useWiki()
+const assistant = useDocumentAssistant()
 const route = useRoute()
 const { t } = useI18n()
 
@@ -81,11 +102,29 @@ const loadError = ref(false)
 const title = ref('')
 const titleRef = ref<HTMLTextAreaElement | null>(null)
 const editorRef = ref<{ flush: () => void } | null>(null)
+// bumped to remount the editor after the assistant edits the page server-side
+const reloadKey = ref(0)
+
+const toggleAssistant = () => {
+  if (assistant.open) assistant.closePanel()
+  else assistant.openPanel()
+}
+
+// After the assistant applies edits, pull the fresh content and remount the
+// editor so the changes show up (the editor initialises from blocks once).
+const onAssistantApplied = async () => {
+  if (!page.value) return
+  editorRef.value?.flush()
+  await wiki.loadPage(tenantId.value, page.value.id)
+  reloadKey.value += 1
+}
 
 const loadPage = async () => {
   loadError.value = false
   // save pending edits of the previous page before switching
   editorRef.value?.flush()
+  // the assistant chat log is per-page
+  assistant.reset()
   try {
     await wiki.loadPage(tenantId.value, pageId.value)
     title.value = wiki.state.page?.title ?? ''

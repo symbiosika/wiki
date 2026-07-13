@@ -25,6 +25,7 @@ declare module 'vue' {
     DatePicker: typeof import('./volt/DatePicker.vue')['default']
     Default: typeof import('./components/layout/Default.vue')['default']
     Dialog: typeof import('./volt/Dialog.vue')['default']
+    DocumentAssistantPanel: typeof import('./components/wiki/DocumentAssistantPanel.vue')['default']
     EditorBubbleMenu: typeof import('./components/editor/EditorBubbleMenu.vue')['default']
     FileUpload: typeof import('./volt/FileUpload.vue')['default']
     InputText: typeof import('./volt/InputText.vue')['default']
