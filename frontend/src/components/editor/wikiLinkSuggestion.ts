@@ -9,9 +9,14 @@
  */
 import { Extension } from '@tiptap/core'
 import Suggestion, { type SuggestionProps } from '@tiptap/suggestion'
+import { PluginKey } from '@tiptap/pm/state'
 import { VueRenderer } from '@tiptap/vue-3'
 import { computePosition, flip, shift, offset } from '@floating-ui/dom'
 import WikiLinkMenu from './WikiLinkMenu.vue'
+
+/** distinct key so this suggestion doesn't clash with the "/" slash command
+ *  (both build on @tiptap/suggestion, which defaults to a shared key) */
+const wikiLinkSuggestionKey = new PluginKey('wikiLinkSuggestion')
 
 export interface WikiPageRef {
   id: string
@@ -77,6 +82,7 @@ export const WikiLinkSuggestion = Extension.create<WikiLinkSuggestionOptions>({
     return [
       Suggestion<WikiLinkMenuItem>({
         editor: this.editor,
+        pluginKey: wikiLinkSuggestionKey,
         char: '[[',
         allowSpaces: true,
         startOfLine: false,
