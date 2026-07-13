@@ -51,6 +51,11 @@ const router = createRouter({
           component: () => import('../views/chat/index.vue'),
         },
         {
+          path: 'tenant/:tenantId/profile',
+          name: 'Profile',
+          component: () => import('../views/profile.vue'),
+        },
+        {
           path: 'tenant/:tenantId/jobs',
           name: 'Jobs',
           component: () => import('../views/jobs/index.vue'),

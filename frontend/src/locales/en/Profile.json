@@ -1,0 +1,29 @@
+{
+  "title": "Profile",
+  "backTitle": "Back to wiki",
+  "personalInfo": "Personal information",
+  "firstname": "First name",
+  "firstnamePlaceholder": "First name",
+  "surname": "Last name",
+  "surnamePlaceholder": "Last name",
+  "email": "Email",
+  "picture": "Profile picture",
+  "changePicture": "Change picture",
+  "uploadHint": "JPG, PNG or GIF, max. 5 MB",
+  "save": "Save",
+  "saveSuccess": "Profile saved",
+  "imageSuccess": "Profile picture updated",
+  "appearance": "Appearance",
+  "appearanceHint": "Choose how the wiki should look.",
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "errors": {
+    "loadFailed": "Could not load profile",
+    "saveFailed": "Could not save profile",
+    "imageFailed": "Could not upload profile picture",
+    "imageTooLarge": "The image is too large (max. 5 MB)"
+  }
+}

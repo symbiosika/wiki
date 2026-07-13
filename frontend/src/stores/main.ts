@@ -96,6 +96,25 @@ export const useApp = defineStore('app', () => {
     state.value.selectedTenant = user.lastTenantId
   }
 
+  // ----- own profile ---------------------------------------------------------
+
+  const updateMyProfile = async (data: {
+    firstname?: string
+    surname?: string
+  }) => {
+    const user = await fetcher.put<User>('/api/v1/user/me', data)
+    state.value.user = user
+    return user
+  }
+
+  const uploadProfileImage = async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await fetcher.postFormData('/api/v1/user/profile-image', formData)
+    // refresh so `profileImageName` (and thus the avatar) reflects the upload
+    await getMyUser()
+  }
+
   const getTenants = async () => {
     const tenants = await fetcher.get<{ tenantId: string; name: string }[]>(
       '/api/v1/user/tenants',
@@ -284,7 +303,11 @@ export const useApp = defineStore('app', () => {
     )
   }
 
-  const addTeamMember = async (teamId: string, userId: string, role: string) => {
+  const addTeamMember = async (
+    teamId: string,
+    userId: string,
+    role: string,
+  ) => {
     await fetcher.post(
       `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}/members`,
       { userId, role },
@@ -371,6 +394,8 @@ export const useApp = defineStore('app', () => {
 
     // Actions
     getMyUser,
+    updateMyProfile,
+    uploadProfileImage,
     waitForInit,
     setSelectedTenant,
     getTenants,
