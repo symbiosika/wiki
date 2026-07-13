@@ -251,9 +251,8 @@ jobs:
   # tagged pr_<n> and not meant to be deployed).
   #
   # Config lives in repository settings, NOT in this file:
-  #   Variables (Settings → Secrets and variables → Actions → Variables):
-  #     COOLIFY_BASE_URL, COOLIFY_UUID_PROD, COOLIFY_UUID_STAGING
-  #   Secret:
+  #   Secrets (Settings → Secrets and variables → Actions → Secrets):
+  #     COOLIFY_BASE_URL, COOLIFY_UUID_PROD, COOLIFY_UUID_STAGING,
   #     COOLIFY_DEPLOY_TOKEN
   # If they are not set, the job self-skips with a clear log line instead of
   # failing — so the build stays green until deploys are configured.
@@ -266,8 +265,8 @@ jobs:
       - name: Trigger Coolify deploy (production)
         continue-on-error: true
         env:
-          COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
-          COOLIFY_UUID: ${{ vars.COOLIFY_UUID_PROD }}
+          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
+          COOLIFY_UUID: ${{ secrets.COOLIFY_UUID_PROD }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
@@ -288,8 +287,8 @@ jobs:
       - name: Trigger Coolify deploy (staging)
         continue-on-error: true
         env:
-          COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
-          COOLIFY_UUID: ${{ vars.COOLIFY_UUID_STAGING }}
+          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
+          COOLIFY_UUID: ${{ secrets.COOLIFY_UUID_STAGING }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
