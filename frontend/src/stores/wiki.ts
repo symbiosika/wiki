@@ -2,8 +2,11 @@ import { defineStore } from 'pinia'
 import { fetcher } from '@/utils/fetcher'
 import { blocksAreEqual } from '@/utils/wikiBlocks'
 import type {
+  WikiBacklink,
   WikiBlock,
+  WikiOutgoingLink,
   WikiPage,
+  WikiRelatedPage,
   WikiScope,
   WikiSearchResult,
   WikiTree,
@@ -297,6 +300,35 @@ export const useWiki = defineStore('wiki', () => {
     )
   }
 
+  // ----- references (links / backlinks / related) ---------------------------
+
+  /** Outgoing `[[wikilinks]]` of a page (resolved + phantom). */
+  const getLinks = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiOutgoingLink[]> =>
+    await fetcher.get<WikiOutgoingLink[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/links`,
+    )
+
+  /** Pages that link to this page. */
+  const getBacklinks = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiBacklink[]> =>
+    await fetcher.get<WikiBacklink[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/backlinks`,
+    )
+
+  /** Semantically related pages (empty unless embeddings are enabled). */
+  const getRelated = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiRelatedPage[]> =>
+    await fetcher.get<WikiRelatedPage[]>(
+      `${api(tenantId)}/knowledge/texts/${pageId}/related`,
+    )
+
   return {
     state,
     openImportDialog,
@@ -312,5 +344,8 @@ export const useWiki = defineStore('wiki', () => {
     saveBlocks,
     deletePage,
     search,
+    getLinks,
+    getBacklinks,
+    getRelated,
   }
 })

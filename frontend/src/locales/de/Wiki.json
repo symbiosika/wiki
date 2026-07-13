@@ -41,6 +41,13 @@
     "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
     "pageOf": "{current} von {total}"
   },
+  "references": {
+    "backlinks": "Verlinkt von",
+    "outgoing": "Verweist auf",
+    "related": "Verwandte Seiten",
+    "phantom": "noch nicht angelegt",
+    "phantomHint": "Diese Referenz wird automatisch aufgelöst, sobald eine Seite mit diesem Titel existiert."
+  },
   "saved": "Gespeichert",
   "saving": "Speichert…",
   "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",

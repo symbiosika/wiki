@@ -85,6 +85,13 @@
           :page-id="page.id"
           @change="onBlocksChange"
         />
+
+        <!-- page references: backlinks, outgoing links, related pages -->
+        <WikiReferences
+          :tenant-id="tenantId"
+          :page-id="page.id"
+          :refresh-key="`${reloadKey}:${wiki.state.lastSavedAt ?? ''}`"
+        />
       </div>
 
       <!-- talk-to-your-document assistant -->
@@ -104,6 +111,7 @@ import IconFilePdf from '~icons/mdi/file-pdf-box'
 import IconSpinner from '~icons/mdi/loading'
 import { useToast } from 'primevue/usetoast'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
+import WikiReferences from '@/components/wiki/WikiReferences.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'

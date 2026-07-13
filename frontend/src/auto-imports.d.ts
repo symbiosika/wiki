@@ -123,7 +123,7 @@ declare global {
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult } from './types/wiki'
+  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
