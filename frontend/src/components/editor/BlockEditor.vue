@@ -76,6 +76,20 @@ const searchReferences = async (query: string): Promise<WikiPageRef[]> => {
   return results.map((result) => ({ id: result.id, title: result.title }))
 }
 
+/**
+ * "/" slash command for a page reference: drop the "[[" trigger so the
+ * wikilink picker opens (same flow as typing "[[").
+ */
+const openReferencePicker = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).insertContent('[[').run()
+}
+
 /** Open a referenced page; resolve phantom links (no id yet) by title. */
 const openReference = async (attrs: WikiLinkAttrs) => {
   if (!props.tenantId) return
@@ -212,6 +226,7 @@ onMounted(() => {
       }),
       SlashCommands.configure({
         onImage: canUploadImages.value ? openImagePicker : undefined,
+        onReference: openReferencePicker,
       }),
     ],
     editorProps: {

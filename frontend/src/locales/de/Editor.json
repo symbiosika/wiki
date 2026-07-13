@@ -24,7 +24,9 @@
     "divider": "Trennlinie",
     "dividerDescription": "Horizontale Linie",
     "image": "Bild",
-    "imageDescription": "Ein Bild hochladen und einfügen"
+    "imageDescription": "Ein Bild hochladen und einfügen",
+    "reference": "Seitenreferenz",
+    "referenceDescription": "Auf eine andere Wiki-Seite verlinken"
   },
   "bubble": {
     "link": "Link",

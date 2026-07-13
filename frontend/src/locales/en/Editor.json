@@ -24,7 +24,9 @@
     "divider": "Divider",
     "dividerDescription": "Horizontal line",
     "image": "Image",
-    "imageDescription": "Upload and embed an image"
+    "imageDescription": "Upload and embed an image",
+    "reference": "Page reference",
+    "referenceDescription": "Link to another wiki page"
   },
   "bubble": {
     "link": "Link",
