@@ -170,7 +170,11 @@ const tenantId = computed(() => String(route.params.tenantId))
 watch(
   tenantId,
   (id) => {
-    if (id) store.loadJobs(id)
+    if (id) {
+      store.loadJobs(id)
+      // populate team scope options in the create dialog
+      app.getTeams().catch(() => {})
+    }
   },
   { immediate: true },
 )
