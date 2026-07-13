@@ -5,6 +5,7 @@ import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
 import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
+import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { websocket } from "./lib/ws/bun-ws";
 
@@ -39,6 +40,7 @@ const server = defineServer({
         defineProtocolRoutes(app);
         defineDocumentAssistantRoutes(app);
         defineUrlImportRoutes(app);
+        definePostProcessingAgentRoutes(app);
       },
     },
   ],
