@@ -19,6 +19,7 @@ declare global {
   const defineComponent: typeof import('vue').defineComponent
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
+  const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
@@ -115,4 +116,7 @@ declare global {
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
+  // @ts-ignore
+  export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
+  import('./utils/wikiPdf')
 }

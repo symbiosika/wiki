@@ -34,6 +34,13 @@
     "submit": "Import",
     "error": "Import failed. Please try again."
   },
+  "export": {
+    "button": "Export PDF",
+    "title": "Export as PDF",
+    "exporting": "Preparing PDF…",
+    "error": "PDF export failed. Please try again.",
+    "pageOf": "{current} of {total}"
+  },
   "saved": "Saved",
   "saving": "Saving…",
   "saveError": "Saving failed. Your changes are kept locally – try again.",

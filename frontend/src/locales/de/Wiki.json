@@ -34,6 +34,13 @@
     "submit": "Importieren",
     "error": "Import fehlgeschlagen. Bitte erneut versuchen."
   },
+  "export": {
+    "button": "PDF-Export",
+    "title": "Als PDF exportieren",
+    "exporting": "PDF wird erstellt…",
+    "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
+    "pageOf": "{current} von {total}"
+  },
   "saved": "Gespeichert",
   "saving": "Speichert…",
   "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",
