@@ -95,6 +95,7 @@ declare global {
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
   const useTheme: typeof import('./stores/theme').useTheme
+  const useUrlImportJobs: typeof import('./stores/urlImportJobs').useUrlImportJobs
   const useWiki: typeof import('./stores/wiki').useWiki
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
@@ -116,6 +117,9 @@ declare global {
   export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
   // @ts-ignore
+  export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
+  import('./types/urlImport')
+  // @ts-ignore
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
@@ -127,6 +131,7 @@ declare global {
   // @ts-ignore
   export type { ThemePreference } from './utils/theme'
   import('./utils/theme')
+  // @ts-ignore
   export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
   import('./utils/wikiPdf')
 }

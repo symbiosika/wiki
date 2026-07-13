@@ -21,6 +21,7 @@ declare module 'vue' {
     Checkbox: typeof import('./volt/Checkbox.vue')['default']
     Chip: typeof import('./volt/Chip.vue')['default']
     ConfirmDialog: typeof import('./volt/ConfirmDialog.vue')['default']
+    CronField: typeof import('./components/jobs/CronField.vue')['default']
     DataTable: typeof import('./volt/DataTable.vue')['default']
     DatePicker: typeof import('./volt/DatePicker.vue')['default']
     Default: typeof import('./components/layout/Default.vue')['default']

@@ -1,0 +1,63 @@
+{
+  "menu": "Jobs",
+  "title": "Jobs",
+  "urlImport": {
+    "tab": "URL batch import",
+    "addJob": "New job",
+    "createTitle": "New URL import job",
+    "name": "Name",
+    "namePlaceholder": "e.g. News sources",
+    "schedule": "Schedule",
+    "scope": "Where imported pages live",
+    "cron": "Schedule (cron)",
+    "cronHint": "Standard 5-field cron: minute hour day-of-month month day-of-week.",
+    "presets": {
+      "hourly": "Hourly",
+      "every6h": "Every 6h",
+      "daily": "Daily 06:00",
+      "weekly": "Weekly (Mon)"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "enabledLabel": "Run on schedule",
+    "lastRun": "Last run",
+    "never": "Never run",
+    "empty": "No URL import jobs yet.",
+    "createError": "Could not create the job.",
+    "jobFallback": "Job",
+    "notFound": "This job could not be loaded.",
+    "settings": "Settings",
+    "urls": "URLs",
+    "urlCount": "{count} URL(s)",
+    "editUrls": "Edit list",
+    "urlsPlaceholder": "https://example.com/page\nhttps://example.com/other | Optional title",
+    "urlsHint": "One URL per line. Add an optional title after a \" | \".",
+    "saveUrls": "Save URLs",
+    "runs": "Runs",
+    "runNow": "Run now",
+    "runStatus": "Status",
+    "result": "Result",
+    "trigger": "Trigger",
+    "started": "Started",
+    "failed": "failed",
+    "noRuns": "No runs yet.",
+    "runDetail": "Run detail",
+    "runEmpty": "This run has no results.",
+    "refresh": "Refresh",
+    "saveError": "Could not save.",
+    "runError": "Could not start the run.",
+    "runStarted": "Run started",
+    "runStartedHint": "The import runs in the background — refresh to see results.",
+    "noUrlsWarning": "Add at least one URL before running the job.",
+    "status": {
+      "running": "Running",
+      "success": "Success",
+      "partial": "Partial",
+      "error": "Error"
+    },
+    "triggers": {
+      "manual": "Manual",
+      "scheduled": "Scheduled"
+    }
+  }
+}

@@ -55,6 +55,16 @@ const router = createRouter({
           name: 'Profile',
           component: () => import('../views/profile.vue'),
         },
+        {
+          path: 'tenant/:tenantId/jobs',
+          name: 'Jobs',
+          component: () => import('../views/jobs/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/jobs/url-import/:jobId',
+          name: 'UrlImportJob',
+          component: () => import('../views/jobs/url-import-job.vue'),
+        },
       ],
     },
 

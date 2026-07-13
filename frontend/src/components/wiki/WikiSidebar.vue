@@ -223,6 +223,21 @@
         <IconUpload class="h-4 w-4" />
         {{ $t('Wiki.import.button') }}
       </button>
+
+      <!-- jobs (scheduled automations) -->
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+        :class="
+          isJobsActive
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+        "
+        @click="gotoJobs"
+      >
+        <IconJobs class="h-4 w-4" />
+        {{ $t('Jobs.menu') }}
+      </button>
     </div>
 
     <!-- footer: user -->
@@ -287,6 +302,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import IconMagnify from '~icons/mdi/magnify'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconUpload from '~icons/mdi/tray-arrow-up'
+import IconJobs from '~icons/mdi/calendar-sync-outline'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
 import IconChevronDown from '~icons/mdi/chevron-down'
@@ -466,6 +482,16 @@ const gotoProfile = () => {
 }
 
 const profileImageUrl = '/api/v1/user/profile-image'
+
+const isJobsActive = computed(
+  () =>
+    String(route.name ?? '').startsWith('Jobs') ||
+    String(route.name ?? '').startsWith('UrlImportJob'),
+)
+
+const gotoJobs = () => {
+  router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
+}
 
 // open invitations are surfaced as a badge on the manage button
 onMounted(() => {
