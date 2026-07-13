@@ -91,6 +91,7 @@ declare global {
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
   const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
+  const useReadOnly: typeof import('./stores/readonly').useReadOnly
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
