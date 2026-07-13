@@ -4,6 +4,8 @@ import defineChatRoutes from "./routes/tenant/[tenantId]/chat";
 import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
 import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
+import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
+import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { websocket } from "./lib/ws/bun-ws";
 
 const server = defineServer({
@@ -36,7 +38,18 @@ const server = defineServer({
         defineWikiRoutes(app);
         defineProtocolRoutes(app);
         defineDocumentAssistantRoutes(app);
+        defineUrlImportRoutes(app);
       },
+    },
+  ],
+  // durable async execution of URL-import runs (survives restarts)
+  jobHandlers: [urlImportJobHandler],
+  // master tick: every minute, enqueue runs for jobs whose cron is due
+  customCronJobs: [
+    {
+      name: "url-import-scheduler",
+      schedule: "* * * * *",
+      handler: () => tickScheduler(),
     },
   ],
 });
