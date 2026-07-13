@@ -1,0 +1,9 @@
+{
+  "title": "Document assistant",
+  "button": "Assistant",
+  "hint": "Speak or type what should change in the document – the assistant works it in.",
+  "placeholder": "e.g. \"add Anna as the new contact\" or \"shorten the intro\"…",
+  "working": "Working…",
+  "send": "Send",
+  "error": "That didn't work. Please try again."
+}
