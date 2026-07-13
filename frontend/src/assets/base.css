@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import 'tailwindcss-primeui';
 
+/*
+ * Dark mode is driven by the `.app-dark` class on <html>, not by the media
+ * query directly. A small controller (see `utils/theme.ts`) decides when to
+ * add the class based on the user's stored preference, resolving "system" via
+ * `prefers-color-scheme`. This makes the `dark:` variant follow that class.
+ */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
 /* Primary and Surface Palettes */
 :root {
   --p-primary-50: #eff6ff;
@@ -50,14 +58,11 @@
 
 /*
 * Dark Mode
-* Defaults to system, change the dark variant selector to match the CSS variable configuration.
-* For example;
-* @custom-variant dark (&:where(.app-dark, .app-dark *));
-* should match to;
-* :root[class="app-dark"]
+* The tokens below apply whenever <html> carries the `.app-dark` class. The
+* class is toggled by the theme controller (`utils/theme.ts`), so it covers
+* both an explicit "dark" choice and "system" resolving to dark.
 */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root.app-dark {
     --p-primary-color: var(--p-primary-400);
     --p-primary-contrast-color: var(--p-surface-900);
     --p-primary-hover-color: var(--p-primary-300);
@@ -81,7 +86,6 @@
     --p-text-hover-color: var(--p-surface-0);
     --p-text-muted-color: var(--p-surface-400);
     --p-text-hover-muted-color: var(--p-surface-300);
-  }
 }
 
 /* Mobile polish: no grey tap flash, no double-tap zoom on controls,

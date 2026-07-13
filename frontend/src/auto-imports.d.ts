@@ -7,8 +7,11 @@
 export {}
 declare global {
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
+  const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const THEME_KEY: typeof import('./utils/theme').THEME_KEY
+  const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
@@ -26,6 +29,7 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getStoredTheme: typeof import('./utils/theme').getStoredTheme
   const h: typeof import('vue').h
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
@@ -52,6 +56,7 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const prefersDark: typeof import('./utils/theme').prefersDark
   const provide: typeof import('vue').provide
   const ptViewMerge: typeof import('./volt/utils').ptViewMerge
   const reactive: typeof import('vue').reactive
@@ -59,10 +64,12 @@ declare global {
   const ref: typeof import('vue').ref
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
   const resolveComponent: typeof import('vue').resolveComponent
+  const resolveDark: typeof import('./utils/theme').resolveDark
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
+  const storeTheme: typeof import('./utils/theme').storeTheme
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
@@ -86,6 +93,7 @@ declare global {
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
+  const useTheme: typeof import('./stores/theme').useTheme
   const useWiki: typeof import('./stores/wiki').useWiki
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
@@ -115,4 +123,7 @@ declare global {
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
+  // @ts-ignore
+  export type { ThemePreference } from './utils/theme'
+  import('./utils/theme')
 }

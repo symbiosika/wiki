@@ -8,6 +8,20 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <title>SYMBIOSIKA WIKI</title>
+    <script>
+      // Apply the stored theme before first paint to avoid a flash of the
+      // wrong appearance. Keep the key/class in sync with src/utils/theme.ts.
+      ;(function () {
+        try {
+          var pref = localStorage.getItem('wiki:theme') || 'system'
+          var dark =
+            pref === 'dark' ||
+            (pref === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('app-dark')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

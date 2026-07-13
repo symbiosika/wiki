@@ -229,16 +229,29 @@
     <div
       class="flex items-center gap-2 border-t border-surface-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-surface-800"
     >
-      <span
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-contrast"
+      <button
+        type="button"
+        :title="$t('Profile.title')"
+        class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="gotoProfile"
       >
-        {{ userInitials }}
-      </span>
-      <span
-        class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-300"
-      >
-        {{ app.state.user?.email }}
-      </span>
+        <span
+          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-contrast"
+        >
+          <img
+            v-if="app.state.user?.profileImageName"
+            :src="profileImageUrl"
+            alt=""
+            class="h-full w-full object-cover"
+          />
+          <template v-else>{{ userInitials }}</template>
+        </span>
+        <span
+          class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-300"
+        >
+          {{ app.state.user?.email }}
+        </span>
+      </button>
       <button
         type="button"
         :title="$t('Wiki.manage')"
@@ -442,6 +455,12 @@ const switchTenant = async (newTenantId: string) => {
 const gotoManage = () => {
   router.push({ name: 'Tenants', params: { tenantId: tenantId.value } })
 }
+
+const gotoProfile = () => {
+  router.push({ name: 'Profile', params: { tenantId: tenantId.value } })
+}
+
+const profileImageUrl = '/api/v1/user/profile-image'
 
 // open invitations are surfaced as a badge on the manage button
 onMounted(() => {
