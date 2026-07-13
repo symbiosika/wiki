@@ -29,8 +29,12 @@
     "scopeLabel": "Where should it live?",
     "underSelected": "Under selected page",
     "splitIntoBlocks": "Split into sections at headings",
+    "postProcessingLabel": "AI post-processing",
+    "postProcessingNone": "None",
+    "postProcessingHint": "Optionally let an AI agent clean up and restructure the document before it is saved.",
     "processing": "Importing…",
     "processingHint": "This can take a moment for PDFs and large web pages.",
+    "processingHintAi": "AI post-processing can take several minutes for large documents.",
     "submit": "Import",
     "error": "Import failed. Please try again."
   },

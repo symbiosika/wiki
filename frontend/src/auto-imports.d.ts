@@ -89,6 +89,7 @@ declare global {
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
+  const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
@@ -116,6 +117,9 @@ declare global {
   // @ts-ignore
   export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
+  // @ts-ignore
+  export type { PostProcessingAgent, PostProcessingAgentInput, PostProcessingAgentTestRun } from './types/postProcessingAgents'
+  import('./types/postProcessingAgents')
   // @ts-ignore
   export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
   import('./types/urlImport')

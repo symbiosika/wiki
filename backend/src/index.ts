@@ -5,7 +5,9 @@ import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
 import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
+import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
+import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
 import { websocket } from "./lib/ws/bun-ws";
 
 const server = defineServer({
@@ -30,6 +32,11 @@ const server = defineServer({
   customDbSchema: {
     ...appDbSchema,
   },
+  // Resolve tenant-managed post-processing agents named `agent:<uuid>` on
+  // import. A single resolver keeps them out of the global registry (no
+  // cross-tenant leakage) and needs no registry mutation on CRUD; the built
+  // processor is tenant-safe (loads the agent scoped to the importing tenant).
+  customPostProcessorResolvers: [agentPostProcessorResolver],
   customHonoAppsWithAuth: [
     {
       baseRoute: "",
@@ -39,6 +46,7 @@ const server = defineServer({
         defineProtocolRoutes(app);
         defineDocumentAssistantRoutes(app);
         defineUrlImportRoutes(app);
+        definePostProcessingAgentRoutes(app);
       },
     },
   ],

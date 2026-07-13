@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import {
@@ -189,3 +190,60 @@ export type UrlImportJobSelect = typeof urlImportJobs.$inferSelect;
 export type UrlImportJobInsert = typeof urlImportJobs.$inferInsert;
 export type UrlImportJobUrlSelect = typeof urlImportJobUrls.$inferSelect;
 export type UrlImportJobRunSelect = typeof urlImportJobRuns.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Post-processing agents
+//
+// Tenant-managed LLM "agents" that rework a parsed document (usually
+// PDF→markdown) before it is stored as a wiki page. The reusable scaffold lives
+// in lib/post-processing-agents/; a config row differs only by name + prompt
+// (the task profile) plus optional model/step overrides. Selected on import via
+// `usePostProcessors: ["agent:<id>"]`.
+// ---------------------------------------------------------------------------
+
+export const postProcessingAgents = pgBaseTable(
+  "post_processing_agents",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    organisationId: uuid("organisation_id").notNull(),
+    /** display name, unique per organisation */
+    name: text("name").notNull(),
+    /** shown in pickers */
+    description: text("description"),
+    /** the task profile injected into the agent scaffold */
+    prompt: text("prompt").notNull(),
+    /** optional OpenRouter model override */
+    modelId: text("model_id"),
+    /** optional step-budget override (1..100) */
+    maxSteps: integer("max_steps"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("post_processing_agents_org_idx").on(table.organisationId),
+    uniqueIndex("post_processing_agents_org_name_idx").on(
+      table.organisationId,
+      table.name,
+    ),
+  ],
+);
+
+export const postProcessingAgentSelectSchema =
+  createSelectSchema(postProcessingAgents);
+export const postProcessingAgentInsertSchema =
+  createInsertSchema(postProcessingAgents);
+export const postProcessingAgentUpdateSchema =
+  createUpdateSchema(postProcessingAgents);
+
+export type PostProcessingAgentSelect =
+  typeof postProcessingAgents.$inferSelect;
+export type PostProcessingAgentInsert =
+  typeof postProcessingAgents.$inferInsert;

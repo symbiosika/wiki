@@ -1,0 +1,213 @@
+diff --git a/src/index.ts b/src/index.ts
+index 72705d2..6306e69 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -67,7 +67,10 @@ import { defineJob, startJobQueue } from "./lib/jobs";
+ // Cron
+ import scheduler from "./lib/cron";
+ import { cleanupExpiredFiles } from "./lib/knowledge/knowledge-text-files";
+-import { registerPostProcessor } from "./lib/knowledge/parsing/post-processors";
++import {
++  registerPostProcessor,
++  registerPostProcessorResolver,
++} from "./lib/knowledge/parsing/post-processors";
+ // Store
+ import { _GLOBAL_SERVER_CONFIG, setGlobalServerConfig } from "./store";
+ 
+@@ -119,6 +122,17 @@ export const defineServer = (config: ServerSpecificConfig) => {
+     });
+   }
+ 
++  /**
++   * Register all custom post-processor resolvers (dynamic name → processor,
++   * e.g. tenant-scoped `agent:<uuid>` processors resolved from the DB at
++   * import time). Consulted only for names missing from the static registry.
++   */
++  if (config.customPostProcessorResolvers) {
++    config.customPostProcessorResolvers.forEach((resolver) => {
++      registerPostProcessorResolver(resolver);
++    });
++  }
++
+   /**
+    * Register all custom cron jobs
+    */
+@@ -498,6 +512,7 @@ export const GLOBAL_SERVER_CONFIG = _GLOBAL_SERVER_CONFIG;
+ export { connectionsService } from "./lib/connections";
+ export {
+   registerPostProcessor,
++  registerPostProcessorResolver,
+   getAllPostProcessors,
+   applyPostProcessors,
+ } from "./lib/knowledge/parsing/post-processors";
+@@ -505,5 +520,6 @@ export type {
+   PostProcessor,
+   PostProcessorInput,
+   PostProcessorOutput,
++  PostProcessorResolver,
+   ApplyPostProcessorsResult,
+ } from "./lib/knowledge/parsing/post-processors";
+diff --git a/src/lib/knowledge/parsing/post-processors.test.ts b/src/lib/knowledge/parsing/post-processors.test.ts
+index e0bb184..71bdb8b 100644
+--- a/src/lib/knowledge/parsing/post-processors.test.ts
++++ b/src/lib/knowledge/parsing/post-processors.test.ts
+@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
+ import {
+   applyPostProcessors,
+   registerPostProcessor,
++  registerPostProcessorResolver,
+   getAllPostProcessors,
+   type PostProcessor,
+   type PostProcessorInput,
+@@ -267,6 +268,58 @@ describe("registerPostProcessor", () => {
+   });
+ });
+ 
++describe("registerPostProcessorResolver", () => {
++  it("consults a resolver when a name is not in the static registry", async () => {
++    registerPostProcessorResolver((name) =>
++      name === "dynamic:foo"
++        ? {
++            name,
++            label: "Dynamic",
++            description: "",
++            execute: async ({ text }) => ({ text: `${text}!` }),
++          }
++        : undefined
++    );
++
++    const result = await applyPostProcessors(baseInput({ text: "hi" }), [
++      "dynamic:foo",
++    ]);
++    expect(result.text).toBe("hi!");
++  });
++
++  it("still throws when neither registry nor any resolver knows the name", async () => {
++    let threw = false;
++    try {
++      await applyPostProcessors(baseInput(), ["nope:unknown"]);
++    } catch {
++      threw = true;
++    }
++    expect(threw).toBe(true);
++  });
++
++  it("prefers a statically registered processor over resolvers", async () => {
++    registerPostProcessor({
++      name: "static-wins",
++      label: "Static",
++      description: "",
++      execute: async () => ({ text: "STATIC" }),
++    });
++    registerPostProcessorResolver((name) =>
++      name === "static-wins"
++        ? {
++            name,
++            label: "R",
++            description: "",
++            execute: async () => ({ text: "RESOLVER" }),
++          }
++        : undefined
++    );
++
++    const result = await applyPostProcessors(baseInput(), ["static-wins"]);
++    expect(result.text).toBe("STATIC");
++  });
++});
++
+ describe("getAllPostProcessors", () => {
+   it("exposes metadata but not the execute function", async () => {
+     registerPostProcessor({
+diff --git a/src/lib/knowledge/parsing/post-processors.ts b/src/lib/knowledge/parsing/post-processors.ts
+index 57379cb..8a354fc 100644
+--- a/src/lib/knowledge/parsing/post-processors.ts
++++ b/src/lib/knowledge/parsing/post-processors.ts
+@@ -87,6 +87,18 @@ export type ApplyPostProcessorsResult = {
+ // Registry for post processors
+ const postProcessorRegistry: Record<string, PostProcessor> = {};
+ 
++/**
++ * A resolver produces a PostProcessor for a name that is NOT in the static
++ * registry (e.g. tenant-scoped agents named `agent:<uuid>`). Registered by the
++ * consuming app; consulted lazily by applyPostProcessors. The first resolver to
++ * return a processor wins.
++ */
++export type PostProcessorResolver = (
++  name: string
++) => Promise<PostProcessor | undefined> | PostProcessor | undefined;
++
++const postProcessorResolvers: PostProcessorResolver[] = [];
++
+ /**
+  * Register a post processor. Should be called at app start.
+  */
+@@ -99,6 +111,17 @@ export function registerPostProcessor(processor: PostProcessor) {
+   postProcessorRegistry[processor.name] = processor;
+ }
+ 
++/**
++ * Register a dynamic resolver. Should be called at app start. Resolvers are
++ * only consulted for names missing from the static registry, so they never
++ * shadow a statically registered processor.
++ */
++export function registerPostProcessorResolver(
++  resolver: PostProcessorResolver
++) {
++  postProcessorResolvers.push(resolver);
++}
++
+ /**
+  * Get all registered post processors (read-only)
+  */
+@@ -128,7 +151,20 @@ export async function applyPostProcessors(
+   }
+ 
+   for (const name of processorNames) {
+-    const processor = postProcessorRegistry[name];
++    let processor = postProcessorRegistry[name];
++    if (!processor) {
++      // Not statically registered — ask the dynamic resolvers (first match
++      // wins) before giving up. This is how tenant-scoped `agent:<uuid>`
++      // processors are resolved from the DB without polluting the global
++      // registry.
++      for (const resolve of postProcessorResolvers) {
++        const resolved = await resolve(name);
++        if (resolved) {
++          processor = resolved;
++          break;
++        }
++      }
++    }
+     if (!processor) {
+       throw new Error(`Post processor '${name}' is not registered.`);
+     }
+diff --git a/src/types.ts b/src/types.ts
+index 7609139..32db411 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -5,7 +5,10 @@ import type { JobHandlerRegister } from "./lib/jobs";
+ import type { Task } from "./lib/cron";
+ import type { SyncItem } from "./lib/types/sync";
+ import type { ProcessedWhatsAppMessage } from "./lib/communication/whatsapp";
+-import type { PostProcessor } from "./lib/knowledge/parsing/post-processors";
++import type {
++  PostProcessor,
++  PostProcessorResolver,
++} from "./lib/knowledge/parsing/post-processors";
+ 
+ export type { SyncItem };
+ export type { JobHandlerRegister };
+@@ -116,6 +119,13 @@ export interface ServerSpecificConfig {
+    */
+   customPostProcessors?: PostProcessor[];
+ 
++  /**
++   * Dynamic resolvers for post-processor names missing from the static
++   * registry (e.g. tenant-scoped `agent:<uuid>` processors resolved from the
++   * DB at import time). Consulted in order; the first non-undefined wins.
++   */
++  customPostProcessorResolvers?: PostProcessorResolver[];
++
+   // CRON
+   customCronJobs?: Task[];
+   /**

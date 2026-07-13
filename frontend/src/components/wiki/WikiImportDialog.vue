@@ -101,6 +101,23 @@
         />
       </div>
 
+      <!-- AI post-processing -->
+      <div v-if="agentOptions.length > 1" class="flex flex-col gap-1">
+        <label class="text-sm text-surface-700 dark:text-surface-300">
+          {{ $t('Wiki.import.postProcessingLabel') }}
+        </label>
+        <Select
+          v-model="postProcessorValue"
+          :options="agentOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+        />
+        <span class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Wiki.import.postProcessingHint') }}
+        </span>
+      </div>
+
       <label
         class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
       >
@@ -139,7 +156,11 @@
         <div class="import-bar h-full w-1/3 rounded-full bg-primary" />
       </div>
       <span class="text-xs text-surface-400 dark:text-surface-500">
-        {{ $t('Wiki.import.processingHint') }}
+        {{
+          postProcessorValue
+            ? $t('Wiki.import.processingHintAi')
+            : $t('Wiki.import.processingHint')
+        }}
       </span>
     </div>
 
@@ -169,6 +190,7 @@ import { useI18n } from 'vue-i18n'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconImport from '~icons/mdi/file-import-outline'
 import { useWiki } from '@/stores/wiki'
+import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
 import type { WikiScope } from '@/types/wiki'
 
@@ -180,6 +202,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const wiki = useWiki()
+const agentsStore = usePostProcessingAgents()
 
 /** accepted upload types (backend also parses PDF and office docs) */
 const FILE_ACCEPT =
@@ -194,6 +217,18 @@ const title = ref('')
 const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// AI post-processing: '' = none, otherwise the agent id (sent as agent:<id>)
+const postProcessorValue = ref('')
+const agentOptions = computed(() => [
+  { label: t('Wiki.import.postProcessingNone'), value: '' },
+  ...agentsStore.agents
+    .filter((a) => a.enabled)
+    .map((a) => ({ label: a.name, value: a.id })),
+])
+const postProcessorNames = computed(() =>
+  postProcessorValue.value ? [`agent:${postProcessorValue.value}`] : undefined,
+)
 
 // the page currently open in the editor (i.e. selected in the tree), if any —
 // offered as an import parent. Only counts while a page route is actually
@@ -281,6 +316,7 @@ const submit = async () => {
     title: title.value.trim() || undefined,
     splitIntoBlocks: splitIntoBlocks.value,
     parentId: parentId.value,
+    postProcessorNames: postProcessorNames.value,
   }
   try {
     const page =
@@ -325,14 +361,17 @@ const reset = () => {
   title.value = ''
   splitIntoBlocks.value = true
   scopeValue.value = 'personal'
+  postProcessorValue.value = ''
   dragOver.value = false
 }
 
-// On open, default to nesting under the page the user just had selected.
+// On open, default to nesting under the page the user just had selected and
+// fetch the tenant's enabled post-processing agents for the picker.
 watch(visible, (open) => {
   if (open) {
     reset()
     if (currentPage.value) scopeValue.value = 'current'
+    agentsStore.loadAgents(props.tenantId).catch(() => {})
   }
 })
 </script>
