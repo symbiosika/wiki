@@ -52,6 +52,16 @@
     "phantom": "noch nicht angelegt",
     "phantomHint": "Diese Referenz wird automatisch aufgelöst, sobald eine Seite mit diesem Titel existiert."
   },
+  "readonly": {
+    "readOnly": "Nur lesen",
+    "editing": "Bearbeiten",
+    "locked": "Gesperrt",
+    "lockedBy": "Wird gerade von {name} bearbeitet",
+    "editHint": "Bearbeitung aktivieren",
+    "lockHint": "Auf Nur-Lesen umschalten",
+    "enableEditing": "Bearbeitung aktivieren (global)",
+    "enableReadOnly": "Auf Nur-Lesen umschalten (global)"
+  },
   "saved": "Gespeichert",
   "saving": "Speichert…",
   "saveError": "Speichern fehlgeschlagen. Änderungen bleiben lokal erhalten – bitte erneut versuchen.",
