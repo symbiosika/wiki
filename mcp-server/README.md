@@ -117,10 +117,28 @@ The framework then mounts all OAuth endpoints automatically
 `/.well-known/*`, …). Set `BASE_URL` (= issuer) and `OAUTH_INTROSPECTION_SECRET`
 in the backend `.env`.
 
-To connect a chat client, the tenant admin registers an OAuth client (with the
-`knowledge:read` / `knowledge:write` scopes and the client's redirect URI) via
-`POST /api/v1/tenant/:tenantId/oauth/clients`. Discovery, login/consent and the
-token exchange then run automatically against the authorization server.
+### Connecting a chat client
+
+Two ways, both fully supported:
+
+- **Automatic (Dynamic Client Registration, RFC 7591):** MCP clients like
+  claude.ai register themselves at `POST /oauth/register`. They typically omit
+  `scope` in the registration request — the backend then assigns the
+  `oauth2.dcrDefaultScopes` configured in `backend/src/index.ts` (wiki +
+  identity scopes only), so the subsequent authorize request for the scopes
+  advertised in this server's resource metadata succeeds.
+- **Manual:** a tenant admin creates an OAuth app in the frontend under
+  *Manage → OAuth apps* (or via
+  `POST /api/v1/tenant/:tenantId/oauth/clients`), with the client's redirect
+  URI and the `knowledge:read` / `knowledge:write` scopes.
+
+Discovery, login/consent and the token exchange then run automatically against
+the authorization server. Token audience: the backend honors the RFC 8707
+`resource` parameter (claude.ai sends `MCP_PUBLIC_URL/mcp`), and this server
+accepts `MCP_PUBLIC_URL/mcp`, `MCP_PUBLIC_URL` or the issuer as `aud`. Rejected
+tokens are logged with the concrete reason (introspection unreachable, secret
+mismatch, inactive, audience mismatch) — check these logs first when claude.ai
+reports "returned an error when connecting" after authorization.
 
 ---
 

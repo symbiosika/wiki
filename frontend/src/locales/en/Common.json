@@ -10,6 +10,8 @@
   "delete": "Delete",
   "remove": "Remove",
   "close": "Close",
+  "copy": "Copy",
+  "copied": "Copied",
   "name": "Name",
   "next": "Next",
   "description": "Description",

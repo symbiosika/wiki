@@ -31,6 +31,7 @@ const tabs = computed(() => [
     label: t('PostProcessingAgents.tabTitle'),
     routeName: 'PostProcessingAgents',
   },
+  { label: t('OAuthApps.tabTitle'), routeName: 'OAuthApps' },
 ])
 
 const isActive = (routeName: string) =>
