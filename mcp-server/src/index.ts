@@ -23,6 +23,7 @@ import {
   ISSUER,
   SCOPES_SUPPORTED,
   PRM_PATH,
+  MCP_RESOURCE,
 } from "./config.ts";
 import { authenticate, unauthorized } from "./auth.ts";
 import { registerAllTools } from "./tools/index.ts";
@@ -62,15 +63,20 @@ app.use(
   }),
 );
 
-// Resource metadata (RFC 9728): points the client at the app (AS).
-app.get(PRM_PATH, (c) =>
+// Resource metadata (RFC 9728): served at the root path and at the
+// path-suffixed variant (`…/oauth-protected-resource/mcp`) that clients
+// derive for a resource with a path component, e.g. claude.ai — which probes
+// the path-suffixed variant first. `resource` is the full MCP endpoint URL so
+// it matches the RFC 8707 `resource` parameter the client sends.
+const resourceMetadata = (c: any) =>
   c.json({
-    resource: PUBLIC_URL,
+    resource: MCP_RESOURCE,
     authorization_servers: [ISSUER],
     scopes_supported: SCOPES_SUPPORTED,
     bearer_methods_supported: ["header"],
-  }),
-);
+  });
+app.get(PRM_PATH, resourceMetadata);
+app.get(`${PRM_PATH}/mcp`, resourceMetadata);
 
 // AS metadata under the MCP URL: clients that probe {mcp_url}/.well-known/…
 // find working endpoints that forward to the app.
