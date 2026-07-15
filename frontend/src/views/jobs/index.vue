@@ -130,6 +130,25 @@
             class="w-full"
           />
         </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Jobs.urlImport.parentPage') }}
+          </label>
+          <Select
+            v-model="form.parentId"
+            :options="parentOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            show-clear
+            :placeholder="$t('Jobs.urlImport.parentPageNone')"
+            :empty-message="$t('Jobs.urlImport.parentPageEmpty')"
+          />
+          <p class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Jobs.urlImport.parentPageHint') }}
+          </p>
+        </div>
       </div>
 
       <template #footer>
@@ -155,6 +174,8 @@ import IconPlus from '~icons/mdi/plus'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
+import { useWiki } from '@/stores/wiki'
+import { pageOptionsForScope } from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
 import type { UrlImportRunStatus } from '@/types/urlImport'
 
@@ -164,6 +185,7 @@ const { t } = useI18n()
 const toast = useToast()
 const app = useApp()
 const store = useUrlImportJobs()
+const wiki = useWiki()
 
 const tenantId = computed(() => String(route.params.tenantId))
 
@@ -172,8 +194,9 @@ watch(
   (id) => {
     if (id) {
       store.loadJobs(id)
-      // populate team scope options in the create dialog
+      // populate team scope options + parent-page picker in the create dialog
       app.getTeams().catch(() => {})
+      wiki.loadTree(id).catch(() => {})
     }
   },
   { immediate: true },
@@ -198,7 +221,12 @@ const runStatusDot = (status: UrlImportRunStatus | null) => {
 
 const createDialog = ref(false)
 const creating = ref(false)
-const form = ref({ name: '', cron: '0 6 * * *', scope: 'organisation' })
+const form = ref<{
+  name: string
+  cron: string
+  scope: string
+  parentId: string | null
+}>({ name: '', cron: '0 6 * * *', scope: 'organisation', parentId: null })
 
 const scopeOptions = computed(() => [
   { label: t('Wiki.scope.organisation'), value: 'organisation' },
@@ -209,12 +237,30 @@ const scopeOptions = computed(() => [
   })),
 ])
 
+// parent pages available for the currently selected scope
+const parentOptions = computed(() =>
+  pageOptionsForScope(wiki.state.tree, form.value.scope),
+)
+
+// the chosen parent must live in the chosen scope — reset it when scope changes
+watch(
+  () => form.value.scope,
+  () => {
+    form.value.parentId = null
+  },
+)
+
 const canCreate = computed(
   () => form.value.name.trim().length > 0 && form.value.cron.trim().length > 0,
 )
 
 const openCreate = () => {
-  form.value = { name: '', cron: '0 6 * * *', scope: 'organisation' }
+  form.value = {
+    name: '',
+    cron: '0 6 * * *',
+    scope: 'organisation',
+    parentId: null,
+  }
   createDialog.value = true
 }
 
@@ -228,6 +274,7 @@ const confirmCreate = async () => {
       cron: form.value.cron.trim(),
       tenantWide: scope === 'organisation',
       teamId: scope.startsWith('team:') ? scope.slice('team:'.length) : null,
+      parentId: form.value.parentId,
     })
     createDialog.value = false
     openJob({ data: job })
