@@ -10,9 +10,42 @@
  */
 
 import type { AuthInfo } from "@modelcontextprotocol/server";
-import { ISSUER, INTROSPECTION_SECRET, PUBLIC_URL, PRM_PATH } from "./config.ts";
+import {
+  ISSUER,
+  INTROSPECTION_SECRET,
+  PUBLIC_URL,
+  PRM_PATH,
+  MCP_RESOURCE,
+} from "./config.ts";
 
-const normalize = (u: string) => (u ?? "").replace(/\/$/, "");
+/**
+ * Canonicalize a URL for audience comparison (RFC 8707): lowercase scheme and
+ * host, drop default ports and trailing slashes. Falls back to plain
+ * trailing-slash stripping for non-URL values.
+ */
+const canonical = (u: string): string => {
+  try {
+    const url = new URL(u ?? "");
+    const port =
+      url.port &&
+      !(
+        (url.protocol === "https:" && url.port === "443") ||
+        (url.protocol === "http:" && url.port === "80")
+      )
+        ? `:${url.port}`
+        : "";
+    const path = url.pathname.replace(/\/$/, "");
+    return `${url.protocol}//${url.hostname.toLowerCase()}${port}${path}`;
+  } catch {
+    return (u ?? "").replace(/\/$/, "");
+  }
+};
+
+/** Log the rejection reason and return null — no silent auth failures. */
+const deny = (reason: string): null => {
+  console.warn(`[symbiosika-wiki-mcp] token rejected: ${reason}`);
+  return null;
+};
 
 /**
  * Validate the bearer token from the Authorization header. On success returns
@@ -38,27 +71,40 @@ export async function authenticate(req: Request): Promise<AuthInfo | null> {
       headers,
       body: new URLSearchParams({ token }).toString(),
     });
-  } catch {
-    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return deny(
+      `introspection at ${ISSUER}/oauth/introspect unreachable: ${message}`,
+    );
   }
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return deny(
+      `introspection returned HTTP ${res.status} (check OAUTH_INTROSPECTION_SECRET)`,
+    );
+  }
 
   let data: any;
   try {
     data = await res.json();
   } catch {
-    return null;
+    return deny("introspection returned invalid JSON");
   }
-  if (!data?.active) return null;
+  if (!data?.active) {
+    return deny("token inactive (expired, revoked or unknown)");
+  }
 
-  // Audience: token must target THIS server (or the issuer itself).
-  const aud = data.aud;
-  const audOk = Array.isArray(aud)
-    ? aud.map(normalize).includes(normalize(PUBLIC_URL)) ||
-      aud.map(normalize).includes(normalize(ISSUER))
-    : normalize(aud) === normalize(PUBLIC_URL) ||
-      normalize(aud) === normalize(ISSUER);
-  if (!audOk) return null;
+  // Audience: the token must target THIS server. Accepted values: the MCP
+  // endpoint URL (RFC 8707 resource), the server origin, or the issuer itself
+  // (legacy tokens minted without a resource indicator).
+  const accepted = [MCP_RESOURCE, PUBLIC_URL, ISSUER].map(canonical);
+  const audList = (Array.isArray(data.aud) ? data.aud : [data.aud]).map(
+    canonical,
+  );
+  if (!audList.some((a: string) => accepted.includes(a))) {
+    return deny(
+      `audience mismatch: token aud=${JSON.stringify(data.aud)}, accepted=${JSON.stringify([MCP_RESOURCE, PUBLIC_URL, ISSUER])}`,
+    );
+  }
 
   return {
     token,
@@ -73,12 +119,14 @@ export async function authenticate(req: Request): Promise<AuthInfo | null> {
 
 /**
  * 401 response pointing at the resource metadata. This lets the MCP client
- * discover the authorization server without us hard-wiring it.
+ * discover the authorization server without us hard-wiring it. The pointer
+ * targets the path-suffixed metadata variant (`…/oauth-protected-resource/mcp`)
+ * that clients derive for a resource with a path component (e.g. claude.ai).
  */
 export const unauthorized = (c: any) => {
   c.header(
     "WWW-Authenticate",
-    `Bearer resource_metadata="${PUBLIC_URL}${PRM_PATH}"`,
+    `Bearer resource_metadata="${PUBLIC_URL}${PRM_PATH}/mcp"`,
   );
   return c.json({ error: "invalid_token" }, 401);
 };

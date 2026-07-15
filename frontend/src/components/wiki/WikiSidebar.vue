@@ -204,6 +204,33 @@
 
     <!-- actions: pinned above the user footer -->
     <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
+      <!-- global read-only mode toggle -->
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+        :class="
+          readOnly.readOnly
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-primary hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+        "
+        :title="
+          readOnly.readOnly
+            ? $t('Wiki.readonly.enableEditing')
+            : $t('Wiki.readonly.enableReadOnly')
+        "
+        @click="readOnly.toggle()"
+      >
+        <IconLock v-if="readOnly.readOnly" class="h-4 w-4" />
+        <IconPencil v-else class="h-4 w-4" />
+        <span class="flex-1 text-left">
+          {{
+            readOnly.readOnly
+              ? $t('Wiki.readonly.readOnly')
+              : $t('Wiki.readonly.editing')
+          }}
+        </span>
+      </button>
+
       <!-- record daily protocol -->
       <button
         type="button"
@@ -309,12 +336,15 @@ import IconChevronDown from '~icons/mdi/chevron-down'
 import IconCheck from '~icons/mdi/check'
 import IconClose from '~icons/mdi/close'
 import IconPanelLeft from '~icons/mdi/dock-left'
+import IconLock from '~icons/mdi/lock-outline'
+import IconPencil from '~icons/mdi/pencil-outline'
 import type { WikiScope, WikiSearchResult, WikiTreeNode } from '@/types/wiki'
 
 const app = useApp()
 const protocol = useProtocol()
 const auth = useAuthStore()
 const wiki = useWiki()
+const readOnly = useReadOnly()
 const layout = useLayout()
 const route = useRoute()
 const router = useRouter()

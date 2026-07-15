@@ -89,8 +89,10 @@ declare global {
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
+  const useOAuthClients: typeof import('./stores/oauthClients').useOAuthClients
   const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
+  const useReadOnly: typeof import('./stores/readonly').useReadOnly
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
@@ -117,6 +119,9 @@ declare global {
   // @ts-ignore
   export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
+  // @ts-ignore
+  export type { OAuthClient, OAuthClientInput, OAuthClientCreated } from './types/oauthClients'
+  import('./types/oauthClients')
   // @ts-ignore
   export type { PostProcessingAgent, PostProcessingAgentInput, PostProcessingAgentTestRun } from './types/postProcessingAgents'
   import('./types/postProcessingAgents')

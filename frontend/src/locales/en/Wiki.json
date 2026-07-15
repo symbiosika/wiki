@@ -52,6 +52,16 @@
     "phantom": "not created yet",
     "phantomHint": "This reference resolves automatically once a page with this title exists."
   },
+  "readonly": {
+    "readOnly": "Read only",
+    "editing": "Editing",
+    "locked": "Locked",
+    "lockedBy": "Being edited by {name}",
+    "editHint": "Enable editing",
+    "lockHint": "Switch to read only",
+    "enableEditing": "Enable editing (globally)",
+    "enableReadOnly": "Switch to read only (globally)"
+  },
   "saved": "Saved",
   "saving": "Saving…",
   "saveError": "Saving failed. Your changes are kept locally – try again.",

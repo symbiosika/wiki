@@ -52,6 +52,11 @@ const router = createRouter({
             import('../views/manage/post-processing-agents.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/oauth-apps',
+          name: 'OAuthApps',
+          component: () => import('../views/manage/oauth-apps.vue'),
+        },
+        {
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),

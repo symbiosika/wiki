@@ -42,5 +42,12 @@ export const SCOPES_SUPPORTED = [
 /** Path of the protected-resource metadata (RFC 9728). */
 export const PRM_PATH = "/.well-known/oauth-protected-resource";
 
+/**
+ * Canonical resource identifier of the MCP endpoint (RFC 8707 / RFC 9728).
+ * Clients like claude.ai send exactly this URL as the `resource` parameter and
+ * expect it back in the protected-resource metadata.
+ */
+export const MCP_RESOURCE = `${PUBLIC_URL}/mcp`;
+
 /** API prefix of the wiki app. */
 export const API_BASE_PATH = "/api/v1";
