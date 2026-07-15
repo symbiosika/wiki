@@ -59,6 +59,7 @@
     "lockedBy": "Wird gerade von {name} bearbeitet",
     "editHint": "Bearbeitung aktivieren",
     "lockHint": "Auf Nur-Lesen umschalten",
+    "presenceUnavailable": "Bearbeitung ohne Live-Sperre aktiviert (Präsenz nicht verfügbar)",
     "enableEditing": "Bearbeitung aktivieren (global)",
     "enableReadOnly": "Auf Nur-Lesen umschalten (global)"
   },
