@@ -39,13 +39,6 @@ export const SCOPES_SUPPORTED = [
   "knowledge:write",
 ];
 
-/**
- * Canonical resource identifier of the MCP endpoint (RFC 8707 / RFC 9728).
- * Clients like claude.ai send exactly this URL as the `resource` parameter and
- * expect it back in the protected-resource metadata.
- */
-export const MCP_RESOURCE = `${PUBLIC_URL}/mcp`;
-
 /** Path of the protected-resource metadata (RFC 9728). */
 export const PRM_PATH = "/.well-known/oauth-protected-resource";
 

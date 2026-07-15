@@ -28,20 +28,6 @@ const server = defineServer({
   oauth2: {
     enabled: true,
     introspectionSecret: process.env.OAUTH_INTROSPECTION_SECRET,
-    // Scopes granted to dynamically registered clients (RFC 7591) that omit
-    // `scope` — MCP clients like claude.ai register without one and then
-    // request the scopes advertised by the MCP server. Keep this list tight:
-    // wiki/identity scopes only, no payment/secrets/ai-admin scopes.
-    dcrDefaultScopes: [
-      "openid",
-      "profile",
-      "email",
-      "knowledge:read",
-      "knowledge:write",
-      "knowledge-manage:read",
-      "knowledge-manage:write",
-      "user:read",
-    ],
   },
   customDbSchema: {
     ...appDbSchema,

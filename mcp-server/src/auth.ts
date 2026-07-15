@@ -10,41 +10,9 @@
  */
 
 import type { AuthInfo } from "@modelcontextprotocol/server";
-import {
-  ISSUER,
-  INTROSPECTION_SECRET,
-  PUBLIC_URL,
-  PRM_PATH,
-  MCP_RESOURCE,
-} from "./config.ts";
+import { ISSUER, INTROSPECTION_SECRET, PUBLIC_URL, PRM_PATH } from "./config.ts";
 
-/**
- * Canonicalize a URL for audience comparison (RFC 8707): lowercase scheme and
- * host, drop default ports and trailing slashes. Falls back to plain
- * trailing-slash stripping for non-URL values.
- */
-const canonical = (u: string): string => {
-  try {
-    const url = new URL(u ?? "");
-    const port =
-      url.port &&
-      !(
-        (url.protocol === "https:" && url.port === "443") ||
-        (url.protocol === "http:" && url.port === "80")
-      )
-        ? `:${url.port}`
-        : "";
-    const path = url.pathname.replace(/\/$/, "");
-    return `${url.protocol}//${url.hostname.toLowerCase()}${port}${path}`;
-  } catch {
-    return (u ?? "").replace(/\/$/, "");
-  }
-};
-
-const deny = (reason: string): null => {
-  console.warn(`[symbiosika-wiki-mcp] token rejected: ${reason}`);
-  return null;
-};
+const normalize = (u: string) => (u ?? "").replace(/\/$/, "");
 
 /**
  * Validate the bearer token from the Authorization header. On success returns
@@ -70,35 +38,27 @@ export async function authenticate(req: Request): Promise<AuthInfo | null> {
       headers,
       body: new URLSearchParams({ token }).toString(),
     });
-  } catch (err) {
-    return deny(
-      `introspection at ${ISSUER}/oauth/introspect unreachable: ${err instanceof Error ? err.message : String(err)}`,
-    );
+  } catch {
+    return null;
   }
-  if (!res.ok) {
-    return deny(
-      `introspection returned HTTP ${res.status} (check OAUTH_INTROSPECTION_SECRET)`,
-    );
-  }
+  if (!res.ok) return null;
 
   let data: any;
   try {
     data = await res.json();
   } catch {
-    return deny("introspection returned invalid JSON");
+    return null;
   }
-  if (!data?.active) return deny("token inactive (expired, revoked or unknown)");
+  if (!data?.active) return null;
 
-  // Audience: the token must target THIS server. Accepted values: the MCP
-  // endpoint URL (RFC 8707 resource), the server origin, or the issuer itself
-  // (legacy tokens minted without a resource indicator).
-  const accepted = [MCP_RESOURCE, PUBLIC_URL, ISSUER].map(canonical);
-  const audList = (Array.isArray(data.aud) ? data.aud : [data.aud]).map(canonical);
-  if (!audList.some((a: string) => accepted.includes(a))) {
-    return deny(
-      `audience mismatch: token aud=${JSON.stringify(data.aud)}, accepted=${JSON.stringify([MCP_RESOURCE, PUBLIC_URL, ISSUER])}`,
-    );
-  }
+  // Audience: token must target THIS server (or the issuer itself).
+  const aud = data.aud;
+  const audOk = Array.isArray(aud)
+    ? aud.map(normalize).includes(normalize(PUBLIC_URL)) ||
+      aud.map(normalize).includes(normalize(ISSUER))
+    : normalize(aud) === normalize(PUBLIC_URL) ||
+      normalize(aud) === normalize(ISSUER);
+  if (!audOk) return null;
 
   return {
     token,
@@ -118,7 +78,7 @@ export async function authenticate(req: Request): Promise<AuthInfo | null> {
 export const unauthorized = (c: any) => {
   c.header(
     "WWW-Authenticate",
-    `Bearer resource_metadata="${PUBLIC_URL}${PRM_PATH}/mcp"`,
+    `Bearer resource_metadata="${PUBLIC_URL}${PRM_PATH}"`,
   );
   return c.json({ error: "invalid_token" }, 401);
 };
