@@ -13,7 +13,6 @@
  */
 import { eq } from "drizzle-orm";
 import { getDb } from "@framework/lib/db/db-connection";
-import { urlToMarkdown } from "@framework/lib/knowledge/parsing/url";
 import { upsertKnowledgeTextFromSource } from "@framework/lib/knowledge/knowledge-text-sync";
 import { createJob } from "@framework/lib/jobs";
 import log from "@framework/lib/log";
@@ -25,6 +24,7 @@ import {
   type UrlImportRunResultItem,
 } from "../../db/schema";
 import { cronMatches } from "./cron";
+import { importUrlContent } from "./fetch-content";
 import { getImportJob, listJobUrls, type JobContext } from "./index";
 
 /** Framework job-queue type for an async import run. */
@@ -117,7 +117,11 @@ export const executeJobRun = async (runId: string): Promise<void> => {
 
     for (const entry of urls) {
       try {
-        const parsed = await urlToMarkdown(entry.url);
+        const parsed = await importUrlContent(entry.url, {
+          tenantId: job.organisationId,
+          userId: job.createdBy ?? undefined,
+          teamId: job.teamId ?? undefined,
+        });
         const upsert = await upsertKnowledgeTextFromSource({
           tenantId: job.organisationId,
           sourceIdentifier: entry.url,
