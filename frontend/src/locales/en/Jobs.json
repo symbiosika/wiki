@@ -9,6 +9,10 @@
     "namePlaceholder": "e.g. News sources",
     "schedule": "Schedule",
     "scope": "Where imported pages live",
+    "parentPage": "Main page",
+    "parentPageNone": "None (top level)",
+    "parentPageEmpty": "No pages in this scope",
+    "parentPageHint": "Imported pages are nested under this page.",
     "cron": "Schedule (cron)",
     "cronHint": "Standard 5-field cron: minute hour day-of-month month day-of-week.",
     "presets": {
