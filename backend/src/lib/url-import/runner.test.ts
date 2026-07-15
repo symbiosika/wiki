@@ -19,6 +19,7 @@ import {
   TEST_ORGANISATION_1,
   TEST_ORG1_USER_1,
 } from "@framework/test/init.test";
+import { createTeam } from "@framework/lib/usermanagement/teams";
 import { urlImportJobUrls, urlImportJobRuns } from "../../db/schema";
 import { createImportJob, setJobUrls, getJobRun } from "./index";
 import { enqueueRun, executeJobRun } from "./runner";
@@ -116,5 +117,48 @@ describe("URL import runner", () => {
       .from(urlImportJobRuns)
       .where(eq(urlImportJobRuns.jobId, job.id));
     expect(runs.length).toBe(2);
+  });
+
+  test("team-scoped job imports even when the creator is not a team member", async () => {
+    // A background job runs on behalf of the tenant, not the creator's live
+    // session. A tenant owner may set up a team-scoped import without being a
+    // member of that team, so the run must not fail the per-user team-role
+    // check ("User has not the required role").
+    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const team = await createTeam({
+      name: "Import target team",
+      tenantId: TEST_ORGANISATION_1.id,
+    });
+
+    const job = await createImportJob(ctx, {
+      name: "Team-scoped job",
+      cron: "*/15 * * * *",
+      teamId: team.id,
+    });
+    await setJobUrls(ctx, job.id, [{ url: goodUrl }]);
+
+    const run = await enqueueRun(ctx, job.id, "manual");
+    await executeJobRun(run!.id);
+
+    const finished = await getJobRun(job.id, run!.id);
+    expect(finished?.status).toBe("success");
+    expect(finished?.succeeded).toBe(1);
+    expect(finished?.failed).toBe(0);
+
+    const urls = await getDb()
+      .select()
+      .from(urlImportJobUrls)
+      .where(eq(urlImportJobUrls.jobId, job.id));
+    expect(urls[0]!.status).toBe("success");
+    expect(urls[0]!.lastError).toBeNull();
+    expect(urls[0]!.knowledgeTextId).toBeTruthy();
+
+    // the imported page is a team page (owned by the team, not a user)
+    const pages = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(eq(knowledgeText.id, urls[0]!.knowledgeTextId!));
+    expect(pages[0]!.teamId).toBe(team.id);
+    expect(pages[0]!.userId).toBeNull();
   });
 });

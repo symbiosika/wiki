@@ -115,6 +115,18 @@ export const executeJobRun = async (runId: string): Promise<void> => {
     let succeeded = 0;
     let failed = 0;
 
+    // A run executes in the background on behalf of the tenant, not in a live
+    // user session. For team- or organisation-scoped jobs the imported page
+    // belongs to that team/tenant, so we write it as a service operation
+    // (userId omitted). Otherwise createKnowledgeText's per-user role check
+    // would abort the run with "User has not the required role" whenever the
+    // job's creator is not (or no longer) a member of the target team — a
+    // scheduled import must not depend on the creator's live membership.
+    // Personal-scoped jobs (no team, not tenant-wide) keep the creator as the
+    // page owner so the imported page stays visible to them.
+    const isSharedScope = job.tenantWide || !!job.teamId;
+    const ownerUserId = isSharedScope ? undefined : job.createdBy ?? undefined;
+
     for (const entry of urls) {
       try {
         // Pass the tenant context so non-HTML downloads (PDFs) can be routed
@@ -132,7 +144,7 @@ export const executeJobRun = async (runId: string): Promise<void> => {
           matchScope: { urlImportJobId: job.id },
           title: entry.title || parsed.title || entry.url,
           text: parsed.markdown,
-          userId: job.createdBy ?? undefined,
+          userId: ownerUserId,
           teamId: job.teamId ?? undefined,
           tenantWide: job.tenantWide,
           parentId: job.parentId ?? undefined,
