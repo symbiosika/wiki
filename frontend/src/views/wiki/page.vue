@@ -59,9 +59,11 @@
               : 'border-surface-200 text-surface-600 hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300'
           "
           :title="
-            editable
-              ? $t('Wiki.readonly.lockHint')
-              : $t('Wiki.readonly.editHint')
+            presenceUnavailable
+              ? $t('Wiki.readonly.presenceUnavailable')
+              : editable
+                ? $t('Wiki.readonly.lockHint')
+                : $t('Wiki.readonly.editHint')
           "
           @click="readOnly.toggle()"
         >
@@ -178,7 +180,7 @@ const loadError = ref(false)
 // editing is desired whenever the global read-only mode is switched off
 const wantsEdit = computed(() => !readOnly.readOnly)
 const presence = useWikiPresence(tenantId, pageId, wantsEdit)
-const { canEdit, lockedByOther, lockHolderName } = presence
+const { canEdit, lockedByOther, lockHolderName, presenceUnavailable } = presence
 
 // the single gate the editor, title and assistant honour
 const editable = computed(() => canEdit.value)

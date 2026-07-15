@@ -37,6 +37,19 @@ export function useWikiPresence(
     youHoldLock: false,
   })
 
+  // Presence relies on a WebSocket to `/api/v1/.../presence`. Some deployments
+  // sit behind a reverse proxy that does not forward WS upgrades, so the socket
+  // never connects (it just reconnect-loops). Without a fallback the edit lock
+  // is never granted and the whole app is stuck read-only with no visible error.
+  // We therefore detect a persistently unreachable presence socket and switch to
+  // a degraded mode where editing is allowed WITHOUT the cross-user lock — the
+  // lock is a concurrency nicety, not a correctness requirement, and a usable
+  // app beats a silently-locked one. Strict locking resumes the moment a socket
+  // successfully connects again.
+  const FAILURES_UNTIL_DEGRADED = 2
+  let consecutiveFailures = 0
+  const presenceUnavailable = ref(false)
+
   let ws: WebSocket | null = null
   let pingTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -111,6 +124,11 @@ export function useWikiPresence(
 
     const socket = new WebSocket(buildUrl())
     ws = socket
+    // whether this particular socket ever received a state frame; used to tell
+    // a genuinely working presence channel from one that only appears to open
+    // (e.g. a proxy that accepts the upgrade then drops it) before deciding the
+    // channel is unavailable.
+    let gotState = false
 
     socket.onopen = () => {
       if (ws !== socket) return
@@ -129,6 +147,11 @@ export function useWikiPresence(
         return
       }
       if (msg.type === 'state') {
+        // presence is genuinely working — leave any degraded fallback and
+        // resume strict locking.
+        gotState = true
+        consecutiveFailures = 0
+        presenceUnavailable.value = false
         state.value = {
           locked: !!msg.locked,
           lockedBy: msg.lockedBy ?? null,
@@ -143,6 +166,20 @@ export function useWikiPresence(
       connected.value = false
       state.value = { locked: false, lockedBy: null, youHoldLock: false }
       clearTimers()
+      // a socket that closed without ever delivering state never really worked;
+      // after a couple of such attempts assume presence is unreachable in this
+      // deployment and fall back to lock-free editing so the app stays usable.
+      if (!gotState && !presenceUnavailable.value) {
+        consecutiveFailures += 1
+        if (consecutiveFailures >= FAILURES_UNTIL_DEGRADED) {
+          presenceUnavailable.value = true
+          console.warn(
+            '[wiki] presence WebSocket unreachable; editing without the ' +
+              'cross-user lock. Ensure the reverse proxy forwards WebSocket ' +
+              'upgrades on /api/v1.',
+          )
+        }
+      }
       scheduleReconnect()
     }
 
@@ -177,7 +214,14 @@ export function useWikiPresence(
   )
   const lockHolderName = computed(() => state.value.lockedBy?.name ?? '')
   const youHoldLock = computed(() => state.value.youHoldLock)
-  const canEdit = computed(() => wantsEdit.value && state.value.youHoldLock)
+  // Editable when you want to edit AND you hold the lock — or presence is
+  // unavailable, in which case we fall back to lock-free editing so a broken
+  // WebSocket channel does not leave the app permanently read-only.
+  const canEdit = computed(
+    () =>
+      wantsEdit.value &&
+      (state.value.youHoldLock || presenceUnavailable.value),
+  )
 
   return {
     connected,
@@ -185,5 +229,6 @@ export function useWikiPresence(
     youHoldLock,
     lockedByOther,
     lockHolderName,
+    presenceUnavailable,
   }
 }
