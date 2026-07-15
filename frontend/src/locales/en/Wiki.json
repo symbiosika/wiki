@@ -59,6 +59,7 @@
     "lockedBy": "Being edited by {name}",
     "editHint": "Enable editing",
     "lockHint": "Switch to read only",
+    "presenceUnavailable": "Editing enabled without live edit-lock (presence unavailable)",
     "enableEditing": "Enable editing (globally)",
     "enableReadOnly": "Switch to read only (globally)"
   },
