@@ -9,6 +9,10 @@
     "namePlaceholder": "z. B. Nachrichtenquellen",
     "schedule": "Zeitplan",
     "scope": "Wo die importierten Seiten liegen",
+    "parentPage": "Hauptseite",
+    "parentPageNone": "Keine (oberste Ebene)",
+    "parentPageEmpty": "Keine Seiten in diesem Bereich",
+    "parentPageHint": "Importierte Seiten werden unter dieser Seite verschachtelt.",
     "cron": "Zeitplan (Cron)",
     "cronHint": "Standard-Cron mit 5 Feldern: Minute Stunde Tag-des-Monats Monat Wochentag.",
     "presets": {

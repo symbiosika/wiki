@@ -117,7 +117,15 @@ export const executeJobRun = async (runId: string): Promise<void> => {
 
     for (const entry of urls) {
       try {
-        const parsed = await urlToMarkdown(entry.url);
+        // Pass the tenant context so non-HTML downloads (PDFs) can be routed
+        // through the tenant-scoped PDF parser instead of being rejected.
+        const parsed = await urlToMarkdown(entry.url, {
+          parseContext: {
+            tenantId: job.organisationId,
+            userId: job.createdBy ?? undefined,
+            teamId: job.teamId ?? undefined,
+          },
+        });
         const upsert = await upsertKnowledgeTextFromSource({
           tenantId: job.organisationId,
           sourceIdentifier: entry.url,

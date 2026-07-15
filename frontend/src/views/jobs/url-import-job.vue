@@ -43,6 +43,24 @@
           <InputText v-model="settings.name" class="w-full" />
         </div>
         <CronField v-model="settings.cron" />
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Jobs.urlImport.parentPage') }}
+          </label>
+          <Select
+            v-model="settings.parentId"
+            :options="parentOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            show-clear
+            :placeholder="$t('Jobs.urlImport.parentPageNone')"
+            :empty-message="$t('Jobs.urlImport.parentPageEmpty')"
+          />
+          <p class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Jobs.urlImport.parentPageHint') }}
+          </p>
+        </div>
         <label
           class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
         >
@@ -268,6 +286,8 @@ import IconPlay from '~icons/mdi/play'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
+import { useWiki } from '@/stores/wiki'
+import { pageOptionsForScope, scopeFromFlags } from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
 import type {
   UrlImportJob,
@@ -282,6 +302,7 @@ const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
 const store = useUrlImportJobs()
+const wiki = useWiki()
 
 const tenantId = computed(() => String(route.params.tenantId))
 const jobId = computed(() => String(route.params.jobId))
@@ -292,8 +313,20 @@ const runs = ref<UrlImportRun[]>([])
 const loading = ref(false)
 const loadError = ref(false)
 
-const settings = ref({ name: '', cron: '', enabled: true })
+const settings = ref<{
+  name: string
+  cron: string
+  enabled: boolean
+  parentId: string | null
+}>({ name: '', cron: '', enabled: true, parentId: null })
 const urlText = ref('')
+
+// parent-page options within the job's own scope (team / organisation / personal)
+const parentOptions = computed(() =>
+  job.value
+    ? pageOptionsForScope(wiki.state.tree, scopeFromFlags(job.value))
+    : [],
+)
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -342,7 +375,8 @@ const settingsChanged = computed(
     !!job.value &&
     (settings.value.name.trim() !== job.value.name ||
       settings.value.cron.trim() !== job.value.cron ||
-      settings.value.enabled !== job.value.enabled),
+      settings.value.enabled !== job.value.enabled ||
+      (settings.value.parentId ?? null) !== job.value.parentId),
 )
 
 const urlsChanged = computed(() => urlText.value !== urlsToText(urls.value))
@@ -359,6 +393,7 @@ const applyDetail = (detail: {
     name: detail.job.name,
     cron: detail.job.cron,
     enabled: detail.job.enabled,
+    parentId: detail.job.parentId,
   }
   urlText.value = urlsToText(detail.urls)
 }
@@ -367,6 +402,8 @@ const reload = async () => {
   loading.value = true
   loadError.value = false
   try {
+    // the wiki tree feeds the parent-page picker
+    wiki.loadTree(tenantId.value).catch(() => {})
     applyDetail(await store.getJob(tenantId.value, jobId.value))
   } catch {
     loadError.value = true
@@ -396,6 +433,7 @@ const saveSettings = async () => {
       name: settings.value.name.trim(),
       cron: settings.value.cron.trim(),
       enabled: settings.value.enabled,
+      parentId: settings.value.parentId ?? null,
     })
     await reload()
   } catch (error) {
