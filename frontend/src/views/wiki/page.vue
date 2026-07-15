@@ -21,7 +21,7 @@
     <template v-else-if="page">
       <!-- meta bar -->
       <div
-        class="sticky top-0 z-10 -mx-4 flex items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 flex shrink-0 items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
         <span
           class="rounded-full border border-surface-200 px-2 py-0.5 dark:border-surface-700"
@@ -100,13 +100,20 @@
       </div>
 
       <!-- title -->
+      <!--
+        shrink-0 is essential: the page is a fixed-height (h-full) flex column,
+        so without it the flex layout shrinks this textarea to a sliver once the
+        editor content below overflows the viewport — a <textarea> has no auto
+        min-height floor to stop it. That made the title vanish and become
+        unclickable on long pages.
+      -->
       <textarea
         ref="titleRef"
         v-model="title"
         rows="1"
         :readonly="!editable"
         :placeholder="$t('Wiki.titlePlaceholder')"
-        class="mt-6 w-full resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:mt-8 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
+        class="mt-6 w-full shrink-0 resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:mt-8 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
         @input="onTitleInput"
         @keydown.enter.prevent="focusEditor"
       />
