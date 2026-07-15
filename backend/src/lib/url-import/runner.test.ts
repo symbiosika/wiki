@@ -28,6 +28,7 @@ let userId: string;
 let server: ReturnType<typeof Bun.serve> | null = null;
 const PORT = 7811;
 const goodUrl = `http://127.0.0.1:${PORT}/page`;
+const nulUrl = `http://127.0.0.1:${PORT}/nul`; // body carries a NUL byte
 const badUrl = `http://127.0.0.1:59999/nope`; // nothing listening
 
 beforeAll(async () => {
@@ -38,11 +39,22 @@ beforeAll(async () => {
   server = Bun.serve({
     port: PORT,
     hostname: "127.0.0.1",
-    fetch: () =>
-      new Response(
+    fetch: (req) => {
+      // A page whose extracted text contains a NUL byte (as some OCR/PDF
+      // sources produce) — Postgres cannot store it, so the runner must strip
+      // it before persisting.
+      if (new URL(req.url).pathname === "/nul") {
+        return new Response(
+          `<html><head><title>Nul${String.fromCharCode(0)}Title</title></head>` +
+            `<body><article><h1>Heading</h1><p>Body with a ${String.fromCharCode(0)} nul byte inside.</p></article></body></html>`,
+          { headers: { "Content-Type": "text/html" } },
+        );
+      }
+      return new Response(
         "<html><head><title>Doc Title</title></head><body><article><h1>Heading</h1><p>Imported body text.</p></article></body></html>",
         { headers: { "Content-Type": "text/html" } },
-      ),
+      );
+    },
   });
 });
 
@@ -160,5 +172,40 @@ describe("URL import runner", () => {
       .where(eq(knowledgeText.id, urls[0]!.knowledgeTextId!));
     expect(pages[0]!.teamId).toBe(team.id);
     expect(pages[0]!.userId).toBeNull();
+  });
+
+  test("imports a page whose content contains NUL bytes", async () => {
+    // Postgres rejects NUL (U+0000) in text columns ("invalid byte sequence
+    // for encoding UTF8: 0x00"); the runner must strip them so the insert does
+    // not abort the whole page.
+    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const job = await createImportJob(ctx, {
+      name: "Nul-byte job",
+      cron: "*/15 * * * *",
+    });
+    await setJobUrls(ctx, job.id, [{ url: nulUrl }]);
+
+    const run = await enqueueRun(ctx, job.id, "manual");
+    await executeJobRun(run!.id);
+
+    const finished = await getJobRun(job.id, run!.id);
+    expect(finished?.status).toBe("success");
+    expect(finished?.succeeded).toBe(1);
+
+    const urls = await getDb()
+      .select()
+      .from(urlImportJobUrls)
+      .where(eq(urlImportJobUrls.jobId, job.id));
+    expect(urls[0]!.status).toBe("success");
+    expect(urls[0]!.knowledgeTextId).toBeTruthy();
+
+    const pages = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(eq(knowledgeText.id, urls[0]!.knowledgeTextId!));
+    // the stored content is intact but carries no NUL byte
+    expect(pages[0]!.text).not.toContain(String.fromCharCode(0));
+    expect(pages[0]!.title).not.toContain(String.fromCharCode(0));
+    expect(pages[0]!.text.length).toBeGreaterThan(0);
   });
 });
