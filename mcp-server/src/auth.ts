@@ -12,6 +12,8 @@
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import {
   ISSUER,
+  INTROSPECTION_URL,
+  INTROSPECTION_TIMEOUT_MS,
   INTROSPECTION_SECRET,
   PUBLIC_URL,
   PRM_PATH,
@@ -66,15 +68,21 @@ export async function authenticate(req: Request): Promise<AuthInfo | null> {
 
   let res: Response;
   try {
-    res = await fetch(`${ISSUER}/oauth/introspect`, {
+    res = await fetch(`${INTROSPECTION_URL}/oauth/introspect`, {
       method: "POST",
       headers,
       body: new URLSearchParams({ token }).toString(),
+      // Fail fast: a container that can't reach the backend (hairpin NAT /
+      // split-horizon DNS) must not hang the request until the upstream proxy
+      // returns a 504 — turn it into a clean, logged 401 instead.
+      signal: AbortSignal.timeout(INTROSPECTION_TIMEOUT_MS),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return deny(
-      `introspection at ${ISSUER}/oauth/introspect unreachable: ${message}`,
+      `introspection at ${INTROSPECTION_URL}/oauth/introspect unreachable ` +
+        `(timeout ${INTROSPECTION_TIMEOUT_MS}ms? check OAUTH_INTROSPECTION_URL ` +
+        `is reachable from this container): ${message}`,
     );
   }
   if (!res.ok) {

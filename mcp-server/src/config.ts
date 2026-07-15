@@ -20,6 +20,30 @@ export const ISSUER = (
   process.env.OAUTH_ISSUER || "http://localhost:3000"
 ).replace(/\/$/, "");
 
+/**
+ * Base URL used ONLY for the server-to-server token-introspection call.
+ * Defaults to ISSUER. Set OAUTH_INTROSPECTION_URL to an internally reachable
+ * address (e.g. the backend's docker-compose service name like
+ * `http://wiki-backend:3000`) when the public issuer URL is NOT routable from
+ * inside the MCP container — the classic hairpin-NAT / split-horizon-DNS case
+ * where a container can't reach its own public domain through the external
+ * reverse proxy. Symptom: `/mcp` returns 401 without a token (fast) but hangs
+ * into a 504 with one, because introspection never completes. It must
+ * terminate at the SAME backend as ISSUER (same tokens, same secret).
+ */
+export const INTROSPECTION_URL = (
+  process.env.OAUTH_INTROSPECTION_URL || ISSUER
+).replace(/\/$/, "");
+
+/**
+ * Timeout (ms) for the introspection call. A hung or unreachable backend must
+ * fail fast with a logged 401 instead of stalling the request until the
+ * upstream proxy times out (504). Default 5s.
+ */
+export const INTROSPECTION_TIMEOUT_MS = Number(
+  process.env.OAUTH_INTROSPECTION_TIMEOUT_MS || "5000",
+);
+
 /** Shared secret for /oauth/introspect. Must match the backend's value. */
 export const INTROSPECTION_SECRET =
   process.env.OAUTH_INTROSPECTION_SECRET || "";
