@@ -27,10 +27,16 @@ import {
 } from "./config.ts";
 import { authenticate, unauthorized } from "./auth.ts";
 import { registerAllTools } from "./tools/index.ts";
+import { SERVER_INSTRUCTIONS } from "./instructions.ts";
 import pkg from "../package.json";
 
 // ── MCP server + tools ───────────────────────────────────────────────────────
-const mcp = new McpServer({ name: "symbiosika-wiki-mcp", version: pkg.version });
+// `instructions` prime the host (e.g. claude.ai) to reach for the wiki on
+// company questions whenever the connector is enabled — see ./instructions.ts.
+const mcp = new McpServer(
+  { name: "symbiosika-wiki-mcp", version: pkg.version },
+  { instructions: SERVER_INSTRUCTIONS },
+);
 registerAllTools(mcp);
 
 // Stateless transport with JSON responses.
