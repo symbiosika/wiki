@@ -82,16 +82,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # Optional standalone MCP server (see mcp-server/README.md).
-  # mcp:
-  #   image: ${REGISTRY:-symbiosika.azurecr.io}/wiki-mcp:${IMAGE_TAG:-latest}
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${MCP_PORT:-8787}:8787"
-  #   environment:
-  #     MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
-  #     OAUTH_ISSUER: ${OAUTH_ISSUER}
-  #     OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
+  # Standalone MCP server (see mcp-server/README.md).
+  # Behind the "mcp" profile, so it only starts when explicitly requested:
+  #   docker compose -f docker-compose.prod.yml --profile mcp up -d
+  mcp:
+    image: ${REGISTRY:-symbiosika.azurecr.io}/wiki-mcp:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    profiles:
+      - mcp
+    ports:
+      - "${MCP_PORT:-8787}:8787"
+    environment:
+      MCP_PORT: ${MCP_PORT:-8787}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
+      OAUTH_ISSUER: ${OAUTH_ISSUER}
+      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
+      WIKI_TENANT_ID: ${WIKI_TENANT_ID}
 
 volumes:
   app_logs:
