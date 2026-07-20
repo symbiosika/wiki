@@ -29,6 +29,11 @@ export interface UrlImportJobUrl {
   organisationId: string
   url: string
   title: string | null
+  /**
+   * Wiki subpath (category page titles, top→bottom) the imported page is filed
+   * under, relative to the job's parent page. Empty = directly under the parent.
+   */
+  subPath: string[]
   sortOrder: number
   status: UrlImportUrlStatus
   lastError: string | null

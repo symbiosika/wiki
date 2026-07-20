@@ -161,4 +161,68 @@ describe("URL import runner", () => {
     expect(pages[0]!.teamId).toBe(team.id);
     expect(pages[0]!.userId).toBeNull();
   });
+
+  test("files imports under an on-demand subpath and reuses shared ancestors", async () => {
+    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const job = await createImportJob(ctx, {
+      name: "Categorized job",
+      cron: "*/15 * * * *",
+    });
+    // two URLs under the same "Docs / API Reference" category — spaces in the
+    // category name, and the category does not exist yet
+    const urlA = `${goodUrl}?doc=a`;
+    const urlB = `${goodUrl}?doc=b`;
+    await setJobUrls(ctx, job.id, [
+      { url: urlA, subPath: ["Docs", "API Reference"] },
+      { url: urlB, subPath: ["Docs", "API Reference"] },
+    ]);
+
+    const run = await enqueueRun(ctx, job.id, "manual");
+    await executeJobRun(run!.id);
+
+    const finished = await getJobRun(job.id, run!.id);
+    expect(finished?.status).toBe("success");
+    expect(finished?.succeeded).toBe(2);
+
+    // exactly one "Docs" and one "API Reference" page were created and shared
+    const docs = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(
+        and(
+          eq(knowledgeText.tenantId, TEST_ORGANISATION_1.id),
+          eq(knowledgeText.title, "Docs"),
+        ),
+      );
+    expect(docs.length).toBe(1);
+    expect(docs[0]!.parentId).toBeNull(); // job has no parent → top level
+    expect(docs[0]!.userId).toBe(userId); // personal-scope → owned by creator
+
+    const apiRef = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(
+        and(
+          eq(knowledgeText.tenantId, TEST_ORGANISATION_1.id),
+          eq(knowledgeText.title, "API Reference"),
+        ),
+      );
+    expect(apiRef.length).toBe(1);
+    expect(apiRef[0]!.parentId).toBe(docs[0]!.id); // nested under "Docs"
+
+    // both imported pages hang directly under "API Reference"
+    const importedUrls = await getDb()
+      .select()
+      .from(urlImportJobUrls)
+      .where(eq(urlImportJobUrls.jobId, job.id));
+    expect(importedUrls.length).toBe(2);
+    for (const u of importedUrls) {
+      expect(u.status).toBe("success");
+      const page = await getDb()
+        .select()
+        .from(knowledgeText)
+        .where(eq(knowledgeText.id, u.knowledgeTextId!));
+      expect(page[0]!.parentId).toBe(apiRef[0]!.id);
+    }
+  });
 });

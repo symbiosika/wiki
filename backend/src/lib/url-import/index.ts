@@ -144,7 +144,17 @@ export const listJobUrls = async (
 export interface JobUrlInput {
   url: string;
   title?: string | null;
+  /**
+   * Optional wiki subpath the imported page is filed under, relative to the
+   * job's parent. Each entry is one level's page title (top→bottom); an empty
+   * or omitted list files the page directly under the job parent.
+   */
+  subPath?: string[] | null;
 }
+
+/** Trim + drop empty segments so a stray "A//B" or trailing "/" is harmless. */
+const normalizeSubPath = (subPath?: string[] | null): string[] =>
+  (subPath ?? []).map((segment) => segment.trim()).filter(Boolean);
 
 /**
  * Replace a job's URL list with the given set. Rows for URLs that stay are
@@ -158,14 +168,20 @@ export const setJobUrls = async (
 ): Promise<UrlImportJobUrlSelect[]> => {
   const db = getDb();
 
-  // dedupe by url, keep first occurrence, keep input order
-  const deduped: JobUrlInput[] = [];
+  // dedupe by url, keep first occurrence, keep input order (one page per URL,
+  // so the URL is the identity — its first-seen title/subpath wins)
+  const deduped: { url: string; title: string | null; subPath: string[] }[] =
+    [];
   const seenInput = new Set<string>();
   for (const entry of urls) {
     const url = entry.url.trim();
     if (!url || seenInput.has(url)) continue;
     seenInput.add(url);
-    deduped.push({ url, title: entry.title?.trim() || null });
+    deduped.push({
+      url,
+      title: entry.title?.trim() || null,
+      subPath: normalizeSubPath(entry.subPath),
+    });
   }
 
   const existing = await listJobUrls(jobId);
@@ -177,7 +193,12 @@ export const setJobUrls = async (
     if (current) {
       await db
         .update(urlImportJobUrls)
-        .set({ title: entry.title ?? null, sortOrder: i, updatedAt: nowIso() })
+        .set({
+          title: entry.title ?? null,
+          subPath: entry.subPath,
+          sortOrder: i,
+          updatedAt: nowIso(),
+        })
         .where(eq(urlImportJobUrls.id, current.id));
     } else {
       await db.insert(urlImportJobUrls).values({
@@ -185,6 +206,7 @@ export const setJobUrls = async (
         organisationId: ctx.organisationId,
         url: entry.url,
         title: entry.title ?? null,
+        subPath: entry.subPath,
         sortOrder: i,
       });
     }
