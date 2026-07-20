@@ -12,6 +12,7 @@ import type {
   WikiTree,
   WikiTreeNode,
 } from '@/types/wiki'
+import type { Job, KnowledgeIngestResult } from '@/types/notifications'
 
 interface WikiState {
   tree: WikiTree
@@ -37,7 +38,15 @@ export interface WikiImportOptions {
    * post-processing agents these are `agent:<uuid>` names.
    */
   postProcessorNames?: string[]
+  /**
+   * Push a success/error message into the user's notification queue when the
+   * ingest job finishes. Defaults to true so imports surface in the inbox.
+   */
+  notifyOnCompletion?: boolean
 }
+
+/** A knowledge-ingest job returned by the import endpoints. */
+export type IngestJob = Job<KnowledgeIngestResult>
 
 /** Result of an image upload for a wiki page. */
 export interface WikiImageUpload {
@@ -175,13 +184,20 @@ export const useWiki = defineStore('wiki', () => {
     return page
   }
 
-  /** Import an uploaded file (markdown, html, txt, PDF, …) as a new page. */
+  /**
+   * Import an uploaded file (markdown, html, txt, PDF, …) as a new page.
+   *
+   * Ingestion now runs on the framework job queue: the endpoint enqueues a
+   * `knowledge:ingest` job and returns it immediately (the page does not exist
+   * yet). Completion is surfaced via the user notification queue (opt-in
+   * `notifyOnCompletion`) rather than by waiting for the finished page.
+   */
   const importFile = async (
     tenantId: string,
     scope: WikiScope,
     file: File,
     options: WikiImportOptions = {},
-  ): Promise<WikiPage> => {
+  ): Promise<IngestJob> => {
     const { teamId, tenantWide } = scopeFields(scope)
     const form = new FormData()
     form.append('file', file)
@@ -190,28 +206,35 @@ export const useWiki = defineStore('wiki', () => {
     if (teamId) form.append('teamId', teamId)
     if (tenantWide) form.append('tenantWide', 'true')
     form.append('splitIntoBlocks', String(options.splitIntoBlocks ?? true))
+    form.append(
+      'notifyOnCompletion',
+      String(options.notifyOnCompletion ?? true),
+    )
     // the framework file route parses usePostProcessors as a comma-separated list
     if (options.postProcessorNames && options.postProcessorNames.length > 0) {
       form.append('usePostProcessors', options.postProcessorNames.join(','))
     }
 
-    const response = await fetcher.postFormData<{ knowledgeText: WikiPage }>(
+    // Returns the created ingest job; the tree is refreshed once the job
+    // finishes (see the notifications store), not here.
+    return await fetcher.postFormData<IngestJob>(
       `${api(tenantId)}/knowledge/texts/import`,
       form,
     )
-    await loadTree(tenantId)
-    return response.knowledgeText
   }
 
-  /** Import a web page (Readability + Turndown) as a new page. */
+  /**
+   * Import a web page (Readability + Turndown) as a new page. Like
+   * {@link importFile}, this enqueues a `knowledge:ingest` job and returns it.
+   */
   const importUrl = async (
     tenantId: string,
     scope: WikiScope,
     url: string,
     options: WikiImportOptions = {},
-  ): Promise<WikiPage> => {
+  ): Promise<IngestJob> => {
     const { teamId, tenantWide } = scopeFields(scope)
-    const response = await fetcher.post<{ knowledgeText: WikiPage }>(
+    return await fetcher.post<IngestJob>(
       `${api(tenantId)}/knowledge/texts/import-url`,
       {
         url,
@@ -220,6 +243,7 @@ export const useWiki = defineStore('wiki', () => {
         teamId,
         tenantWide,
         splitIntoBlocks: options.splitIntoBlocks ?? true,
+        notifyOnCompletion: options.notifyOnCompletion ?? true,
         // the framework URL route parses usePostProcessors as a string array
         usePostProcessors:
           options.postProcessorNames && options.postProcessorNames.length > 0
@@ -227,8 +251,6 @@ export const useWiki = defineStore('wiki', () => {
             : undefined,
       },
     )
-    await loadTree(tenantId)
-    return response.knowledgeText
   }
 
   /** Upload an image for a page; returns its auth-protected path + markdown. */

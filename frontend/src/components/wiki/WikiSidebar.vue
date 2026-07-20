@@ -265,6 +265,29 @@
         <IconJobs class="h-4 w-4" />
         {{ $t('Jobs.menu') }}
       </button>
+
+      <!-- inbox (user notification queue) with unread chip -->
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+        :class="
+          isNotificationsActive
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+        "
+        @click="gotoNotifications"
+      >
+        <IconInbox class="h-4 w-4" />
+        <span class="flex-1 text-left">{{ $t('Notifications.menu') }}</span>
+        <span
+          v-if="notifications.unreadCount > 0"
+          class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-contrast"
+        >
+          {{
+            notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
+          }}
+        </span>
+      </button>
     </div>
 
     <!-- footer: user -->
@@ -330,6 +353,7 @@ import IconMagnify from '~icons/mdi/magnify'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconJobs from '~icons/mdi/calendar-sync-outline'
+import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
 import IconChevronDown from '~icons/mdi/chevron-down'
@@ -344,6 +368,7 @@ const app = useApp()
 const protocol = useProtocol()
 const auth = useAuthStore()
 const wiki = useWiki()
+const notifications = useNotificationsStore()
 const readOnly = useReadOnly()
 const layout = useLayout()
 const route = useRoute()
@@ -521,6 +546,14 @@ const isJobsActive = computed(
 
 const gotoJobs = () => {
   router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
+}
+
+const isNotificationsActive = computed(
+  () => String(route.name ?? '') === 'Notifications',
+)
+
+const gotoNotifications = () => {
+  router.push({ name: 'Notifications', params: { tenantId: tenantId.value } })
 }
 
 // open invitations are surfaced as a badge on the manage button

@@ -36,6 +36,9 @@
     "processingHint": "Bei PDFs und großen Webseiten kann das einen Moment dauern.",
     "processingHintAi": "Die KI-Nachbearbeitung kann bei großen Dokumenten mehrere Minuten dauern.",
     "submit": "Importieren",
+    "jobHint": "Der Import läuft im Hintergrund. Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
+    "started": "Import gestartet",
+    "startedDetail": "Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
     "error": "Import fehlgeschlagen. Bitte erneut versuchen."
   },
   "export": {

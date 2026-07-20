@@ -119,8 +119,11 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
-  export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
+  export type { WikiImportOptions, IngestJob, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
+  // @ts-ignore
+  export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
+  import('./types/notifications')
   // @ts-ignore
   export type { OAuthClient, OAuthClientInput, OAuthClientCreated } from './types/oauthClients'
   import('./types/oauthClients')
