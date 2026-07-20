@@ -45,6 +45,18 @@
         <CronField v-model="settings.cron" />
         <div class="flex flex-col gap-1">
           <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Jobs.urlImport.scope') }}
+          </label>
+          <Select
+            v-model="settings.scope"
+            :options="scopeOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
             {{ $t('Jobs.urlImport.parentPage') }}
           </label>
           <Select
@@ -287,7 +299,12 @@ import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
 import { useWiki } from '@/stores/wiki'
-import { pageOptionsForScope, scopeFromFlags } from '@/utils/wikiTreeOptions'
+import {
+  pageOptionsForScope,
+  scopeFromFlags,
+  flagsFromScope,
+  buildScopeOptions,
+} from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
 import type {
   UrlImportJob,
@@ -303,6 +320,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const store = useUrlImportJobs()
 const wiki = useWiki()
+const app = useApp()
 
 const tenantId = computed(() => String(route.params.tenantId))
 const jobId = computed(() => String(route.params.jobId))
@@ -317,15 +335,22 @@ const settings = ref<{
   name: string
   cron: string
   enabled: boolean
+  scope: string
   parentId: string | null
-}>({ name: '', cron: '', enabled: true, parentId: null })
+}>({ name: '', cron: '', enabled: true, scope: 'organisation', parentId: null })
 const urlText = ref('')
 
-// parent-page options within the job's own scope (team / organisation / personal)
+const scopeOptions = computed(() =>
+  buildScopeOptions(app.state.teams, {
+    organisation: t('Wiki.scope.organisation'),
+    personal: t('Wiki.scope.personal'),
+    team: t('Wiki.scope.team'),
+  }),
+)
+
+// parent-page options within the currently selected scope
 const parentOptions = computed(() =>
-  job.value
-    ? pageOptionsForScope(wiki.state.tree, scopeFromFlags(job.value))
-    : [],
+  pageOptionsForScope(wiki.state.tree, settings.value.scope),
 )
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
@@ -376,6 +401,7 @@ const settingsChanged = computed(
     (settings.value.name.trim() !== job.value.name ||
       settings.value.cron.trim() !== job.value.cron ||
       settings.value.enabled !== job.value.enabled ||
+      settings.value.scope !== scopeFromFlags(job.value) ||
       (settings.value.parentId ?? null) !== job.value.parentId),
 )
 
@@ -389,21 +415,38 @@ const applyDetail = (detail: {
   job.value = detail.job
   urls.value = detail.urls
   runs.value = detail.runs
+  // guard the scope watcher so loading a job doesn't wipe its saved parent page
+  applyingDetail = true
   settings.value = {
     name: detail.job.name,
     cron: detail.job.cron,
     enabled: detail.job.enabled,
+    scope: scopeFromFlags(detail.job),
     parentId: detail.job.parentId,
   }
   urlText.value = urlsToText(detail.urls)
+  nextTick(() => {
+    applyingDetail = false
+  })
 }
+
+// the chosen parent must live in the chosen scope — reset it when the user
+// switches scope, but not while a freshly loaded job is being applied
+let applyingDetail = false
+watch(
+  () => settings.value.scope,
+  () => {
+    if (!applyingDetail) settings.value.parentId = null
+  },
+)
 
 const reload = async () => {
   loading.value = true
   loadError.value = false
   try {
-    // the wiki tree feeds the parent-page picker
+    // the wiki tree feeds the parent-page picker; teams feed the scope picker
     wiki.loadTree(tenantId.value).catch(() => {})
+    app.getTeams().catch(() => {})
     applyDetail(await store.getJob(tenantId.value, jobId.value))
   } catch {
     loadError.value = true
@@ -429,10 +472,13 @@ const savingSettings = ref(false)
 const saveSettings = async () => {
   savingSettings.value = true
   try {
+    const { teamId, tenantWide } = flagsFromScope(settings.value.scope)
     await store.updateJob(tenantId.value, jobId.value, {
       name: settings.value.name.trim(),
       cron: settings.value.cron.trim(),
       enabled: settings.value.enabled,
+      teamId,
+      tenantWide,
       parentId: settings.value.parentId ?? null,
     })
     await reload()

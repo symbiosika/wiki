@@ -9,6 +9,8 @@
     "namePlaceholder": "e.g. News sources",
     "schedule": "Schedule",
     "scope": "Where imported pages live",
+    "scopeColumn": "Scope",
+    "underPage": "under “{page}”",
     "parentPage": "Main page",
     "parentPageNone": "None (top level)",
     "parentPageEmpty": "No pages in this scope",
