@@ -1,4 +1,4 @@
-# Skill-Vorlage: „Symbiosika Wiki" für claude.ai
+# Skill-Vorlage: „Firmen-Wiki" für claude.ai
 
 Diese Vorlage macht claude.ai zum **Firmengehirn**: sie sorgt dafür, dass Claude
 bei Firmenfragen **zuerst das Wiki** nutzt, Antworten **belegt** und beim
@@ -38,7 +38,7 @@ Es gibt zwei sich ergänzende Ebenen — beide zusammen sind das Optimum:
    registriert (siehe Haupt-`README.md`, Abschnitt „App side").
 2. **Skill installieren:** Den Ordner `skill/` als Skill hinterlegen — je nach
    Oberfläche als hochgeladenes Skill (Team/Workspace) oder, in Claude Code,
-   unter `.claude/skills/symbiosika-wiki/SKILL.md`. Entscheidend ist, dass
+   unter `.claude/skills/company-wiki/SKILL.md`. Entscheidend ist, dass
    `SKILL.md` mit dem Frontmatter (`name`, `description`) am Skill-Pfad liegt.
 3. **Testen:** „Wie läuft bei uns das Onboarding?" oder „Wo steht die Doku zu
    <Thema>?" → Claude sollte `whoami`/`search_wiki` aufrufen und mit

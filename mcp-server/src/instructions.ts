@@ -10,7 +10,7 @@
  * behavioural; the per-tool descriptions carry the mechanics.
  */
 export const SERVER_INSTRUCTIONS = `
-Symbiosika Wiki — the company's source of truth for internal knowledge
+Company Wiki — the company's source of truth for internal knowledge
 (processes, products, decisions, people, policies, handbook, onboarding). All
 tools act with the signed-in user's own permissions; a 403 means "not allowed",
 not "does not exist".

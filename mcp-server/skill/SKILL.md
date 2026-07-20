@@ -1,7 +1,7 @@
 ---
-name: symbiosika-wiki
+name: company-wiki
 description: >
-  Firmenwissen & internes Wiki (Symbiosika-Wiki-MCP). Use whenever the user asks
+  Firmenwissen & internes Wiki (Firmen-Wiki-MCP-Connector). Use whenever the user asks
   about the COMPANY or anything internal that would live in the wiki — e.g. "how do
   we do X", onboarding, processes, guidelines, policies, product/spec/architecture
   docs, handbook, team knowledge, decisions, who owns what, "where is the doc for…".
@@ -12,7 +12,7 @@ description: >
   reach for the wiki BEFORE answering from general knowledge or the web.
 ---
 
-# Symbiosika Wiki — das Firmengehirn
+# Firmen-Wiki — das Firmengehirn
 
 Das Wiki ist die **Quelle der Wahrheit für internes Firmenwissen**. Es hängt als
 MCP-Connector an claude.ai und liefert Tools, um Wissen zu **finden, zu lesen und
