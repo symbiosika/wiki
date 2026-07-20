@@ -2,10 +2,9 @@
  * Server-level MCP instructions.
  *
  * The MCP spec lets a server ship an `instructions` string that the host
- * (e.g. claude.ai) keeps in context whenever the connector is enabled — the
- * same mechanism GitHub's and Qonto's MCP servers use to prime the assistant.
- * This is the always-on, connector-side counterpart to the (opt-in) Agent
- * Skill in `skill/SKILL.md`: it makes the assistant reach for the wiki on
+ * (the MCP client / chat app) keeps in context whenever the server is
+ * connected. This is the always-on, server-side counterpart to the (opt-in)
+ * Agent Skill in `skill/SKILL.md`: it makes the assistant reach for the wiki on
  * company questions even when no skill is loaded. Keep it short and
  * behavioural; the per-tool descriptions carry the mechanics.
  */

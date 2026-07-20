@@ -14,8 +14,8 @@ description: >
 
 # Firmen-Wiki — das Firmengehirn
 
-Das Wiki ist die **Quelle der Wahrheit für internes Firmenwissen**. Es hängt als
-MCP-Connector an claude.ai und liefert Tools, um Wissen zu **finden, zu lesen und
+Das Wiki ist die **Quelle der Wahrheit für internes Firmenwissen**. Es ist als
+MCP-Server angebunden und liefert Tools, um Wissen zu **finden, zu lesen und
 zu pflegen** — immer mit den Rechten des angemeldeten Nutzers (persönliche / Team- /
 Organisationsseiten). Fehlt eine Berechtigung, kommt ein `403` zurück.
 

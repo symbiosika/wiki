@@ -31,8 +31,8 @@ import { SERVER_INSTRUCTIONS } from "./instructions.ts";
 import pkg from "../package.json";
 
 // ── MCP server + tools ───────────────────────────────────────────────────────
-// `instructions` prime the host (e.g. claude.ai) to reach for the wiki on
-// company questions whenever the connector is enabled — see ./instructions.ts.
+// `instructions` prime the MCP host (chat client) to reach for the wiki on
+// company questions whenever the server is connected — see ./instructions.ts.
 const mcp = new McpServer(
   { name: "symbiosika-wiki-mcp", version: pkg.version },
   { instructions: SERVER_INSTRUCTIONS },
