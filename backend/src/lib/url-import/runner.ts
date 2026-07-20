@@ -32,6 +32,15 @@ export const URL_IMPORT_JOB_TYPE = "url-import-run";
 
 const nowIso = () => new Date().toISOString();
 
+/**
+ * Strip NUL (U+0000) bytes from text destined for a Postgres `text`/`varchar`
+ * column. Postgres cannot store the NUL byte ("invalid byte sequence for
+ * encoding UTF8: 0x00") and OCR output for scanned PDFs occasionally contains
+ * them, which otherwise aborts the whole insert. NUL carries no meaning in the
+ * extracted markdown, so removing it is non-lossy.
+ */
+const stripNulBytes = (value: string): string => value.replace(/\u0000/g, "");
+
 /** In-process guard so a run is never executed twice concurrently. */
 const executing = new Set<string>();
 
@@ -115,16 +124,38 @@ export const executeJobRun = async (runId: string): Promise<void> => {
     let succeeded = 0;
     let failed = 0;
 
+    // A run executes in the background on behalf of the tenant, not in a live
+    // user session. For team- or organisation-scoped jobs the imported page
+    // belongs to that team/tenant, so we write it as a service operation
+    // (userId omitted). Otherwise createKnowledgeText's per-user role check
+    // would abort the run with "User has not the required role" whenever the
+    // job's creator is not (or no longer) a member of the target team — a
+    // scheduled import must not depend on the creator's live membership.
+    // Personal-scoped jobs (no team, not tenant-wide) keep the creator as the
+    // page owner so the imported page stays visible to them.
+    const isSharedScope = job.tenantWide || !!job.teamId;
+    const ownerUserId = isSharedScope ? undefined : job.createdBy ?? undefined;
+
     for (const entry of urls) {
       try {
-        const parsed = await urlToMarkdown(entry.url);
+        // Pass the tenant context so non-HTML downloads (PDFs) can be routed
+        // through the tenant-scoped PDF parser instead of being rejected.
+        const parsed = await urlToMarkdown(entry.url, {
+          parseContext: {
+            tenantId: job.organisationId,
+            userId: job.createdBy ?? undefined,
+            teamId: job.teamId ?? undefined,
+          },
+        });
         const upsert = await upsertKnowledgeTextFromSource({
           tenantId: job.organisationId,
           sourceIdentifier: entry.url,
           matchScope: { urlImportJobId: job.id },
-          title: entry.title || parsed.title || entry.url,
-          text: parsed.markdown,
-          userId: job.createdBy ?? undefined,
+          // NUL bytes in OCR output would make the Postgres insert fail for the
+          // whole page; strip them from both fields before persisting.
+          title: stripNulBytes(entry.title || parsed.title || entry.url),
+          text: stripNulBytes(parsed.markdown),
+          userId: ownerUserId,
           teamId: job.teamId ?? undefined,
           tenantWide: job.tenantWide,
           parentId: job.parentId ?? undefined,
