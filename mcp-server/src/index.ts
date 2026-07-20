@@ -27,10 +27,16 @@ import {
 } from "./config.ts";
 import { authenticate, unauthorized } from "./auth.ts";
 import { registerAllTools } from "./tools/index.ts";
+import { SERVER_INSTRUCTIONS } from "./instructions.ts";
 import pkg from "../package.json";
 
 // ── MCP server + tools ───────────────────────────────────────────────────────
-const mcp = new McpServer({ name: "symbiosika-wiki-mcp", version: pkg.version });
+// `instructions` prime the MCP host (chat client) to reach for the wiki on
+// company questions whenever the server is connected — see ./instructions.ts.
+const mcp = new McpServer(
+  { name: "symbiosika-wiki-mcp", version: pkg.version },
+  { instructions: SERVER_INSTRUCTIONS },
+);
 registerAllTools(mcp);
 
 // Stateless transport with JSON responses.
