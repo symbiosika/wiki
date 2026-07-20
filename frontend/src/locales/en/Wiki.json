@@ -86,5 +86,7 @@
   "goHome": "Go to home",
   "switchTenant": "Switch organisation",
   "collapseSidebar": "Hide sidebar",
-  "expandSidebar": "Show sidebar"
+  "expandSidebar": "Show sidebar",
+  "expandActions": "Show more actions",
+  "collapseActions": "Hide more actions"
 }
