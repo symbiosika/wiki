@@ -88,6 +88,43 @@
       />
     </div>
 
+    <!--
+      Read-only / edit mode indicator.
+
+      Sits right under the search so the current mode is always visible above
+      the (scrolling) tree. Read-only is the default, "safe" state, so it is
+      deliberately loud — a filled primary bar reading "Read-only mode" — and
+      is easy to spot and click. Once editing, it turns into a quiet, border-
+      only chip so it stops competing for attention while you work.
+    -->
+    <div class="px-3 pb-2">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+        :class="
+          readOnly.readOnly
+            ? 'bg-primary font-semibold text-primary-contrast hover:bg-primary-emphasis'
+            : 'border border-surface-200 text-surface-500 hover:bg-surface-100 hover:text-surface-700 dark:border-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200'
+        "
+        :title="
+          readOnly.readOnly
+            ? $t('Wiki.readonly.enableEditing')
+            : $t('Wiki.readonly.enableReadOnly')
+        "
+        @click="readOnly.toggle()"
+      >
+        <IconLock v-if="readOnly.readOnly" class="h-4 w-4 shrink-0" />
+        <IconPencil v-else class="h-4 w-4 shrink-0" />
+        <span class="flex-1 text-left">
+          {{
+            readOnly.readOnly
+              ? $t('Wiki.readonly.readOnlyMode')
+              : $t('Wiki.readonly.editMode')
+          }}
+        </span>
+      </button>
+    </div>
+
     <!-- search results -->
     <div
       v-if="searchQuery.trim()"
@@ -204,33 +241,6 @@
 
     <!-- actions: pinned above the user footer -->
     <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
-      <!-- global read-only mode toggle -->
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-        :class="
-          readOnly.readOnly
-            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-            : 'text-primary hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800'
-        "
-        :title="
-          readOnly.readOnly
-            ? $t('Wiki.readonly.enableEditing')
-            : $t('Wiki.readonly.enableReadOnly')
-        "
-        @click="readOnly.toggle()"
-      >
-        <IconLock v-if="readOnly.readOnly" class="h-4 w-4" />
-        <IconPencil v-else class="h-4 w-4" />
-        <span class="flex-1 text-left">
-          {{
-            readOnly.readOnly
-              ? $t('Wiki.readonly.readOnly')
-              : $t('Wiki.readonly.editing')
-          }}
-        </span>
-      </button>
-
       <!-- record daily protocol -->
       <button
         type="button"
@@ -446,6 +456,10 @@ watch(
 
 const createPage = async (scope: WikiScope, parentId?: string) => {
   const page = await wiki.createPage(tenantId.value, scope, { parentId })
+  // A brand-new page is empty and exists to be written in, so drop out of the
+  // (default) global read-only mode and open it ready to edit — otherwise the
+  // user lands on a locked, blank page and has to hunt for the mode toggle.
+  readOnly.setReadOnly(false)
   if (parentId) {
     expandedIds.value = new Set([...expandedIds.value, parentId])
   }
