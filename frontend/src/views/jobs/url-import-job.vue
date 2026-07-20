@@ -142,6 +142,14 @@
                 {{ u.url }}
               </div>
               <div
+                v-if="u.subPath && u.subPath.length"
+                class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-500 dark:text-surface-400"
+                :title="u.subPath.join(' / ')"
+              >
+                <IconFolder class="shrink-0" />
+                <span class="truncate">{{ u.subPath.join(' / ') }}</span>
+              </div>
+              <div
                 v-if="u.status === 'error' && u.lastError"
                 class="mt-0.5 truncate text-xs text-red-500"
                 :title="u.lastError"
@@ -295,6 +303,7 @@
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import IconPlay from '~icons/mdi/play'
+import IconFolder from '~icons/mdi/folder-outline'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
@@ -306,6 +315,11 @@ import {
   buildScopeOptions,
 } from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
+import {
+  parseUrlLines,
+  urlLinesToText,
+  type ParsedUrlLine,
+} from '@/utils/urlImportLines'
 import type {
   UrlImportJob,
   UrlImportJobUrl,
@@ -375,25 +389,14 @@ const runStatusDot = (status: UrlImportRunStatus) => {
   }
 }
 
-/** Serialize a URL row to a "url" or "url | title" editor line. */
+/** Serialize the saved URL rows into editor lines. */
 const urlsToText = (list: UrlImportJobUrl[]) =>
-  list.map((u) => (u.title ? `${u.url} | ${u.title}` : u.url)).join('\n')
+  urlLinesToText(
+    list.map((u) => ({ url: u.url, title: u.title, subPath: u.subPath })),
+  )
 
-/** Parse editor lines back into {url, title} entries. */
-const parseUrlText = (text: string): { url: string; title?: string | null }[] =>
-  text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const sep = line.indexOf('|')
-      if (sep === -1) return { url: line }
-      return {
-        url: line.slice(0, sep).trim(),
-        title: line.slice(sep + 1).trim() || null,
-      }
-    })
-    .filter((entry) => entry.url.length > 0)
+/** Parse editor lines back into structured {url, title, subPath} entries. */
+const parseUrlText = (text: string): ParsedUrlLine[] => parseUrlLines(text)
 
 const settingsChanged = computed(
   () =>

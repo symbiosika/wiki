@@ -49,7 +49,7 @@ export const useUrlImportJobs = defineStore('urlImportJobs', () => {
   const setUrls = (
     tenantId: string,
     jobId: string,
-    urls: { url: string; title?: string | null }[],
+    urls: { url: string; title?: string | null; subPath?: string[] }[],
   ) =>
     fetcher.put<UrlImportJobUrl[]>(`${api(tenantId)}/${jobId}/urls`, { urls })
 

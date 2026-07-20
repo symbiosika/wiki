@@ -68,13 +68,26 @@ describe("URL import job routes", () => {
       {
         urls: [
           { url: "https://example.com/a" },
-          { url: "https://example.com/b", title: "B" },
+          {
+            url: "https://example.com/b",
+            title: "B",
+            subPath: ["Docs", "API Reference"],
+          },
           { url: "https://example.com/a" }, // duplicate ignored
         ],
       },
     );
     expect(urlsRes.status).toBe(200);
     expect(urlsRes.jsonResponse.length).toBe(2);
+    // subPath is persisted and round-tripped
+    const rowB = urlsRes.jsonResponse.find(
+      (u: any) => u.url === "https://example.com/b",
+    );
+    expect(rowB.subPath).toEqual(["Docs", "API Reference"]);
+    const rowA = urlsRes.jsonResponse.find(
+      (u: any) => u.url === "https://example.com/a",
+    );
+    expect(rowA.subPath).toEqual([]);
 
     // get job detail
     const detail = await testFetcher.get(app, `${jobsPath}/${jobId}`, token);
