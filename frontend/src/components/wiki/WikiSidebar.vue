@@ -256,7 +256,7 @@
       <!-- record daily protocol -->
       <button
         type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-contrast transition-colors hover:bg-primary-emphasis lg:py-2"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
         @click="protocol.openDialog()"
       >
         <IconMicrophone class="h-4 w-4" />
@@ -266,7 +266,7 @@
       <!-- import a page from a file or URL -->
       <button
         type="button"
-        class="flex w-full items-center justify-center gap-2 rounded-md border border-surface-200 px-3 py-2.5 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 active:bg-surface-100 lg:py-2 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
         @click="wiki.openImportDialog()"
       >
         <IconUpload class="h-4 w-4" />
