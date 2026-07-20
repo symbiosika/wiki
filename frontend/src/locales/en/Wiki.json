@@ -57,6 +57,8 @@
   },
   "readonly": {
     "readOnly": "Read only",
+    "readOnlyMode": "Read-only mode",
+    "editMode": "Edit mode",
     "editing": "Editing",
     "locked": "Locked",
     "lockedBy": "Being edited by {name}",
