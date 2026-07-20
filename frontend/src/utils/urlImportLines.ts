@@ -51,8 +51,9 @@ export const parseUrlLine = (raw: string): ParsedUrlLine | null => {
   // (, / ;) can appear in any order; the last of each kind wins.
   let title: string | null = null
   let subPath: string[] = []
-  const tokens = line.slice(first).matchAll(/([|,;])([^|,;]*)/g)
-  for (const [, delim, value] of tokens) {
+  for (const match of line.slice(first).matchAll(/([|,;])([^|,;]*)/g)) {
+    const delim = match[1]
+    const value = match[2] ?? ''
     if (delim === '|') title = value.trim() || null
     else subPath = splitSubPath(value)
   }
