@@ -79,7 +79,7 @@ function renderEmail({
   const resolvedLogo = logoUrl ?? `${normalizedBase}/favicon.png`;
 
   const logoHtml = resolvedLogo
-    ? `<img src="${resolvedLogo}" alt="${appName}" style="max-width: 160px; height: auto; margin: 0 auto 28px; display: block;" />`
+    ? `<img src="${resolvedLogo}" alt="${appName}" width="76" style="max-width: 76px; max-height: 76px; height: auto; margin: 0 auto 28px; display: block;" />`
     : "";
 
   const codeHtml = code
