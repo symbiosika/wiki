@@ -372,21 +372,21 @@
         :title="
           footerExpanded ? $t('Wiki.collapseActions') : $t('Wiki.expandActions')
         "
-        class="flex w-full items-center justify-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
+        class="relative flex w-full items-center justify-center px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
         @click="toggleFooterExpanded"
       >
+        <IconChevronUp
+          class="h-4 w-4 shrink-0 transition-transform"
+          :class="{ 'rotate-180': footerExpanded }"
+        />
         <span
           v-if="!footerExpanded && notifications.unreadCount > 0"
-          class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
+          class="absolute top-1 right-3 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
         >
           {{
             notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
           }}
         </span>
-        <IconChevronUp
-          class="h-4 w-4 shrink-0 transition-transform"
-          :class="{ 'rotate-180': footerExpanded }"
-        />
       </button>
     </div>
   </aside>
