@@ -75,6 +75,18 @@
       </template>
     </Menu>
 
+    <!-- Chat with AI: sits above the search as the primary entry point -->
+    <div class="px-3 pt-1 pb-1">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-contrast transition-colors hover:bg-primary-emphasis"
+        @click="aiChat.open()"
+      >
+        <IconChat class="h-4 w-4 shrink-0" />
+        <span class="flex-1 text-left">{{ $t('Chat.chatWithAi') }}</span>
+      </button>
+    </div>
+
     <!-- search -->
     <div class="relative px-3 py-2">
       <IconMagnify
@@ -360,6 +372,7 @@
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
 import IconMagnify from '~icons/mdi/magnify'
+import IconChat from '~icons/mdi/robot-happy-outline'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconJobs from '~icons/mdi/calendar-sync-outline'
@@ -380,6 +393,7 @@ const auth = useAuthStore()
 const wiki = useWiki()
 const notifications = useNotificationsStore()
 const readOnly = useReadOnly()
+const aiChat = useAiChat()
 const layout = useLayout()
 const route = useRoute()
 const router = useRouter()

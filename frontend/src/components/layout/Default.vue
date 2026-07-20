@@ -63,6 +63,9 @@
       v-model:visible="wiki.state.importDialogOpen"
       :tenant-id="tenantId"
     />
+
+    <!-- mounted once; opened from the "Chat with AI" button above the search -->
+    <WikiAiChat v-if="showSidebar" />
   </div>
 </template>
 
@@ -70,6 +73,7 @@
 import IconPanelLeft from '~icons/mdi/dock-left'
 import ProtocolDialog from '@/components/protocol/ProtocolDialog.vue'
 import WikiImportDialog from '@/components/wiki/WikiImportDialog.vue'
+import WikiAiChat from '@/components/wiki/WikiAiChat.vue'
 
 const route = useRoute()
 const protocol = useProtocol()
