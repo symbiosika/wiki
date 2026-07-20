@@ -6,8 +6,7 @@
     class="w-[540px] max-w-[92vw]"
     @hide="reset"
   >
-    <!-- Step: input -->
-    <div v-if="step === 'input'" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4">
       <!-- source toggle -->
       <div class="flex gap-2">
         <SecondaryButton
@@ -124,71 +123,39 @@
         <Checkbox v-model="splitIntoBlocks" binary />
         {{ $t('Wiki.import.splitIntoBlocks') }}
       </label>
-    </div>
 
-    <!-- Step: processing -->
-    <div
-      v-else-if="step === 'processing'"
-      class="flex flex-col items-center gap-4 py-10 text-center"
-    >
-      <span
-        class="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+      <!-- background-job hint: imports no longer block, they run as a job -->
+      <p
+        class="flex items-start gap-2 rounded-md bg-surface-100 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
       >
-        <IconImport class="h-7 w-7 animate-pulse text-primary" />
-      </span>
-      <div class="flex flex-col items-center gap-1">
-        <span
-          class="text-sm font-medium text-surface-800 dark:text-surface-100"
-        >
-          {{ $t('Wiki.import.processing') }}
-        </span>
-        <span
-          v-if="sourceLabel"
-          class="max-w-[22rem] truncate text-xs text-surface-500 dark:text-surface-400"
-        >
-          {{ sourceLabel }}
-        </span>
-      </div>
-      <!-- indeterminate progress bar -->
-      <div
-        class="h-1 w-48 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700"
-      >
-        <div class="import-bar h-full w-1/3 rounded-full bg-primary" />
-      </div>
-      <span class="text-xs text-surface-400 dark:text-surface-500">
-        {{
-          postProcessorValue
-            ? $t('Wiki.import.processingHintAi')
-            : $t('Wiki.import.processingHint')
-        }}
-      </span>
+        <IconInbox class="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{{ $t('Wiki.import.jobHint') }}</span>
+      </p>
     </div>
 
     <template #footer>
-      <template v-if="step === 'input'">
-        <SecondaryButton
-          :label="$t('Common.cancel')"
-          size="small"
-          @click="visible = false"
-        />
-        <Button
-          :label="$t('Wiki.import.submit')"
-          size="small"
-          :disabled="!canSubmit"
-          @click="submit"
-        />
-      </template>
+      <SecondaryButton
+        :label="$t('Common.cancel')"
+        size="small"
+        @click="visible = false"
+      />
+      <Button
+        :label="$t('Wiki.import.submit')"
+        size="small"
+        :disabled="!canSubmit || submitting"
+        @click="submit"
+      />
     </template>
   </Dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import IconUpload from '~icons/mdi/tray-arrow-up'
-import IconImport from '~icons/mdi/file-import-outline'
+import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
@@ -199,7 +166,6 @@ const visible = defineModel<boolean>('visible', { required: true })
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 const toast = useToast()
 const wiki = useWiki()
 const agentsStore = usePostProcessingAgents()
@@ -208,14 +174,13 @@ const agentsStore = usePostProcessingAgents()
 const FILE_ACCEPT =
   '.md,.markdown,.txt,.html,.htm,.pdf,.doc,.docx,text/markdown,text/plain,text/html,application/pdf'
 
-type Step = 'input' | 'processing'
-const step = ref<Step>('input')
 const mode = ref<'file' | 'url'>('file')
 const file = ref<File | null>(null)
 const url = ref('')
 const title = ref('')
 const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
+const submitting = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // AI post-processing: '' = none, otherwise the agent id (sent as agent:<id>)
@@ -293,11 +258,6 @@ const canSubmit = computed(() =>
   mode.value === 'file' ? !!file.value : url.value.trim().length > 0,
 )
 
-/** Human-readable source shown in the processing view. */
-const sourceLabel = computed(() =>
-  mode.value === 'file' ? (file.value?.name ?? '') : url.value.trim(),
-)
-
 const onFileSelected = (event: Event) => {
   const input = event.target as HTMLInputElement
   file.value = input.files?.[0] ?? null
@@ -309,37 +269,41 @@ const onDrop = (event: DragEvent) => {
   if (dropped) file.value = dropped
 }
 
+/**
+ * Enqueue the import as a background job. Ingestion (especially PDFs and large
+ * pages) can take minutes, so we no longer wait for the finished page: the job
+ * runs on the queue and pushes a completion message into the inbox
+ * (`notifyOnCompletion`). We just confirm it started and close.
+ */
 const submit = async () => {
-  if (!canSubmit.value) return
-  step.value = 'processing'
+  if (!canSubmit.value || submitting.value) return
+  submitting.value = true
   const options = {
     title: title.value.trim() || undefined,
     splitIntoBlocks: splitIntoBlocks.value,
     parentId: parentId.value,
     postProcessorNames: postProcessorNames.value,
+    notifyOnCompletion: true,
   }
   try {
-    const page =
-      mode.value === 'file'
-        ? await wiki.importFile(
-            props.tenantId,
-            scope.value,
-            file.value!,
-            options,
-          )
-        : await wiki.importUrl(
-            props.tenantId,
-            scope.value,
-            url.value.trim(),
-            options,
-          )
+    if (mode.value === 'file') {
+      await wiki.importFile(props.tenantId, scope.value, file.value!, options)
+    } else {
+      await wiki.importUrl(
+        props.tenantId,
+        scope.value,
+        url.value.trim(),
+        options,
+      )
+    }
     visible.value = false
-    router.push({
-      name: 'WikiPage',
-      params: { tenantId: props.tenantId, pageId: page.id },
+    toast.add({
+      severity: 'info',
+      summary: t('Wiki.import.started'),
+      detail: t('Wiki.import.startedDetail'),
+      life: 5000,
     })
   } catch (error) {
-    step.value = 'input'
     const detail =
       error instanceof FetcherError && error.body
         ? error.body
@@ -350,11 +314,12 @@ const submit = async () => {
       detail,
       life: 5000,
     })
+  } finally {
+    submitting.value = false
   }
 }
 
 const reset = () => {
-  step.value = 'input'
   mode.value = 'file'
   file.value = null
   url.value = ''
@@ -363,6 +328,7 @@ const reset = () => {
   scopeValue.value = 'personal'
   postProcessorValue.value = ''
   dragOver.value = false
+  submitting.value = false
 }
 
 // On open, default to nesting under the page the user just had selected and
@@ -375,23 +341,3 @@ watch(visible, (open) => {
   }
 })
 </script>
-
-<style scoped>
-/* indeterminate progress bar for the import processing view */
-.import-bar {
-  animation: import-slide 1.1s ease-in-out infinite;
-}
-@keyframes import-slide {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(360%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .import-bar {
-    animation: none;
-  }
-}
-</style>

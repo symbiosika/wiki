@@ -57,6 +57,7 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const pageOptionsForScope: typeof import('./utils/wikiTreeOptions').pageOptionsForScope
   const prefersDark: typeof import('./utils/theme').prefersDark
   const provide: typeof import('vue').provide
   const ptViewMerge: typeof import('./volt/utils').ptViewMerge
@@ -66,6 +67,7 @@ declare global {
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveDark: typeof import('./utils/theme').resolveDark
+  const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
@@ -117,8 +119,11 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
-  export type { WikiImportOptions, WikiImageUpload } from './stores/wiki'
+  export type { WikiImportOptions, IngestJob, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
+  // @ts-ignore
+  export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
+  import('./types/notifications')
   // @ts-ignore
   export type { OAuthClient, OAuthClientInput, OAuthClientCreated } from './types/oauthClients'
   import('./types/oauthClients')
@@ -143,4 +148,7 @@ declare global {
   // @ts-ignore
   export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
   import('./utils/wikiPdf')
+  // @ts-ignore
+  export type { PageOption } from './utils/wikiTreeOptions'
+  import('./utils/wikiTreeOptions')
 }

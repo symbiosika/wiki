@@ -75,6 +75,7 @@ const route = useRoute()
 const protocol = useProtocol()
 const wiki = useWiki()
 const layout = useLayout()
+const notifications = useNotificationsStore()
 
 // the sidebar needs a tenant context; plain routes (redirect, 404) go without
 const showSidebar = computed(() => Boolean(route.params.tenantId))
@@ -86,4 +87,9 @@ watch(
   () => route.fullPath,
   () => layout.closeSidebar(),
 )
+
+// Poll the user notification queue while the app is open, so job completions
+// (e.g. finished imports) surface in the inbox and the sidebar chip.
+onMounted(() => notifications.startPolling())
+onUnmounted(() => notifications.stopPolling())
 </script>
