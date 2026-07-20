@@ -381,7 +381,7 @@
         />
         <span
           v-if="!footerExpanded && notifications.unreadCount > 0"
-          class="absolute top-1 right-3 flex items-center"
+          class="absolute top-2.5 right-3 flex items-center"
         >
           <span class="relative flex items-center justify-center">
             <IconInbox class="h-4 w-4" />
