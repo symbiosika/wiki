@@ -9,6 +9,8 @@
     "namePlaceholder": "z. B. Nachrichtenquellen",
     "schedule": "Zeitplan",
     "scope": "Wo die importierten Seiten liegen",
+    "scopeColumn": "Bereich",
+    "underPage": "unter „{page}“",
     "parentPage": "Hauptseite",
     "parentPageNone": "Keine (oberste Ebene)",
     "parentPageEmpty": "Keine Seiten in diesem Bereich",

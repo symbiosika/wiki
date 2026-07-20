@@ -52,3 +52,65 @@ export const scopeFromFlags = (flags: {
     : flags.tenantWide
       ? 'organisation'
       : 'personal'
+
+/** Turn a scope string back into the team/tenant flags a job stores. */
+export const flagsFromScope = (
+  scope: string,
+): { teamId: string | null; tenantWide: boolean } => ({
+  tenantWide: scope === 'organisation',
+  teamId: scope.startsWith('team:') ? scope.slice('team:'.length) : null,
+})
+
+interface ScopeLabels {
+  organisation: string
+  personal: string
+  team: string
+}
+
+/** Build the scope <Select> options (organisation / personal / team:<id>). */
+export const buildScopeOptions = (
+  teams: { id: string; name: string }[],
+  labels: ScopeLabels,
+): PageOption[] => [
+  { label: labels.organisation, value: 'organisation' },
+  { label: labels.personal, value: 'personal' },
+  ...teams.map((team) => ({
+    label: `${labels.team}: ${team.name}`,
+    value: `team:${team.id}`,
+  })),
+]
+
+/** Human-readable label for a job's current scope. */
+export const scopeLabel = (
+  flags: { teamId: string | null; tenantWide: boolean },
+  teams: { id: string; name: string }[],
+  labels: ScopeLabels,
+): string => {
+  if (flags.teamId) {
+    const team = teams.find((t) => t.id === flags.teamId)
+    return `${labels.team}: ${team?.name ?? flags.teamId}`
+  }
+  return flags.tenantWide ? labels.organisation : labels.personal
+}
+
+/** Find a page's title anywhere in the tree by id (searches all scopes). */
+export const findPageTitle = (tree: WikiTree, id: string): string | null => {
+  const search = (nodes: WikiTreeNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node.title?.trim() || null
+      if (node.children?.length) {
+        const found = search(node.children)
+        if (found !== null) return found
+      }
+    }
+    return null
+  }
+  return (
+    search(tree.organisation) ??
+    search(tree.personal) ??
+    tree.teams.reduce<string | null>(
+      (acc, team) => acc ?? search(team.pages),
+      null,
+    )
+  )
+}

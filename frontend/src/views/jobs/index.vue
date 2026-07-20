@@ -53,6 +53,24 @@
           </div>
         </template>
       </Column>
+      <Column :header="$t('Jobs.urlImport.scopeColumn')">
+        <template #body="{ data }">
+          <div class="flex flex-col">
+            <span class="text-xs text-surface-700 dark:text-surface-200">
+              {{ jobScopeLabel(data) }}
+            </span>
+            <span
+              v-if="data.parentId"
+              class="text-xs text-surface-400 dark:text-surface-500"
+            >
+              {{ $t('Jobs.urlImport.underPage', { page: parentTitle(data) }) }}
+            </span>
+            <span v-else class="text-xs text-surface-400 dark:text-surface-500">
+              {{ $t('Jobs.urlImport.parentPageNone') }}
+            </span>
+          </div>
+        </template>
+      </Column>
       <Column :header="$t('Jobs.urlImport.schedule')">
         <template #body="{ data }">
           <code class="text-xs text-surface-600 dark:text-surface-300">
@@ -175,9 +193,14 @@ import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
 import { useWiki } from '@/stores/wiki'
-import { pageOptionsForScope } from '@/utils/wikiTreeOptions'
+import {
+  pageOptionsForScope,
+  buildScopeOptions,
+  scopeLabel,
+  findPageTitle,
+} from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
-import type { UrlImportRunStatus } from '@/types/urlImport'
+import type { UrlImportJob, UrlImportRunStatus } from '@/types/urlImport'
 
 const route = useRoute()
 const router = useRouter()
@@ -228,14 +251,21 @@ const form = ref<{
   parentId: string | null
 }>({ name: '', cron: '0 6 * * *', scope: 'organisation', parentId: null })
 
-const scopeOptions = computed(() => [
-  { label: t('Wiki.scope.organisation'), value: 'organisation' },
-  { label: t('Wiki.scope.personal'), value: 'personal' },
-  ...app.state.teams.map((team) => ({
-    label: `${t('Wiki.scope.team')}: ${team.name}`,
-    value: `team:${team.id}`,
-  })),
-])
+const scopeLabels = computed(() => ({
+  organisation: t('Wiki.scope.organisation'),
+  personal: t('Wiki.scope.personal'),
+  team: t('Wiki.scope.team'),
+}))
+
+const scopeOptions = computed(() =>
+  buildScopeOptions(app.state.teams, scopeLabels.value),
+)
+
+const jobScopeLabel = (job: UrlImportJob) =>
+  scopeLabel(job, app.state.teams, scopeLabels.value)
+
+const parentTitle = (job: UrlImportJob) =>
+  (job.parentId && findPageTitle(wiki.state.tree, job.parentId)) || '—'
 
 // parent pages available for the currently selected scope
 const parentOptions = computed(() =>
