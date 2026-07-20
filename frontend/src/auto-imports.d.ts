@@ -79,6 +79,7 @@ declare global {
   const toValue: typeof import('vue').toValue
   const triggerRef: typeof import('vue').triggerRef
   const unref: typeof import('vue').unref
+  const useAiChat: typeof import('./stores/aiChat').useAiChat
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
@@ -112,6 +113,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { AiChatMode } from './stores/aiChat'
+  import('./stores/aiChat')
   // @ts-ignore
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
   import('./stores/documentAssistant')

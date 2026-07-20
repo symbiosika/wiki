@@ -47,6 +47,8 @@ declare module 'vue' {
     Textarea: typeof import('./volt/Textarea.vue')['default']
     Toast: typeof import('./volt/Toast.vue')['default']
     ToggleButton: typeof import('./volt/ToggleButton.vue')['default']
+    ToolCallCard: typeof import('./components/wiki/ToolCallCard.vue')['default']
+    WikiAiChat: typeof import('./components/wiki/WikiAiChat.vue')['default']
     WikiImportDialog: typeof import('./components/wiki/WikiImportDialog.vue')['default']
     WikiLinkMenu: typeof import('./components/editor/WikiLinkMenu.vue')['default']
     WikiReferences: typeof import('./components/wiki/WikiReferences.vue')['default']

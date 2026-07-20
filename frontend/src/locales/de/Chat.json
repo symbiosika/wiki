@@ -1,8 +1,35 @@
 {
   "title": "AI-Chat",
-  "subtitle": "Chatte mit Mistral Large",
+  "subtitle": "Chatte mit der KI",
+  "chatWithAi": "Chat mit KI",
+  "wikiSubtitle": "Wissen im Wiki abfragen",
   "noMessages": "Starte eine Unterhaltung…",
+  "emptyTitle": "Frag die KI zu deinem Wiki",
+  "emptyHint": "Stelle eine Frage – die KI durchsucht das Wiki und antwortet mit Quellen.",
   "inputPlaceholder": "Nachricht schreiben…",
   "send": "Senden",
-  "openChat": "Chat öffnen"
+  "stop": "Stopp",
+  "close": "Schließen",
+  "clear": "Unterhaltung leeren",
+  "openChat": "Chat öffnen",
+  "error": "Es ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+  "toolInput": "Eingabe",
+  "toolOutput": "Ergebnis",
+  "toolError": "Fehler",
+  "mode": {
+    "read": "Nur lesen",
+    "edit": "Bearbeiten",
+    "readTitle": "Nur-Lese-Modus – zum Bearbeiten wechseln",
+    "editTitle": "Bearbeiten erlaubt – zurück zu Nur-Lese wechseln"
+  },
+  "tools": {
+    "search_wiki": "Wiki durchsuchen",
+    "list_wiki_pages": "Seiten auflisten",
+    "read_wiki_page": "Seite lesen",
+    "get_related_wiki_pages": "Verwandte Seiten finden",
+    "create_wiki_page": "Seite erstellen",
+    "edit_wiki_page_content": "Seiteninhalt bearbeiten",
+    "update_wiki_page": "Seite aktualisieren",
+    "delete_wiki_page": "Seite löschen"
+  }
 }
