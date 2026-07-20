@@ -1,0 +1,14 @@
+{
+  "menu": "Posteingang",
+  "title": "Posteingang",
+  "subtitle": "Fertige Importe und Hintergrund-Jobs landen hier. Hake sie ab, wenn du fertig bist.",
+  "empty": "Alles erledigt — nichts zum Abhaken.",
+  "confirmAll": "Alle als gelesen markieren",
+  "markRead": "Als gelesen markieren",
+  "open": "Seite öffnen",
+  "openError": "Die importierte Seite konnte nicht geöffnet werden.",
+  "ingest": {
+    "success": "Import abgeschlossen",
+    "failed": "Import fehlgeschlagen"
+  }
+}

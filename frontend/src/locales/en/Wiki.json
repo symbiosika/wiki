@@ -36,6 +36,9 @@
     "processingHint": "This can take a moment for PDFs and large web pages.",
     "processingHintAi": "AI post-processing can take several minutes for large documents.",
     "submit": "Import",
+    "jobHint": "The import runs in the background. You'll be notified in your inbox when it's ready.",
+    "started": "Import started",
+    "startedDetail": "You'll be notified in your inbox when it's done.",
     "error": "Import failed. Please try again."
   },
   "export": {
