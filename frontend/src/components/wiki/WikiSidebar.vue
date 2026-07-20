@@ -75,20 +75,8 @@
       </template>
     </Menu>
 
-    <!-- Chat with AI: sits above the search as the primary entry point -->
-    <div class="px-3 pt-1 pb-1">
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-contrast transition-colors hover:bg-primary-emphasis"
-        @click="aiChat.open()"
-      >
-        <IconChat class="h-4 w-4 shrink-0" />
-        <span class="flex-1 text-left">{{ $t('Chat.chatWithAi') }}</span>
-      </button>
-    </div>
-
     <!-- search -->
-    <div class="relative px-3 py-2">
+    <div class="relative px-3 py-2 pt-1">
       <IconMagnify
         class="pointer-events-none absolute top-1/2 left-5 h-4 w-4 -translate-y-1/2 text-surface-400"
       />
@@ -251,119 +239,154 @@
       </WikiSidebarSection>
     </nav>
 
-    <!-- actions: pinned above the user footer -->
-    <div class="flex flex-col gap-2 px-3 pt-2 pb-3">
-      <!-- record daily protocol -->
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-        @click="protocol.openDialog()"
-      >
-        <IconMicrophone class="h-4 w-4" />
-        {{ $t('Protocol.recordButton') }}
-      </button>
+    <!-- footer: actions + account, collapsed by default so the tree gets the space -->
+    <div class="border-t border-surface-200 dark:border-surface-800">
+      <div v-show="footerExpanded" class="flex flex-col gap-2 px-3 pt-2 pb-1">
+        <!-- open AI chat -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-contrast transition-colors hover:bg-primary-emphasis"
+          @click="aiChat.open()"
+        >
+          <IconChat class="h-4 w-4 shrink-0" />
+          <span class="flex-1 text-left">{{ $t('Chat.chatWithAi') }}</span>
+        </button>
 
-      <!-- import a page from a file or URL -->
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-        @click="wiki.openImportDialog()"
-      >
-        <IconUpload class="h-4 w-4" />
-        {{ $t('Wiki.import.button') }}
-      </button>
+        <!-- record daily protocol -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+          @click="protocol.openDialog()"
+        >
+          <IconMicrophone class="h-4 w-4" />
+          {{ $t('Protocol.recordButton') }}
+        </button>
 
-      <!-- jobs (scheduled automations) -->
+        <!-- import a page from a file or URL -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+          @click="wiki.openImportDialog()"
+        >
+          <IconUpload class="h-4 w-4" />
+          {{ $t('Wiki.import.button') }}
+        </button>
+
+        <!-- jobs (scheduled automations) -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          :class="
+            isJobsActive
+              ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+              : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+          "
+          @click="gotoJobs"
+        >
+          <IconJobs class="h-4 w-4" />
+          {{ $t('Jobs.menu') }}
+        </button>
+
+        <!-- inbox (user notification queue) with unread chip -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          :class="
+            isNotificationsActive
+              ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+              : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+          "
+          @click="gotoNotifications"
+        >
+          <IconInbox class="h-4 w-4" />
+          <span class="flex-1 text-left">{{ $t('Notifications.menu') }}</span>
+          <span
+            v-if="notifications.unreadCount > 0"
+            class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-contrast"
+          >
+            {{
+              notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
+            }}
+          </span>
+        </button>
+
+        <!-- account: set apart from the actions above by a divider -->
+        <div class="my-1 border-t border-surface-200 dark:border-surface-800" />
+
+        <button
+          type="button"
+          :title="$t('Profile.title')"
+          class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+          @click="gotoProfile"
+        >
+          <span
+            class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+            :class="
+              app.state.user?.profileImageName
+                ? 'bg-transparent'
+                : 'bg-primary text-primary-contrast'
+            "
+          >
+            <img
+              v-if="app.state.user?.profileImageName"
+              :src="profileImageUrl"
+              alt=""
+              class="h-full w-full object-cover"
+            />
+            <template v-else>{{ userInitials }}</template>
+          </span>
+          <span
+            class="min-w-0 flex-1 truncate text-sm text-surface-600 dark:text-surface-300"
+          >
+            {{ app.state.user?.email }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          class="relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+          @click="gotoManage"
+        >
+          <IconCog class="h-4 w-4" />
+          {{ $t('Wiki.manage') }}
+          <span
+            v-if="app.state.tenantInvitations.length > 0"
+            class="absolute top-1.5 left-6 h-2 w-2 rounded-full bg-primary"
+            :title="$t('UserTenants.invitations.openInvitations')"
+          />
+        </button>
+
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+          @click="auth.logout()"
+        >
+          <IconLogout class="h-4 w-4" />
+          {{ $t('Wiki.logout') }}
+        </button>
+      </div>
+
+      <!-- slide-out toggle: the only thing visible here by default -->
       <button
         type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-        :class="
-          isJobsActive
-            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-            : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
+        :title="
+          footerExpanded ? $t('Wiki.collapseActions') : $t('Wiki.expandActions')
         "
-        @click="gotoJobs"
+        class="relative flex w-full items-center justify-center px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
+        @click="toggleFooterExpanded"
       >
-        <IconJobs class="h-4 w-4" />
-        {{ $t('Jobs.menu') }}
-      </button>
-
-      <!-- inbox (user notification queue) with unread chip -->
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-        :class="
-          isNotificationsActive
-            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-            : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
-        "
-        @click="gotoNotifications"
-      >
-        <IconInbox class="h-4 w-4" />
-        <span class="flex-1 text-left">{{ $t('Notifications.menu') }}</span>
+        <IconChevronUp
+          class="h-4 w-4 transition-transform"
+          :class="{ 'rotate-180': footerExpanded }"
+        />
         <span
-          v-if="notifications.unreadCount > 0"
-          class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-contrast"
+          v-if="!footerExpanded && notifications.unreadCount > 0"
+          class="absolute top-1 right-1/2 mr-8 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
         >
           {{
             notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
           }}
         </span>
-      </button>
-    </div>
-
-    <!-- footer: user -->
-    <div
-      class="flex items-center gap-2 border-t border-surface-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-surface-800"
-    >
-      <button
-        type="button"
-        :title="$t('Profile.title')"
-        class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-        @click="gotoProfile"
-      >
-        <span
-          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
-          :class="
-            app.state.user?.profileImageName
-              ? 'bg-transparent'
-              : 'bg-primary text-primary-contrast'
-          "
-        >
-          <img
-            v-if="app.state.user?.profileImageName"
-            :src="profileImageUrl"
-            alt=""
-            class="h-full w-full object-cover"
-          />
-          <template v-else>{{ userInitials }}</template>
-        </span>
-        <span
-          class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-300"
-        >
-          {{ app.state.user?.email }}
-        </span>
-      </button>
-      <button
-        type="button"
-        :title="$t('Wiki.manage')"
-        class="relative flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 lg:h-7 lg:w-7 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
-        @click="gotoManage"
-      >
-        <IconCog class="h-4 w-4" />
-        <span
-          v-if="app.state.tenantInvitations.length > 0"
-          class="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary lg:top-0 lg:right-0"
-          :title="$t('UserTenants.invitations.openInvitations')"
-        />
-      </button>
-      <button
-        type="button"
-        :title="$t('Wiki.logout')"
-        class="flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 lg:h-7 lg:w-7 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
-        @click="auth.logout()"
-      >
-        <IconLogout class="h-4 w-4" />
       </button>
     </div>
   </aside>
@@ -383,6 +406,7 @@ import IconChevronDown from '~icons/mdi/chevron-down'
 import IconCheck from '~icons/mdi/check'
 import IconClose from '~icons/mdi/close'
 import IconPanelLeft from '~icons/mdi/dock-left'
+import IconChevronUp from '~icons/mdi/chevron-up'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import type { WikiScope, WikiSearchResult, WikiTreeNode } from '@/types/wiki'
@@ -435,6 +459,15 @@ const tenantMenuItems = computed(() =>
 
 const expandedIds = ref(new Set<string>())
 provide('wikiExpandedIds', expandedIds)
+
+// ----- footer: actions/account drawer, collapsed by default, persisted -----
+
+const FOOTER_EXPANDED_KEY = 'wiki:sidebar-footer-expanded'
+const footerExpanded = ref(localStorage.getItem(FOOTER_EXPANDED_KEY) === '1')
+const toggleFooterExpanded = () => {
+  footerExpanded.value = !footerExpanded.value
+  localStorage.setItem(FOOTER_EXPANDED_KEY, footerExpanded.value ? '1' : '0')
+}
 
 const collapsedSections = ref(new Set<string>())
 const toggleSection = (key: string) => {
