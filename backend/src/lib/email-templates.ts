@@ -140,143 +140,161 @@ function renderEmail({
 </html>`;
 }
 
-export const magicLink: EmailTemplateFunction = async (data) => ({
-  html: renderEmail({
-    appName: data.appName,
-    logoUrl: data.logoUrl,
-    baseUrl: data.baseUrl,
-    de: {
-      heading: `Bei ${data.appName} anmelden`,
-      paragraphs: [
-        "Klicken Sie auf den Button unten, um sich sicher anzumelden. Der Link ist 15 Minuten gültig.",
-      ],
-      note: "Falls Sie diese Anmeldung nicht angefordert haben, können Sie diese E-Mail ignorieren.",
-    },
-    en: {
-      heading: `Sign in to ${data.appName}`,
-      paragraphs: [
-        "Click the button above to securely sign in. The link is valid for 15 minutes.",
-      ],
-      note: "If you didn't request this, you can safely ignore this email.",
-    },
-    button: { link: data.link, text: "Jetzt anmelden / Sign in" },
-  }),
-  subject: `Ihr Login-Link für ${data.appName} / Your login link`,
-});
-
-export const emailLoginCode: EmailTemplateFunction = async (data) => ({
-  html: renderEmail({
-    appName: data.appName,
-    logoUrl: data.logoUrl,
-    baseUrl: data.baseUrl,
-    code: data.code ?? "",
-    de: {
-      heading: `Ihr Login-Code`,
-      paragraphs: [
-        "Verwenden Sie diesen Code, um die Anmeldung fortzusetzen. Er ist 10 Minuten gültig.",
-      ],
-      note: "Falls Sie diesen Code nicht angefordert haben, können Sie diese E-Mail ignorieren.",
-    },
-    en: {
-      heading: "Your login code",
-      paragraphs: [
-        "Use this code to continue signing in. It is valid for 10 minutes.",
-      ],
-      note: "If you didn't request this, you can safely ignore this email.",
-    },
-  }),
-  subject: `Ihr Login-Code für ${data.appName} / Your login code`,
-});
-
-export const verifyEmail: EmailTemplateFunction = async (data) => ({
-  html: renderEmail({
-    appName: data.appName,
-    logoUrl: data.logoUrl,
-    baseUrl: data.baseUrl,
-    de: {
-      heading: "E-Mail bestätigen",
-      paragraphs: [
-        "Klicken Sie auf den Button unten, um Ihre E-Mail-Adresse zu bestätigen. Der Link ist 15 Minuten gültig.",
-      ],
-      note: "Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren.",
-    },
-    en: {
-      heading: "Verify your email",
-      paragraphs: [
-        "Click the button above to confirm your email address. The link is valid for 15 minutes.",
-      ],
-      note: "If you didn't request this, you can safely ignore this email.",
-    },
-    button: { link: data.link, text: "E-Mail bestätigen / Verify email" },
-  }),
-  subject: `E-Mail-Bestätigung für ${data.appName} / Verify your email`,
-});
-
-export const resetPassword: EmailTemplateFunction = async (data) => ({
-  html: renderEmail({
-    appName: data.appName,
-    logoUrl: data.logoUrl,
-    baseUrl: data.baseUrl,
-    de: {
-      heading: "Passwort zurücksetzen",
-      paragraphs: [
-        "Klicken Sie auf den Button unten, um ein neues Passwort zu setzen. Der Link ist 15 Minuten gültig.",
-      ],
-      note: "Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren.",
-    },
-    en: {
-      heading: "Reset your password",
-      paragraphs: [
-        "Click the button above to set a new password. The link is valid for 15 minutes.",
-      ],
-      note: "If you didn't request this, you can safely ignore this email.",
-    },
-    button: { link: data.link, text: "Passwort zurücksetzen / Reset password" },
-  }),
-  subject: `Passwort zurücksetzen für ${data.appName} / Reset your password`,
-});
-
-export const resetPasswordWelcome: EmailTemplateFunction = async (data) => ({
-  html: renderEmail({
-    appName: data.appName,
-    logoUrl: data.logoUrl,
-    baseUrl: data.baseUrl,
-    de: {
-      heading: `Willkommen bei ${data.appName}`,
-      paragraphs: [
-        "Klicken Sie auf den Button unten, um Ihr Passwort zu setzen und loszulegen.",
-      ],
-    },
-    en: {
-      heading: `Welcome to ${data.appName}`,
-      paragraphs: ["Click the button above to set your password and get started."],
-    },
-    button: { link: data.link, text: "Passwort setzen / Set password" },
-  }),
-  subject: `Willkommen bei ${data.appName} / Welcome`,
-});
-
-export const inviteToOrganization: EmailTemplateFunction = async (data) => {
-  const orgName = data.tenant?.name;
+export const magicLink: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
   return {
     html: renderEmail({
-      appName: data.appName,
+      appName,
       logoUrl: data.logoUrl,
       baseUrl: data.baseUrl,
       de: {
-        heading: orgName ? `Einladung zu ${orgName}` : `Einladung zu ${data.appName}`,
+        heading: `Bei ${appName} anmelden`,
         paragraphs: [
-          orgName
-            ? `Sie wurden eingeladen, <strong>${orgName}</strong> auf ${data.appName} beizutreten. Klicken Sie auf den Button unten, um sich zu registrieren.`
-            : `Sie wurden eingeladen, ${data.appName} beizutreten. Klicken Sie auf den Button unten, um sich zu registrieren.`,
+          "Klicken Sie auf den Button unten, um sich sicher anzumelden. Der Link ist 15 Minuten gültig.",
+        ],
+        note: "Falls Sie diese Anmeldung nicht angefordert haben, können Sie diese E-Mail ignorieren.",
+      },
+      en: {
+        heading: `Sign in to ${appName}`,
+        paragraphs: [
+          "Click the button above to securely sign in. The link is valid for 15 minutes.",
+        ],
+        note: "If you didn't request this, you can safely ignore this email.",
+      },
+      button: { link: data.link, text: "Jetzt anmelden / Sign in" },
+    }),
+    subject: `Ihr Login-Link für ${appName} / Your login link`,
+  };
+};
+
+export const emailLoginCode: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
+  return {
+    html: renderEmail({
+      appName,
+      logoUrl: data.logoUrl,
+      baseUrl: data.baseUrl,
+      code: data.code ?? "",
+      de: {
+        heading: `Ihr Login-Code`,
+        paragraphs: [
+          "Verwenden Sie diesen Code, um die Anmeldung fortzusetzen. Er ist 10 Minuten gültig.",
+        ],
+        note: "Falls Sie diesen Code nicht angefordert haben, können Sie diese E-Mail ignorieren.",
+      },
+      en: {
+        heading: "Your login code",
+        paragraphs: [
+          "Use this code to continue signing in. It is valid for 10 minutes.",
+        ],
+        note: "If you didn't request this, you can safely ignore this email.",
+      },
+    }),
+    subject: `Ihr Login-Code für ${appName} / Your login code`,
+  };
+};
+
+export const verifyEmail: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
+  return {
+    html: renderEmail({
+      appName,
+      logoUrl: data.logoUrl,
+      baseUrl: data.baseUrl,
+      de: {
+        heading: "E-Mail bestätigen",
+        paragraphs: [
+          "Klicken Sie auf den Button unten, um Ihre E-Mail-Adresse zu bestätigen. Der Link ist 15 Minuten gültig.",
+        ],
+        note: "Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren.",
+      },
+      en: {
+        heading: "Verify your email",
+        paragraphs: [
+          "Click the button above to confirm your email address. The link is valid for 15 minutes.",
+        ],
+        note: "If you didn't request this, you can safely ignore this email.",
+      },
+      button: { link: data.link, text: "E-Mail bestätigen / Verify email" },
+    }),
+    subject: `E-Mail-Bestätigung für ${appName} / Verify your email`,
+  };
+};
+
+export const resetPassword: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
+  return {
+    html: renderEmail({
+      appName,
+      logoUrl: data.logoUrl,
+      baseUrl: data.baseUrl,
+      de: {
+        heading: "Passwort zurücksetzen",
+        paragraphs: [
+          "Klicken Sie auf den Button unten, um ein neues Passwort zu setzen. Der Link ist 15 Minuten gültig.",
+        ],
+        note: "Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren.",
+      },
+      en: {
+        heading: "Reset your password",
+        paragraphs: [
+          "Click the button above to set a new password. The link is valid for 15 minutes.",
+        ],
+        note: "If you didn't request this, you can safely ignore this email.",
+      },
+      button: { link: data.link, text: "Passwort zurücksetzen / Reset password" },
+    }),
+    subject: `Passwort zurücksetzen für ${appName} / Reset your password`,
+  };
+};
+
+export const resetPasswordWelcome: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
+  return {
+    html: renderEmail({
+      appName,
+      logoUrl: data.logoUrl,
+      baseUrl: data.baseUrl,
+      de: {
+        heading: `Willkommen bei ${appName}`,
+        paragraphs: [
+          "Klicken Sie auf den Button unten, um Ihr Passwort zu setzen und loszulegen.",
         ],
       },
       en: {
-        heading: orgName ? `Invitation to join ${orgName}` : `Invitation to join ${data.appName}`,
+        heading: `Welcome to ${appName}`,
+        paragraphs: [
+          "Click the button above to set your password and get started.",
+        ],
+      },
+      button: { link: data.link, text: "Passwort setzen / Set password" },
+    }),
+    subject: `Willkommen bei ${appName} / Welcome`,
+  };
+};
+
+export const inviteToOrganization: EmailTemplateFunction = async (data) => {
+  const appName = data.appName;
+  const orgName = data.tenant?.name;
+  return {
+    html: renderEmail({
+      appName,
+      logoUrl: data.logoUrl,
+      baseUrl: data.baseUrl,
+      de: {
+        heading: orgName ? `Einladung zu ${orgName}` : `Einladung zu ${appName}`,
         paragraphs: [
           orgName
-            ? `You've been invited to join <strong>${orgName}</strong> on ${data.appName}. Click the button above to register.`
-            : `You've been invited to join ${data.appName}. Click the button above to register.`,
+            ? `Sie wurden eingeladen, <strong>${orgName}</strong> auf ${appName} beizutreten. Klicken Sie auf den Button unten, um sich zu registrieren.`
+            : `Sie wurden eingeladen, ${appName} beizutreten. Klicken Sie auf den Button unten, um sich zu registrieren.`,
+        ],
+      },
+      en: {
+        heading: orgName ? `Invitation to join ${orgName}` : `Invitation to join ${appName}`,
+        paragraphs: [
+          orgName
+            ? `You've been invited to join <strong>${orgName}</strong> on ${appName}. Click the button above to register.`
+            : `You've been invited to join ${appName}. Click the button above to register.`,
         ],
       },
       button: { link: data.link, text: "Jetzt registrieren / Register" },
@@ -284,7 +302,7 @@ export const inviteToOrganization: EmailTemplateFunction = async (data) => {
     subject: truncateSubject(
       orgName
         ? `Einladung zu ${orgName} / Invitation to join ${orgName}`
-        : `Einladung zu ${data.appName} / Invitation to join`
+        : `Einladung zu ${appName} / Invitation to join`
     ),
   };
 };
@@ -292,18 +310,19 @@ export const inviteToOrganization: EmailTemplateFunction = async (data) => {
 export const inviteToOrganizationWhenUserExists: EmailTemplateFunction = async (
   data
 ) => {
+  const appName = data.appName;
   const orgName = data.tenant?.name;
   return {
     html: renderEmail({
-      appName: data.appName,
+      appName,
       logoUrl: data.logoUrl,
       baseUrl: data.baseUrl,
       de: {
         heading: orgName ? `Einladung zu ${orgName}` : "Sie wurden eingeladen",
         paragraphs: [
           orgName
-            ? `Sie wurden eingeladen, <strong>${orgName}</strong> auf ${data.appName} beizutreten. Klicken Sie auf den Button unten, um die Einladung anzunehmen. Der Link ist 7 Tage gültig.`
-            : `Sie wurden zu einer Organisation auf ${data.appName} eingeladen. Klicken Sie auf den Button unten, um die Einladung anzunehmen. Der Link ist 7 Tage gültig.`,
+            ? `Sie wurden eingeladen, <strong>${orgName}</strong> auf ${appName} beizutreten. Klicken Sie auf den Button unten, um die Einladung anzunehmen. Der Link ist 7 Tage gültig.`
+            : `Sie wurden zu einer Organisation auf ${appName} eingeladen. Klicken Sie auf den Button unten, um die Einladung anzunehmen. Der Link ist 7 Tage gültig.`,
         ],
         note: "Falls Sie diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.",
       },
@@ -311,8 +330,8 @@ export const inviteToOrganizationWhenUserExists: EmailTemplateFunction = async (
         heading: orgName ? `Invitation to join ${orgName}` : "You've been invited",
         paragraphs: [
           orgName
-            ? `You've been invited to join <strong>${orgName}</strong> on ${data.appName}. Click the button above to accept. The link is valid for 7 days.`
-            : `You've been invited to join an organization on ${data.appName}. Click the button above to accept. The link is valid for 7 days.`,
+            ? `You've been invited to join <strong>${orgName}</strong> on ${appName}. Click the button above to accept. The link is valid for 7 days.`
+            : `You've been invited to join an organization on ${appName}. Click the button above to accept. The link is valid for 7 days.`,
         ],
         note: "If you didn't expect this invitation, you can safely ignore this email.",
       },

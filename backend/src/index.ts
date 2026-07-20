@@ -14,7 +14,9 @@ import * as emailTemplates from "./lib/email-templates";
 const server = defineServer({
   port: 3000,
   jwtExpiresAfter: 60 * 60 * 24 * 30, // 30 days
-  appName: "Symbiosika Wiki",
+  // Display name of the app (used in emails, OAuth metadata, …). Override
+  // with the APP_NAME env var, e.g. APP_NAME=Wiki for shorter email names.
+  appName: process.env.APP_NAME ?? "Symbiosika Wiki",
   basePath: "/api/v1",
   loginUrl: "/login.html",
   magicLoginVerifyUrl: "/magic-login-verify.html",
