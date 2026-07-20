@@ -381,11 +381,20 @@
         />
         <span
           v-if="!footerExpanded && notifications.unreadCount > 0"
-          class="absolute top-1 right-3 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
+          class="absolute top-1 right-3 flex items-center"
         >
-          {{
-            notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
-          }}
+          <span class="relative flex items-center justify-center">
+            <IconInbox class="h-4 w-4" />
+            <span
+              class="absolute -top-1.5 -right-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
+            >
+              {{
+                notifications.unreadCount > 99
+                  ? '99+'
+                  : notifications.unreadCount
+              }}
+            </span>
+          </span>
         </span>
       </button>
     </div>
