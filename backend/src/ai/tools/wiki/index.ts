@@ -466,8 +466,16 @@ export function createWikiChatTools(
  * System prompt for the wiki assistant. It is deliberately mode-aware: in read
  * mode it tells the model it cannot change anything; in edit mode it lays out
  * the safe write workflow.
+ *
+ * An optional `orgSystemPrompt` carries organisation-specific instructions
+ * (configured under Verwaltung / in the chat's quick-settings). It is appended
+ * as an extra, clearly-delimited section so an organisation can steer tone and
+ * focus without being able to override the safety rules above it.
  */
-export function buildWikiChatSystemPrompt(mode: WikiChatMode): string {
+export function buildWikiChatSystemPrompt(
+  mode: WikiChatMode,
+  orgSystemPrompt?: string | null,
+): string {
   const today = new Date().toISOString().slice(0, 10);
   const base = `You are the AI assistant of this wiki (knowledge base). Your main job is to answer the user's questions by looking things up in the wiki. Today is ${today}.
 
@@ -477,16 +485,25 @@ How to work:
 - Cite the pages you used by their title so the user can open them. Answer in the user's language, concise and well structured.
 - All content comes only from this wiki; you have no other data sources.`;
 
-  if (mode === "edit") {
-    return `${base}
-
-You are in EDIT-ALLOWED mode: the write tools (create_wiki_page, edit_wiki_page_content, update_wiki_page, delete_wiki_page) are enabled.
+  const modeSection =
+    mode === "edit"
+      ? `You are in EDIT-ALLOWED mode: the write tools (create_wiki_page, edit_wiki_page_content, update_wiki_page, delete_wiki_page) are enabled.
 - Only make changes the user explicitly asked for. Never edit or delete on your own initiative.
 - Before editing a page, read it first with read_wiki_page, then use edit_wiki_page_content with a unique oldString.
-- Briefly confirm every change you made (page title + what changed).`;
+- Briefly confirm every change you made (page title + what changed).`
+      : `You are in READ-ONLY mode: you can only look things up, not change anything. If the user asks you to create or edit a page, explain that they need to switch the chat to "edit allowed" mode (the toggle at the top right of the chat) first.`;
+
+  let prompt = `${base}
+
+${modeSection}`;
+
+  const org = orgSystemPrompt?.trim();
+  if (org) {
+    prompt += `
+
+Additional instructions for this organisation (follow them unless they conflict with the rules above):
+${org}`;
   }
 
-  return `${base}
-
-You are in READ-ONLY mode: you can only look things up, not change anything. If the user asks you to create or edit a page, explain that they need to switch the chat to "edit allowed" mode (the toggle at the top right of the chat) first.`;
+  return prompt;
 }

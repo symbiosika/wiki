@@ -59,6 +59,52 @@
       </Column>
     </DataTable>
 
+    <!-- Chat agent configuration -->
+    <section class="mt-8 border-t border-surface-200 pt-6 dark:border-surface-800">
+      <h2 class="text-base font-semibold text-surface-900 dark:text-surface-0">
+        {{ $t('Chat.config.title') }}
+      </h2>
+      <div class="mt-3 flex flex-col gap-1">
+        <label
+          for="chat-system-prompt"
+          class="text-sm font-medium text-surface-700 dark:text-surface-300"
+        >
+          {{ $t('Chat.config.systemPrompt') }}
+        </label>
+        <Textarea
+          id="chat-system-prompt"
+          v-model="systemPrompt"
+          class="w-full"
+          rows="8"
+          :maxlength="MAX_SYSTEM_PROMPT_CHARS"
+          :placeholder="$t('Chat.config.placeholder')"
+          :disabled="chatConfig.loading"
+        />
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Chat.config.systemPromptHint') }}
+          </span>
+          <span class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500">
+            {{
+              $t('Chat.config.charCount', {
+                count: systemPrompt.length,
+                max: MAX_SYSTEM_PROMPT_CHARS,
+              })
+            }}
+          </span>
+        </div>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <Button
+          :label="$t('Chat.config.save')"
+          size="small"
+          :loading="chatConfig.saving"
+          :disabled="chatConfig.loading || systemPrompt === savedSystemPrompt"
+          @click="saveSystemPrompt"
+        />
+      </div>
+    </section>
+
     <!-- Invite dialog -->
     <Dialog
       v-model:visible="inviteDialog"
@@ -205,6 +251,7 @@ import IconPencil from '~icons/mdi/pencil'
 import IconAccountPlus from '~icons/mdi/account-plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
 import type { FoundUser, TenantMember } from '@/types/usermanagement'
+import { useChatConfig, MAX_SYSTEM_PROMPT_CHARS } from '@/stores/chatConfig'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -212,10 +259,14 @@ const route = useRoute()
 const router = useRouter()
 const confirm = useConfirm()
 const app = useApp()
+const chatConfig = useChatConfig()
 
 const tenantId = computed(() => String(route.params.id))
 const tenantName = ref('')
 const members = ref<TenantMember[]>([])
+
+const systemPrompt = ref('')
+const savedSystemPrompt = ref('')
 
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
@@ -249,11 +300,52 @@ const loadTenantData = async () => {
     }
     tenantName.value = tenant.name
     members.value = await app.getTenantMembers(tenantId.value)
+    await loadChatConfig()
   } catch {
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
       detail: t('UserTenants.errors.loadFailed'),
+      life: 3000,
+    })
+  }
+}
+
+// ----- chat agent config -----------------------------------------------------
+
+const loadChatConfig = async () => {
+  try {
+    const config = await chatConfig.loadConfig(tenantId.value)
+    systemPrompt.value = config.systemPrompt
+    savedSystemPrompt.value = config.systemPrompt
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Chat.config.loadError'),
+      life: 3000,
+    })
+  }
+}
+
+const saveSystemPrompt = async () => {
+  try {
+    const config = await chatConfig.saveConfig(tenantId.value, {
+      systemPrompt: systemPrompt.value,
+    })
+    systemPrompt.value = config.systemPrompt
+    savedSystemPrompt.value = config.systemPrompt
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('Chat.config.saved'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Chat.config.saveError'),
       life: 3000,
     })
   }

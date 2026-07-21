@@ -22,6 +22,20 @@
     "readTitle": "Read-only mode — switch to editing",
     "editTitle": "Editing allowed — switch back to read-only"
   },
+  "config": {
+    "title": "Chat agent",
+    "settings": "Agent settings",
+    "settingsTitle": "Adjust system prompt",
+    "systemPrompt": "System prompt",
+    "systemPromptHint": "Extra instructions for this organisation's chat agent. Appended to the assistant's base instructions and applied for all members.",
+    "placeholder": "e.g. Always answer formally and point users to the guidelines page …",
+    "empty": "No custom system prompt set. The assistant uses its base instructions only.",
+    "charCount": "{count} / {max} characters",
+    "save": "Save",
+    "saved": "System prompt saved.",
+    "loadError": "Failed to load the system prompt.",
+    "saveError": "Failed to save the system prompt."
+  },
   "tools": {
     "search_wiki": "Search the wiki",
     "list_wiki_pages": "List pages",

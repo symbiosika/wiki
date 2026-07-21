@@ -22,6 +22,20 @@
     "readTitle": "Nur-Lese-Modus – zum Bearbeiten wechseln",
     "editTitle": "Bearbeiten erlaubt – zurück zu Nur-Lese wechseln"
   },
+  "config": {
+    "title": "Chat-Agent",
+    "settings": "Agent-Einstellungen",
+    "settingsTitle": "System-Prompt anpassen",
+    "systemPrompt": "System-Prompt",
+    "systemPromptHint": "Zusätzliche Anweisungen für den Chat-Agenten dieser Organisation. Werden an die Grundanweisungen des Assistenten angehängt und gelten für alle Mitglieder.",
+    "placeholder": "z. B. Antworte immer förmlich und verweise auf die Richtlinien-Seite …",
+    "empty": "Kein eigener System-Prompt gesetzt. Der Assistent nutzt nur seine Grundanweisungen.",
+    "charCount": "{count} / {max} Zeichen",
+    "save": "Speichern",
+    "saved": "System-Prompt gespeichert.",
+    "loadError": "System-Prompt konnte nicht geladen werden.",
+    "saveError": "System-Prompt konnte nicht gespeichert werden."
+  },
   "tools": {
     "search_wiki": "Wiki durchsuchen",
     "list_wiki_pages": "Seiten auflisten",
