@@ -225,6 +225,59 @@ export function registerReadTools(mcp: any): void {
   defineTool(
     mcp,
     {
+      name: "get_page_chunk_context",
+      title: "Get chunks around a position",
+      description:
+        "Returns the embedding chunk at a given position (`order`) on a page " +
+        "PLUS its neighbouring chunks before/after, in reading order. A search " +
+        "hit only carries a single snippet — use this to reload the surrounding " +
+        "context an agent lost: pass the hit's `pageId` and its `chunkOrder`. " +
+        "Returns `totalChunks` (0 = the page has no embeddings) and, per chunk, " +
+        "its `order`, `header`, `text`, `sourcePage` (the PDF page it came " +
+        "from, when known) and `matched` (true for the addressed chunk). " +
+        "`before`/`after` default to 2 each (per-side cap 20).",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id (from a search hit or the tree)."),
+        order: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe(
+            "The chunk position to centre on — the `chunkOrder` of a search " +
+              "hit. Defaults to 0 (start of the page).",
+          ),
+        before: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("How many chunks before the centre to include (default 2, max 20)."),
+        after: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("How many chunks after the centre to include (default 2, max 20)."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/chunk-context`),
+        {
+          query: {
+            order: args.order,
+            before: args.before,
+            after: args.after,
+          },
+        },
+      ),
+  );
+
+  defineTool(
+    mcp,
+    {
       name: "get_page_links",
       title: "Get outgoing links",
       description:

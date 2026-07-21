@@ -36,6 +36,7 @@ import {
   editKnowledgeTextContent,
 } from "@framework/lib/knowledge/knowledge-text-edit";
 import { getRelatedKnowledgeTexts } from "@framework/lib/knowledge/knowledge-text-links";
+import { getPageChunkContext } from "@framework/lib/knowledge/knowledge-text-chunks";
 
 /** Two chat modes. "read" is the safe default; "edit" unlocks the write tools. */
 export type WikiChatMode = "read" | "edit";
@@ -75,7 +76,10 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
       "Search the wiki for pages relevant to a query. Uses hybrid semantic + " +
       "full-text search and returns the best matching pages with a short " +
       "snippet and their pageId. This is the primary way to find knowledge — " +
-      "start here, then read the most promising pages with read_wiki_page.",
+      "start here, then read the most promising pages with read_wiki_page. " +
+      "When a hit matched semantically it also carries `chunkOrder` (the " +
+      "position of the matching chunk) — pass it to get_wiki_chunk_context to " +
+      "pull the surrounding text without reading the whole page.",
     inputSchema: valibotSchema(
       v.object({
         query: v.pipe(
@@ -120,6 +124,8 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
             title: r.title,
             snippet: r.snippet,
             matchedBy: r.matchedBy,
+            chunkOrder: r.chunkOrder,
+            sourcePage: r.sourcePage,
           })),
         };
       } catch (error) {
@@ -256,11 +262,81 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
     },
   });
 
+  const get_wiki_chunk_context = tool({
+    description:
+      "Reload the embedding chunks around a position on a page. A search hit " +
+      "only gives you one short snippet — call this with the hit's pageId and " +
+      "its chunkOrder to get the matching chunk plus the chunks before and " +
+      "after it, so you can quote the full surrounding context without reading " +
+      "the whole page. Returns totalChunks (0 = the page has no embeddings) " +
+      "and, per chunk, its order, header, text, sourcePage (the PDF page it " +
+      "came from, when known) and matched (true for the addressed chunk).",
+    inputSchema: valibotSchema(
+      v.object({
+        pageId: v.pipe(
+          v.string(),
+          v.description("The id of the page whose chunks you want."),
+        ),
+        order: v.optional(
+          v.pipe(
+            v.number(),
+            v.minValue(0),
+            v.description(
+              "The chunk position to centre on — the chunkOrder from a search " +
+                "hit. Defaults to 0 (start of the page).",
+            ),
+          ),
+        ),
+        before: v.optional(
+          v.pipe(
+            v.number(),
+            v.minValue(0),
+            v.maxValue(20),
+            v.description("How many chunks before the centre to include (default 2)."),
+          ),
+        ),
+        after: v.optional(
+          v.pipe(
+            v.number(),
+            v.minValue(0),
+            v.maxValue(20),
+            v.description("How many chunks after the centre to include (default 2)."),
+          ),
+        ),
+      }),
+    ),
+    execute: async ({ pageId, order, before, after }) => {
+      try {
+        const context = await getPageChunkContext(
+          pageId,
+          { tenantId: ctx.tenantId, userId: ctx.userId },
+          { order, before, after },
+        );
+        return {
+          success: true,
+          pageId: context.pageId,
+          title: context.title,
+          totalChunks: context.totalChunks,
+          chunks: context.chunks.map((chunk) => ({
+            order: chunk.order,
+            header: chunk.header,
+            text: clip(chunk.text),
+            sourcePage: chunk.sourcePage,
+            matched: chunk.matched,
+          })),
+        };
+      } catch (error) {
+        return toError(error);
+      }
+    },
+  });
+
   return {
     search_wiki,
     list_wiki_pages,
     read_wiki_page,
     get_related_wiki_pages,
+    get_wiki_chunk_context,
   };
 }
 
@@ -481,6 +557,7 @@ export function buildWikiChatSystemPrompt(
 
 How to work:
 - To find knowledge, start with search_wiki, then read the most relevant pages with read_wiki_page. Use list_wiki_pages for an overview and get_related_wiki_pages to broaden research.
+- When a search snippet is promising but too short, call get_wiki_chunk_context with the hit's pageId and chunkOrder to pull the surrounding chunks — cheaper than reading the whole page for long documents.
 - Base your answers on what the tools return — never invent facts. If the wiki has no answer, say so plainly.
 - Cite the pages you used by their title so the user can open them. Answer in the user's language, concise and well structured.
 - All content comes only from this wiki; you have no other data sources.`;
