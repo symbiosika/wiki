@@ -16,6 +16,7 @@ import { describeRoute } from "hono-openapi";
 import { resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { buildWikiTree } from "../../../../lib/wiki/tree";
+import { movePage } from "../../../../lib/wiki/move";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -66,6 +67,68 @@ export default function defineWikiRoutes(
           (error as { cause?: unknown })?.cause
         );
         return c.json({ success: false, error: "Failed to build wiki tree" }, 500);
+      }
+    }
+  );
+
+  /**
+   * POST /tenant/:tenantId/wiki/:pageId/move
+   * Re-parent and/or re-order a page within its sidebar section (drag & drop).
+   * The body carries the new parent (null = section root) and the desired order
+   * of the destination sibling list; positions are (re)derived server-side.
+   */
+  app.post(
+    `${baseRoute}/:pageId/move`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Move a wiki page (re-parent / re-order) in the tree",
+      responses: {
+        200: {
+          description: "The move result",
+          content: {
+            "application/json": {
+              schema: resolver(v.any()),
+            },
+          },
+        },
+      },
+    }),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+      })
+    ),
+    validator(
+      "json",
+      v.object({
+        parentId: v.nullable(v.pipe(v.string(), v.uuid())),
+        orderedIds: v.array(v.pipe(v.string(), v.uuid())),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId } = c.req.valid("param");
+      const { parentId, orderedIds } = c.req.valid("json");
+      const userId = c.get("usersId");
+      try {
+        const writes = await movePage(
+          pageId,
+          { parentId, orderedIds },
+          { tenantId, userId }
+        );
+        return c.json({ success: true, data: { writes } });
+      } catch (error) {
+        return c.json(
+          {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to move page",
+          },
+          400
+        );
       }
     }
   );

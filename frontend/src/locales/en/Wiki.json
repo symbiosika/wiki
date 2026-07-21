@@ -9,6 +9,7 @@
   "deletePage": "Delete page",
   "deletePageConfirm": "Delete \"{title}\" and all of its sub pages?",
   "deletePageHeader": "Delete page",
+  "moveError": "Could not move the page",
   "search": "Search…",
   "searchNoResults": "No pages found",
   "emptyState": {

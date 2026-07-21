@@ -9,6 +9,7 @@
   "deletePage": "Seite löschen",
   "deletePageConfirm": "\"{title}\" und alle Unterseiten löschen?",
   "deletePageHeader": "Seite löschen",
+  "moveError": "Seite konnte nicht verschoben werden",
   "search": "Suchen…",
   "searchNoResults": "Keine Seiten gefunden",
   "emptyState": {
