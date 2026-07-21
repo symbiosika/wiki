@@ -62,6 +62,42 @@
       "deleteFailed": "Could not delete the passkey."
     }
   },
+  "apiTokens": {
+    "title": "API tokens",
+    "hint": "Create personal access tokens to call the API from scripts or external tools. A token is shown only once — store it somewhere safe.",
+    "add": "Create token",
+    "addTitle": "Create API token",
+    "create": "Create token",
+    "namePlaceholder": "e.g. CI pipeline, import script",
+    "tenant": "Organization",
+    "expiry": "Validity",
+    "expiryNever": "Never expires",
+    "expiry30d": "30 days",
+    "expiry90d": "90 days",
+    "expiry1y": "1 year",
+    "scopes": "Permissions",
+    "scopeFilter": "Filter permissions …",
+    "selectGroup": "Select all",
+    "noScopeMatch": "No matching permissions.",
+    "scopeCount": "permissions",
+    "added": "Created",
+    "expires": "Expires",
+    "neverExpires": "Never expires",
+    "lastUsed": "Last used",
+    "expired": "Expired",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke token",
+    "revokeConfirm": "Revoke the token “{name}”? Applications using it will lose access immediately.",
+    "revoked": "Token revoked",
+    "empty": "You haven't created any API tokens yet.",
+    "secretTitle": "Your new API token",
+    "secretHint": "Copy it now — for security reasons it won't be shown again.",
+    "errors": {
+      "createFailed": "Could not create the token.",
+      "revokeFailed": "Could not revoke the token.",
+      "scopesFailed": "Could not load the available permissions."
+    }
+  },
   "errors": {
     "loadFailed": "Could not load profile",
     "saveFailed": "Could not save profile",

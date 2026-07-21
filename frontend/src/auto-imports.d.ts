@@ -90,6 +90,7 @@ declare global {
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
   const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
   const useAiChat: typeof import('./stores/aiChat').useAiChat
+  const useApiTokens: typeof import('./stores/apiTokens').useApiTokens
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
@@ -129,6 +130,9 @@ declare global {
   // @ts-ignore
   export type { AiChatMode } from './stores/aiChat'
   import('./stores/aiChat')
+  // @ts-ignore
+  export type { ApiToken, CreateApiTokenInput } from './stores/apiTokens'
+  import('./stores/apiTokens')
   // @ts-ignore
   export type { ChatAgentConfig } from './stores/chatConfig'
   import('./stores/chatConfig')

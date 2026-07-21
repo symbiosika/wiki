@@ -248,6 +248,283 @@
       </template>
     </Dialog>
 
+    <!-- API tokens -->
+    <section class="mb-8">
+      <div class="mb-1 flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0">
+          {{ $t('Profile.apiTokens.title') }}
+        </h2>
+        <Button
+          :label="$t('Profile.apiTokens.add')"
+          size="small"
+          @click="openCreateToken"
+        >
+          <template #icon><IconPlus /></template>
+        </Button>
+      </div>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('Profile.apiTokens.hint') }}
+      </p>
+
+      <!-- list -->
+      <ul v-if="apiTokens.tokens.length > 0" class="flex flex-col gap-2">
+        <li
+          v-for="tok in apiTokens.tokens"
+          :key="tok.id"
+          class="flex items-center gap-3 rounded-lg border border-surface-200 px-4 py-3 dark:border-surface-700"
+        >
+          <IconKeyChain
+            class="h-5 w-5 shrink-0 text-surface-400"
+            aria-hidden="true"
+          />
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span
+                class="truncate text-sm font-medium text-surface-900 dark:text-surface-0"
+              >
+                {{ tok.name }}
+              </span>
+              <span
+                v-if="isExpired(tok)"
+                class="shrink-0 rounded bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400"
+              >
+                {{ $t('Profile.apiTokens.expired') }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-surface-500 dark:text-surface-400">
+              {{ tenantName(tok.tenantId) }} ·
+              {{ tok.scopes.length }}
+              {{ $t('Profile.apiTokens.scopeCount') }} ·
+              {{ $t('Profile.apiTokens.added') }}:
+              {{ formatDate(tok.createdAt) }}
+              <template v-if="tok.expiresAt">
+                · {{ $t('Profile.apiTokens.expires') }}:
+                {{ formatDate(tok.expiresAt) }}
+              </template>
+              <template v-else>
+                · {{ $t('Profile.apiTokens.neverExpires') }}
+              </template>
+              <template v-if="tok.lastUsed">
+                · {{ $t('Profile.apiTokens.lastUsed') }}:
+                {{ formatDate(tok.lastUsed) }}
+              </template>
+            </p>
+            <p
+              v-if="tok.scopes.length"
+              class="mt-1 truncate font-mono text-[11px] text-surface-400 dark:text-surface-500"
+              :title="tok.scopes.join(' ')"
+            >
+              {{ tok.scopes.join(' ') }}
+            </p>
+          </div>
+          <SecondaryButton
+            :label="$t('Profile.apiTokens.revoke')"
+            size="small"
+            severity="danger"
+            :aria-label="$t('Profile.apiTokens.revoke')"
+            @click="confirmRevoke(tok)"
+          >
+            <template #icon><IconDelete /></template>
+          </SecondaryButton>
+        </li>
+      </ul>
+
+      <!-- empty state -->
+      <div
+        v-else-if="!apiTokens.loading"
+        class="rounded-lg border border-dashed border-surface-300 px-6 py-8 text-center dark:border-surface-600"
+      >
+        <p class="text-sm text-surface-500 dark:text-surface-400">
+          {{ $t('Profile.apiTokens.empty') }}
+        </p>
+        <Button
+          :label="$t('Profile.apiTokens.add')"
+          size="small"
+          class="mt-3"
+          @click="openCreateToken"
+        >
+          <template #icon><IconPlus /></template>
+        </Button>
+      </div>
+    </section>
+
+    <!-- create-token dialog -->
+    <Dialog
+      v-model:visible="tokenDialog"
+      modal
+      :header="$t('Profile.apiTokens.addTitle')"
+      class="w-[640px] max-w-[94vw]"
+    >
+      <!-- one-time secret shown after creation -->
+      <div v-if="newToken" class="flex flex-col gap-4">
+        <div
+          class="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950"
+        >
+          <span class="text-sm font-medium text-amber-800 dark:text-amber-200">
+            {{ $t('Profile.apiTokens.secretTitle') }}
+          </span>
+          <span class="text-xs text-amber-700 dark:text-amber-300">
+            {{ $t('Profile.apiTokens.secretHint') }}
+          </span>
+          <div class="flex items-center gap-2">
+            <code
+              class="grow overflow-x-auto rounded bg-white px-2 py-1 font-mono text-xs dark:bg-surface-900"
+            >
+              {{ newToken }}
+            </code>
+            <SecondaryButton
+              :label="$t('Common.copy')"
+              size="small"
+              @click="copyToken"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- creation form -->
+      <div v-else class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Common.name') }}
+          </label>
+          <InputText
+            v-model="tokenForm.name"
+            class="w-full"
+            :placeholder="$t('Profile.apiTokens.namePlaceholder')"
+            :disabled="creating"
+            autofocus
+          />
+        </div>
+
+        <div v-if="app.state.tenants.length > 1" class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Profile.apiTokens.tenant') }}
+          </label>
+          <Select
+            v-model="tokenForm.tenantId"
+            :options="app.state.tenants"
+            option-label="name"
+            option-value="id"
+            class="w-full"
+            :disabled="creating"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Profile.apiTokens.expiry') }}
+          </label>
+          <Select
+            v-model="tokenForm.expiresIn"
+            :options="expiryOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            :disabled="creating"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm text-surface-700 dark:text-surface-300">
+              {{ $t('Profile.apiTokens.scopes') }}
+              <span class="text-surface-400 dark:text-surface-500">
+                ({{ tokenForm.scopes.length }})
+              </span>
+            </label>
+            <button
+              type="button"
+              class="text-xs underline"
+              style="color: var(--p-primary-500)"
+              @click="clearScopes"
+            >
+              {{ $t('Common.unselectAll') }}
+            </button>
+          </div>
+          <InputText
+            v-model="scopeFilter"
+            class="w-full"
+            :placeholder="$t('Profile.apiTokens.scopeFilter')"
+            :disabled="creating"
+          />
+          <div
+            class="max-h-64 overflow-y-auto rounded-lg border border-surface-200 p-2 dark:border-surface-700"
+          >
+            <div
+              v-for="group in filteredScopeGroups"
+              :key="group.name"
+              class="mb-2 last:mb-0"
+            >
+              <div class="mb-1 flex items-center justify-between">
+                <span
+                  class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400"
+                >
+                  {{ group.name }}
+                </span>
+                <button
+                  type="button"
+                  class="text-[11px] underline"
+                  style="color: var(--p-primary-500)"
+                  @click="toggleGroup(group)"
+                >
+                  {{
+                    isGroupFullySelected(group)
+                      ? $t('Common.unselectAll')
+                      : $t('Profile.apiTokens.selectGroup')
+                  }}
+                </button>
+              </div>
+              <div class="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                <label
+                  v-for="scope in group.scopes"
+                  :key="scope"
+                  class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
+                >
+                  <Checkbox
+                    v-model="tokenForm.scopes"
+                    :value="scope"
+                    :disabled="creating"
+                  />
+                  <code class="text-xs">{{ scope }}</code>
+                </label>
+              </div>
+            </div>
+            <p
+              v-if="filteredScopeGroups.length === 0"
+              class="px-1 py-2 text-xs text-surface-400 dark:text-surface-500"
+            >
+              {{ $t('Profile.apiTokens.noScopeMatch') }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <template v-if="newToken">
+          <Button
+            :label="$t('Common.close')"
+            size="small"
+            @click="tokenDialog = false"
+          />
+        </template>
+        <template v-else>
+          <SecondaryButton
+            :label="$t('Common.cancel')"
+            size="small"
+            :disabled="creating"
+            @click="tokenDialog = false"
+          />
+          <Button
+            :label="$t('Profile.apiTokens.create')"
+            size="small"
+            :loading="creating"
+            :disabled="!canCreateToken"
+            @click="submitToken"
+          />
+        </template>
+      </template>
+    </Dialog>
+
     <!-- Appearance / theme -->
     <section>
       <h2
@@ -339,8 +616,11 @@ import { useConfirm } from 'primevue/useconfirm'
 import { WebAuthnError } from '@simplewebauthn/browser'
 import { useTheme } from '@/stores/theme'
 import { usePasskeys, type Passkey } from '@/stores/passkeys'
+import { useApiTokens, type ApiToken } from '@/stores/apiTokens'
 import { FetcherError } from '@/utils/fetcher'
 import IconCamera from '~icons/mdi/camera-outline'
+import IconPlus from '~icons/mdi/plus'
+import IconKeyChain from '~icons/mdi/key-chain-variant'
 import IconMonitor from '~icons/mdi/monitor'
 import IconWhiteBalanceSunny from '~icons/mdi/white-balance-sunny'
 import IconMoonWaningCrescent from '~icons/mdi/moon-waning-crescent'
@@ -360,6 +640,7 @@ const confirm = useConfirm()
 const app = useApp()
 const theme = useTheme()
 const passkeys = usePasskeys()
+const apiTokens = useApiTokens()
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -445,6 +726,9 @@ onMounted(async () => {
   syncFromUser()
   // best-effort: hides the section on 404 (passkeys disabled for this instance)
   passkeys.load().catch(() => {
+    /* a real load failure just leaves the list empty */
+  })
+  apiTokens.load().catch(() => {
     /* a real load failure just leaves the list empty */
   })
 })
@@ -580,6 +864,171 @@ const confirmRemove = (pk: Passkey) => {
             err instanceof FetcherError && err.body
               ? err.body
               : t('Profile.passkeys.errors.deleteFailed'),
+          life: 6000,
+        })
+      }
+    },
+  })
+}
+
+// ----- API tokens ----------------------------------------------------------
+
+const tokenDialog = ref(false)
+const creating = ref(false)
+const newToken = ref<string | null>(null)
+const scopeFilter = ref('')
+
+const emptyTokenForm = () => ({
+  name: '',
+  tenantId: app.state.selectedTenant || app.state.tenants[0]?.id || '',
+  // minutes; 0 = never expires (mapped to `undefined` on submit)
+  expiresIn: 0,
+  scopes: [] as string[],
+})
+const tokenForm = ref(emptyTokenForm())
+
+const expiryOptions = computed(() => [
+  { label: t('Profile.apiTokens.expiryNever'), value: 0 },
+  { label: t('Profile.apiTokens.expiry30d'), value: 30 * 24 * 60 },
+  { label: t('Profile.apiTokens.expiry90d'), value: 90 * 24 * 60 },
+  { label: t('Profile.apiTokens.expiry1y'), value: 365 * 24 * 60 },
+])
+
+interface ScopeGroup {
+  name: string
+  scopes: string[]
+}
+
+/** Group the flat scope list by the part before the first ":" (e.g. "ai", "knowledge"). */
+const scopeGroups = computed<ScopeGroup[]>(() => {
+  const map = new Map<string, string[]>()
+  for (const scope of apiTokens.availableScopes) {
+    const group = scope.split(':')[0] || scope
+    if (!map.has(group)) map.set(group, [])
+    map.get(group)!.push(scope)
+  }
+  return [...map.entries()]
+    .map(([name, scopes]) => ({ name, scopes }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const filteredScopeGroups = computed<ScopeGroup[]>(() => {
+  const q = scopeFilter.value.trim().toLowerCase()
+  if (!q) return scopeGroups.value
+  return scopeGroups.value
+    .map((g) => ({
+      name: g.name,
+      scopes: g.scopes.filter((s) => s.toLowerCase().includes(q)),
+    }))
+    .filter((g) => g.scopes.length > 0)
+})
+
+const isGroupFullySelected = (group: ScopeGroup) =>
+  group.scopes.every((s) => tokenForm.value.scopes.includes(s))
+
+const toggleGroup = (group: ScopeGroup) => {
+  if (isGroupFullySelected(group)) {
+    tokenForm.value.scopes = tokenForm.value.scopes.filter(
+      (s) => !group.scopes.includes(s),
+    )
+  } else {
+    const set = new Set(tokenForm.value.scopes)
+    group.scopes.forEach((s) => set.add(s))
+    tokenForm.value.scopes = [...set]
+  }
+}
+
+const clearScopes = () => {
+  tokenForm.value.scopes = []
+}
+
+const canCreateToken = computed(
+  () =>
+    tokenForm.value.name.trim().length > 0 &&
+    tokenForm.value.tenantId.length > 0 &&
+    tokenForm.value.scopes.length > 0,
+)
+
+const tenantName = (id: string) =>
+  app.state.tenants.find((tnt) => tnt.id === id)?.name ?? id
+
+const isExpired = (tok: ApiToken) =>
+  !!tok.expiresAt && new Date(tok.expiresAt).getTime() < Date.now()
+
+const openCreateToken = () => {
+  tokenForm.value = emptyTokenForm()
+  scopeFilter.value = ''
+  newToken.value = null
+  apiTokens.loadScopes().catch(() => {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Profile.apiTokens.errors.scopesFailed'),
+      life: 5000,
+    })
+  })
+  tokenDialog.value = true
+}
+
+const submitToken = async () => {
+  if (!canCreateToken.value || creating.value) return
+  creating.value = true
+  try {
+    newToken.value = await apiTokens.create({
+      name: tokenForm.value.name.trim(),
+      tenantId: tokenForm.value.tenantId,
+      scopes: tokenForm.value.scopes,
+      expiresIn: tokenForm.value.expiresIn || undefined,
+    })
+    // dialog stays open to show the one-time secret
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail:
+        err instanceof FetcherError && err.body
+          ? err.body
+          : t('Profile.apiTokens.errors.createFailed'),
+      life: 6000,
+    })
+  } finally {
+    creating.value = false
+  }
+}
+
+const copyToken = async () => {
+  if (!newToken.value) return
+  await navigator.clipboard.writeText(newToken.value)
+  toast.add({ severity: 'success', summary: t('Common.copied'), life: 2000 })
+}
+
+const confirmRevoke = (tok: ApiToken) => {
+  confirm.require({
+    header: t('Profile.apiTokens.revokeTitle'),
+    message: t('Profile.apiTokens.revokeConfirm', { name: tok.name }),
+    rejectProps: {
+      label: t('Common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+    },
+    acceptProps: { label: t('Profile.apiTokens.revoke'), severity: 'danger' },
+    accept: async () => {
+      try {
+        await apiTokens.revoke(tok.id)
+        toast.add({
+          severity: 'success',
+          summary: t('Common.success'),
+          detail: t('Profile.apiTokens.revoked'),
+          life: 3000,
+        })
+      } catch (err) {
+        toast.add({
+          severity: 'error',
+          summary: t('Common.error'),
+          detail:
+            err instanceof FetcherError && err.body
+              ? err.body
+              : t('Profile.apiTokens.errors.revokeFailed'),
           life: 6000,
         })
       }

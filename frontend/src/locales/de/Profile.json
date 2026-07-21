@@ -62,6 +62,42 @@
       "deleteFailed": "Passkey konnte nicht gelöscht werden."
     }
   },
+  "apiTokens": {
+    "title": "API-Tokens",
+    "hint": "Erstelle persönliche Zugriffstokens, um die API von Skripten oder externen Werkzeugen aus anzusprechen. Ein Token wird nur einmal angezeigt – bewahre es sicher auf.",
+    "add": "Token erstellen",
+    "addTitle": "API-Token erstellen",
+    "create": "Token erstellen",
+    "namePlaceholder": "z. B. CI-Pipeline, Import-Skript",
+    "tenant": "Organisation",
+    "expiry": "Gültigkeit",
+    "expiryNever": "Läuft nie ab",
+    "expiry30d": "30 Tage",
+    "expiry90d": "90 Tage",
+    "expiry1y": "1 Jahr",
+    "scopes": "Berechtigungen",
+    "scopeFilter": "Berechtigungen filtern …",
+    "selectGroup": "Alle auswählen",
+    "noScopeMatch": "Keine passenden Berechtigungen.",
+    "scopeCount": "Berechtigungen",
+    "added": "Erstellt",
+    "expires": "Läuft ab",
+    "neverExpires": "Läuft nie ab",
+    "lastUsed": "Zuletzt verwendet",
+    "expired": "Abgelaufen",
+    "revoke": "Widerrufen",
+    "revokeTitle": "Token widerrufen",
+    "revokeConfirm": "Soll das Token „{name}“ wirklich widerrufen werden? Anwendungen, die es verwenden, verlieren sofort den Zugriff.",
+    "revoked": "Token widerrufen",
+    "empty": "Du hast noch keine API-Tokens erstellt.",
+    "secretTitle": "Dein neues API-Token",
+    "secretHint": "Kopiere es jetzt – es wird aus Sicherheitsgründen nicht erneut angezeigt.",
+    "errors": {
+      "createFailed": "Token konnte nicht erstellt werden.",
+      "revokeFailed": "Token konnte nicht widerrufen werden.",
+      "scopesFailed": "Verfügbare Berechtigungen konnten nicht geladen werden."
+    }
+  },
   "errors": {
     "loadFailed": "Profil konnte nicht geladen werden",
     "saveFailed": "Profil konnte nicht gespeichert werden",
