@@ -120,8 +120,23 @@ export const useWiki = defineStore('wiki', () => {
       )
     } catch {
       // fall back to empty vocabularies — the facet selectors simply stay empty
-      state.value.config = { autoSummaries: true, pageTypes: [], statuses: [] }
+      state.value.config = {
+        autoSummaries: true,
+        pageTypes: [],
+        statuses: [],
+        attributes: [],
+      }
     }
+  }
+
+  /**
+   * Force-refresh the cached tenant knowledge config. Used after an admin edits
+   * the per-organisation metadata definitions so the open document picks up the
+   * new attribute keys without a full reload.
+   */
+  const reloadConfig = async (tenantId: string) => {
+    state.value.config = null
+    await loadConfig(tenantId)
   }
 
   // ----- tree -------------------------------------------------------------
@@ -363,6 +378,40 @@ export const useWiki = defineStore('wiki', () => {
     }
   }
 
+  /**
+   * Replace a page's per-organisation key-value metadata. The backend validates
+   * the keys/values against the tenant knowledge config (unknown keys or values
+   * outside a key's closed list are rejected). Empty-string values are dropped
+   * so clearing a field removes the key entirely.
+   */
+  const saveAttributes = async (
+    tenantId: string,
+    pageId: string,
+    attributes: Record<string, string>,
+  ) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(attributes).filter(([, value]) => value !== ''),
+    )
+    state.value.saving = true
+    state.value.saveError = null
+    try {
+      const updated = await fetcher.put<WikiPage>(
+        `${api(tenantId)}/knowledge/texts/${pageId}`,
+        { tenantId, attributes: cleaned },
+      )
+      if (state.value.page?.id === pageId) {
+        state.value.page.attributes = updated.attributes ?? {}
+      }
+      state.value.lastSavedAt = new Date().toISOString()
+    } catch (error) {
+      state.value.saveError =
+        error instanceof Error ? error.message : 'Failed to save attributes'
+      throw error
+    } finally {
+      state.value.saving = false
+    }
+  }
+
   const saveBlocks = async (
     tenantId: string,
     pageId: string,
@@ -556,6 +605,7 @@ export const useWiki = defineStore('wiki', () => {
     state,
     openImportDialog,
     loadConfig,
+    reloadConfig,
     loadTree,
     findTreeNode,
     loadPage,
@@ -566,6 +616,7 @@ export const useWiki = defineStore('wiki', () => {
     uploadImage,
     saveTitle,
     savePageMeta,
+    saveAttributes,
     saveBlocks,
     deletePage,
     movePage,

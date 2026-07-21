@@ -70,17 +70,43 @@ export interface WikiPage {
   /** Set when `status` transitions to "verified": when and by whom. */
   verifiedAt: string | null
   verifiedBy: string | null
+  // --- per-organisation key-value metadata (see framework knowledge.ts) ---
+  /**
+   * Free key-value metadata whose allowed keys (and optionally a closed list of
+   * values per key) are defined per organisation in the knowledge config. The
+   * keys correspond to `WikiKnowledgeConfig.attributes[].key`.
+   */
+  attributes: Record<string, string>
+}
+
+/**
+ * One per-organisation metadata key definition (see framework
+ * knowledge-config.ts `KnowledgeAttributeDefinition`). Documents may carry a
+ * value for each defined key in their `attributes` map.
+ */
+export interface KnowledgeAttributeDefinition {
+  /** The stable attribute key stored on the document, e.g. "hersteller". */
+  key: string
+  /** Optional display label; falls back to the key when omitted. */
+  label?: string
+  /**
+   * Optional closed list of allowed values. When present the value must be one
+   * of these (rendered as a select); when omitted the value is free text.
+   */
+  values?: string[]
 }
 
 /**
  * Tenant knowledge configuration (facet vocabularies + flags), as returned by
  * GET /knowledge/texts/config. The `pageTypes` / `statuses` lists are the
- * closed vocabularies a page's facets are validated against on write.
+ * closed vocabularies a page's facets are validated against on write, and
+ * `attributes` are the per-organisation key-value metadata definitions.
  */
 export interface WikiKnowledgeConfig {
   autoSummaries: boolean
   pageTypes: string[]
   statuses: string[]
+  attributes: KnowledgeAttributeDefinition[]
 }
 
 /** A content block as stored by the backend */

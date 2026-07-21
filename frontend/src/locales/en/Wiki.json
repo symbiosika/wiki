@@ -110,6 +110,15 @@
   "facets": {
     "clear": "Clear"
   },
+  "attributes": {
+    "button": "Tags",
+    "hint": "Edit document tags",
+    "title": "Document tags",
+    "none": "—",
+    "valuePlaceholder": "Enter a value",
+    "save": "Save",
+    "saveError": "Could not save the tags. Please try again."
+  },
   "logout": "Log out",
   "tenant": "Organisation",
   "manage": "Manage",

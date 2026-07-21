@@ -85,6 +85,32 @@
           }}</span>
         </button>
 
+        <!-- per-organisation metadata (tags): read-only value chips -->
+        <span
+          v-for="chip in attributeChips"
+          :key="chip.key"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 dark:border-surface-700 dark:text-surface-300"
+          :title="`${chip.label}: ${chip.value}`"
+        >
+          <span class="text-surface-400 dark:text-surface-500"
+            >{{ chip.label }}:</span
+          >
+          <span>{{ chip.value }}</span>
+        </span>
+
+        <!-- metadata editor: clickable chip that opens the attribute chooser -->
+        <button
+          v-if="editable && attributeDefinitions.length > 0"
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-dashed border-surface-300 px-2 py-0.5 text-surface-400 transition-colors hover:border-primary hover:text-primary dark:border-surface-600"
+          :class="{ 'border-primary text-primary': attributesOpen }"
+          :title="$t('Wiki.attributes.hint')"
+          @click="openAttributes($event)"
+        >
+          <IconTagMultiple class="h-3.5 w-3.5" />
+          <span>{{ $t('Wiki.attributes.button') }}</span>
+        </button>
+
         <span class="min-w-0 flex-1 truncate">{{ breadcrumb }}</span>
         <span v-if="wiki.state.saveError" class="text-red-500">
           {{ $t('Wiki.saveError') }}
@@ -265,13 +291,56 @@
           </div>
         </dl>
       </Popover>
+
+      <!-- per-organisation metadata (tags) editor, opened by the "Tags" chip -->
+      <Popover ref="attributesPopoverRef" @hide="attributesOpen = false">
+        <div class="w-72 space-y-3">
+          <p class="text-xs font-medium text-surface-500 dark:text-surface-400">
+            {{ $t('Wiki.attributes.title') }}
+          </p>
+          <div
+            v-for="def in attributeDefinitions"
+            :key="def.key"
+            class="flex flex-col gap-1"
+          >
+            <label
+              class="text-xs font-medium text-surface-700 dark:text-surface-300"
+            >
+              {{ def.label || def.key }}
+            </label>
+            <Select
+              v-if="def.values && def.values.length"
+              v-model="attrDraft[def.key]"
+              :options="attributeOptions(def)"
+              option-label="label"
+              option-value="value"
+              class="w-full"
+            />
+            <InputText
+              v-else
+              v-model="attrDraft[def.key]"
+              class="w-full"
+              :placeholder="$t('Wiki.attributes.valuePlaceholder')"
+            />
+          </div>
+          <div class="flex justify-end pt-1">
+            <Button
+              :label="$t('Wiki.attributes.save')"
+              size="small"
+              :loading="wiki.state.saving"
+              @click="saveAttributesDraft"
+            />
+          </div>
+        </div>
+      </Popover>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { WikiBlock } from '@/types/wiki'
+import type { KnowledgeAttributeDefinition, WikiBlock } from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
+import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
 import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
@@ -526,6 +595,74 @@ const statusChipClass = computed(() => {
       return 'border-surface-200 text-surface-500 dark:border-surface-700 dark:text-surface-400'
   }
 })
+
+// ----- per-organisation metadata (attributes / tags) ------------------------
+
+const attributesPopoverRef = ref<{
+  toggle: (event: Event) => void
+  hide: () => void
+} | null>(null)
+const attributesOpen = ref(false)
+/** Working copy edited in the popover; committed on save. */
+const attrDraft = ref<Record<string, string>>({})
+
+/** The per-organisation attribute definitions from the tenant config. */
+const attributeDefinitions = computed<KnowledgeAttributeDefinition[]>(
+  () => wiki.state.config?.attributes ?? [],
+)
+
+/**
+ * The attribute values actually set on the page, as display chips. Labelled via
+ * the definitions, but also surfaces values whose definition was later removed
+ * so nothing stored silently disappears.
+ */
+const attributeChips = computed(() => {
+  const attrs = page.value?.attributes ?? {}
+  const labels = new Map(
+    attributeDefinitions.value.map((def) => [def.key, def.label || def.key]),
+  )
+  return Object.entries(attrs)
+    .filter(([, value]) => value)
+    .map(([key, value]) => ({ key, label: labels.get(key) ?? key, value }))
+})
+
+/** Options for a closed-value attribute select, incl. a "clear" entry. */
+const attributeOptions = (def: KnowledgeAttributeDefinition) => [
+  { label: t('Wiki.attributes.none'), value: '' },
+  ...(def.values ?? []).map((value) => ({ label: value, value })),
+]
+
+const openAttributes = (event: Event) => {
+  const attrs = page.value?.attributes ?? {}
+  const draft: Record<string, string> = {}
+  for (const def of attributeDefinitions.value) {
+    draft[def.key] = attrs[def.key] ?? ''
+  }
+  attrDraft.value = draft
+  attributesOpen.value = true
+  attributesPopoverRef.value?.toggle(event)
+}
+
+const saveAttributesDraft = async () => {
+  if (!page.value || !editable.value) return
+  try {
+    await wiki.saveAttributes(tenantId.value, page.value.id, attrDraft.value)
+    attributesPopoverRef.value?.hide()
+    attributesOpen.value = false
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      life: 2000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Wiki.attributes.saveError'),
+      life: 4000,
+    })
+  }
+}
 
 // ----- meta -----------------------------------------------------------------
 

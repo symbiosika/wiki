@@ -110,6 +110,15 @@
   "facets": {
     "clear": "Zurücksetzen"
   },
+  "attributes": {
+    "button": "Tags",
+    "hint": "Dokument-Tags bearbeiten",
+    "title": "Dokument-Tags",
+    "none": "—",
+    "valuePlaceholder": "Wert eingeben",
+    "save": "Speichern",
+    "saveError": "Tags konnten nicht gespeichert werden. Bitte erneut versuchen."
+  },
   "logout": "Abmelden",
   "tenant": "Organisation",
   "manage": "Verwaltung",
