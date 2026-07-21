@@ -32,6 +32,36 @@
     "saveSuccess": "Sucheinstellung gespeichert",
     "saveFailed": "Sucheinstellung konnte nicht gespeichert werden"
   },
+  "passkeys": {
+    "title": "Passkeys",
+    "hint": "Melde dich ohne Passwort an – mit Fingerabdruck, Gesichtserkennung oder der Sperre deines Geräts. Passkeys sind an dieses Gerät bzw. deinen Passwortmanager gebunden.",
+    "add": "Passkey hinzufügen",
+    "addTitle": "Passkey hinzufügen",
+    "create": "Passkey erstellen",
+    "nickname": "Name (optional)",
+    "nicknamePlaceholder": "z. B. MacBook, iPhone, YubiKey",
+    "nicknameHint": "Ein Name hilft dir, diesen Passkey später wiederzuerkennen.",
+    "unnamed": "Passkey",
+    "synced": "Synchronisiert",
+    "added": "Hinzugefügt",
+    "lastUsed": "Zuletzt verwendet",
+    "neverUsed": "Noch nicht verwendet",
+    "empty": "Du hast noch keine Passkeys angelegt.",
+    "unsupported": "Dein Browser unterstützt keine Passkeys. Nutze einen aktuellen Browser, um einen Passkey einzurichten.",
+    "created": "Passkey erfolgreich erstellt",
+    "deleted": "Passkey gelöscht",
+    "deleteTitle": "Passkey löschen",
+    "deleteConfirm": "Soll der Passkey „{name}“ wirklich gelöscht werden? Danach kannst du dich damit nicht mehr anmelden.",
+    "errors": {
+      "aborted": "Vorgang abgebrochen. Es wurde kein Passkey erstellt.",
+      "alreadyRegistered": "Für dieses Gerät ist bereits ein Passkey hinterlegt.",
+      "domain": "Passkeys sind für diese Adresse nicht korrekt konfiguriert. Bitte wende dich an den Administrator.",
+      "unsupportedAuthenticator": "Dieses Gerät erfüllt nicht die Anforderungen für einen Passkey.",
+      "emailNotVerified": "Bitte bestätige zuerst deine E-Mail-Adresse, bevor du einen Passkey einrichtest.",
+      "createFailed": "Passkey konnte nicht erstellt werden.",
+      "deleteFailed": "Passkey konnte nicht gelöscht werden."
+    }
+  },
   "errors": {
     "loadFailed": "Profil konnte nicht geladen werden",
     "saveFailed": "Profil konnte nicht gespeichert werden",

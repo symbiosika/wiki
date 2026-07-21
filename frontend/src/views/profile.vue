@@ -108,6 +108,146 @@
       </div>
     </section>
 
+    <!-- Passkeys -->
+    <section v-if="passkeys.enabled !== false" class="mb-8">
+      <div class="mb-1 flex items-center justify-between gap-4">
+        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0">
+          {{ $t('Profile.passkeys.title') }}
+        </h2>
+        <Button
+          v-if="passkeys.supported"
+          :label="$t('Profile.passkeys.add')"
+          size="small"
+          @click="openAddPasskey"
+        >
+          <template #icon><IconKeyPlus /></template>
+        </Button>
+      </div>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('Profile.passkeys.hint') }}
+      </p>
+
+      <!-- browser cannot do WebAuthn at all -->
+      <div
+        v-if="!passkeys.supported"
+        class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300"
+      >
+        {{ $t('Profile.passkeys.unsupported') }}
+      </div>
+
+      <template v-else>
+        <!-- list -->
+        <ul v-if="passkeys.passkeys.length > 0" class="flex flex-col gap-2">
+          <li
+            v-for="pk in passkeys.passkeys"
+            :key="pk.id"
+            class="flex items-center gap-3 rounded-lg border border-surface-200 px-4 py-3 dark:border-surface-700"
+          >
+            <IconKey
+              class="h-5 w-5 shrink-0 text-surface-400"
+              aria-hidden="true"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span
+                  class="truncate text-sm font-medium text-surface-900 dark:text-surface-0"
+                >
+                  {{ passkeyLabel(pk) }}
+                </span>
+                <span
+                  v-if="pk.credentialBackedUp"
+                  class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+                >
+                  {{ $t('Profile.passkeys.synced') }}
+                </span>
+              </div>
+              <p class="mt-0.5 text-xs text-surface-500 dark:text-surface-400">
+                {{ $t('Profile.passkeys.added') }}:
+                {{ formatDate(pk.createdAt) }}
+                <template v-if="pk.lastUsedAt">
+                  · {{ $t('Profile.passkeys.lastUsed') }}:
+                  {{ formatDate(pk.lastUsedAt) }}
+                </template>
+                <template v-else>
+                  · {{ $t('Profile.passkeys.neverUsed') }}
+                </template>
+              </p>
+            </div>
+            <SecondaryButton
+              :label="$t('Common.delete')"
+              size="small"
+              severity="danger"
+              :aria-label="$t('Common.delete')"
+              @click="confirmRemove(pk)"
+            >
+              <template #icon><IconDelete /></template>
+            </SecondaryButton>
+          </li>
+        </ul>
+
+        <!-- empty state -->
+        <div
+          v-else-if="!passkeys.loading"
+          class="rounded-lg border border-dashed border-surface-300 px-6 py-8 text-center dark:border-surface-600"
+        >
+          <p class="text-sm text-surface-500 dark:text-surface-400">
+            {{ $t('Profile.passkeys.empty') }}
+          </p>
+          <Button
+            :label="$t('Profile.passkeys.add')"
+            size="small"
+            class="mt-3"
+            @click="openAddPasskey"
+          >
+            <template #icon><IconKeyPlus /></template>
+          </Button>
+        </div>
+      </template>
+    </section>
+
+    <!-- add-passkey dialog (ask for an optional nickname first) -->
+    <Dialog
+      v-model:visible="addDialog"
+      modal
+      :header="$t('Profile.passkeys.addTitle')"
+      class="w-[440px] max-w-[94vw]"
+    >
+      <div class="flex flex-col gap-2">
+        <label
+          for="passkey-nickname"
+          class="text-sm text-surface-700 dark:text-surface-300"
+        >
+          {{ $t('Profile.passkeys.nickname') }}
+        </label>
+        <InputText
+          id="passkey-nickname"
+          v-model="newNickname"
+          class="w-full"
+          :placeholder="$t('Profile.passkeys.nicknamePlaceholder')"
+          :disabled="registering"
+          autofocus
+          @keydown.enter="submitPasskey"
+        />
+        <span class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Profile.passkeys.nicknameHint') }}
+        </span>
+      </div>
+      <template #footer>
+        <SecondaryButton
+          :label="$t('Common.cancel')"
+          size="small"
+          :disabled="registering"
+          @click="addDialog = false"
+        />
+        <Button
+          :label="$t('Profile.passkeys.create')"
+          size="small"
+          :loading="registering"
+          @click="submitPasskey"
+        />
+      </template>
+    </Dialog>
+
     <!-- Appearance / theme -->
     <section>
       <h2
@@ -195,7 +335,11 @@
 
 <script setup lang="ts">
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import { WebAuthnError } from '@simplewebauthn/browser'
 import { useTheme } from '@/stores/theme'
+import { usePasskeys, type Passkey } from '@/stores/passkeys'
+import { FetcherError } from '@/utils/fetcher'
 import IconCamera from '~icons/mdi/camera-outline'
 import IconMonitor from '~icons/mdi/monitor'
 import IconWhiteBalanceSunny from '~icons/mdi/white-balance-sunny'
@@ -204,13 +348,18 @@ import IconCheck from '~icons/mdi/check'
 import IconAutoFix from '~icons/mdi/auto-fix'
 import IconTextSearch from '~icons/mdi/text-box-search-outline'
 import IconBrain from '~icons/mdi/brain'
+import IconKey from '~icons/mdi/key-variant'
+import IconKeyPlus from '~icons/mdi/key-plus'
+import IconDelete from '~icons/mdi/delete-outline'
 import type { ThemePreference } from '@/utils/theme'
 import type { WikiSearchMode } from '@/types/wiki'
 
 const { t } = useI18n()
 const toast = useToast()
+const confirm = useConfirm()
 const app = useApp()
 const theme = useTheme()
+const passkeys = usePasskeys()
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -294,7 +443,149 @@ const syncFromUser = () => {
 onMounted(async () => {
   await app.waitForInit()
   syncFromUser()
+  // best-effort: hides the section on 404 (passkeys disabled for this instance)
+  passkeys.load().catch(() => {
+    /* a real load failure just leaves the list empty */
+  })
 })
+
+// ----- passkeys ------------------------------------------------------------
+
+const addDialog = ref(false)
+const newNickname = ref('')
+const registering = ref(false)
+
+const formatDate = (iso: string) => new Date(iso).toLocaleString()
+
+const passkeyLabel = (pk: Passkey) =>
+  pk.nickname?.trim() || t('Profile.passkeys.unnamed')
+
+const openAddPasskey = () => {
+  newNickname.value = ''
+  addDialog.value = true
+}
+
+/**
+ * Turn any failure from the WebAuthn ceremony or the backend into a friendly,
+ * localized message. These are exactly the confusing errors passkeys are
+ * notorious for, so each known cause gets its own explanation instead of a
+ * raw browser exception string.
+ */
+const describePasskeyError = (
+  err: unknown,
+): { detail: string; severity: 'error' | 'warn' } => {
+  if (err instanceof WebAuthnError) {
+    switch (err.code) {
+      case 'ERROR_CEREMONY_ABORTED':
+        return {
+          detail: t('Profile.passkeys.errors.aborted'),
+          severity: 'warn',
+        }
+      case 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED':
+        return {
+          detail: t('Profile.passkeys.errors.alreadyRegistered'),
+          severity: 'warn',
+        }
+      case 'ERROR_INVALID_DOMAIN':
+      case 'ERROR_INVALID_RP_ID':
+        return {
+          detail: t('Profile.passkeys.errors.domain'),
+          severity: 'error',
+        }
+      case 'ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT':
+      case 'ERROR_AUTHENTICATOR_MISSING_DISCOVERABLE_CREDENTIAL_SUPPORT':
+        return {
+          detail: t('Profile.passkeys.errors.unsupportedAuthenticator'),
+          severity: 'error',
+        }
+      default:
+        return {
+          detail: err.message || t('Profile.passkeys.errors.createFailed'),
+          severity: 'error',
+        }
+    }
+  }
+  // Some browsers surface a bare DOMException on cancel/timeout.
+  if (
+    err instanceof DOMException &&
+    (err.name === 'NotAllowedError' || err.name === 'AbortError')
+  ) {
+    return { detail: t('Profile.passkeys.errors.aborted'), severity: 'warn' }
+  }
+  if (err instanceof FetcherError && err.body) {
+    if (/email/i.test(err.body) && /verif/i.test(err.body)) {
+      return {
+        detail: t('Profile.passkeys.errors.emailNotVerified'),
+        severity: 'error',
+      }
+    }
+    return { detail: err.body, severity: 'error' }
+  }
+  return {
+    detail: t('Profile.passkeys.errors.createFailed'),
+    severity: 'error',
+  }
+}
+
+const submitPasskey = async () => {
+  if (registering.value) return
+  registering.value = true
+  try {
+    await passkeys.register(newNickname.value)
+    addDialog.value = false
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('Profile.passkeys.created'),
+      life: 3000,
+    })
+  } catch (err) {
+    const { detail, severity } = describePasskeyError(err)
+    toast.add({
+      severity,
+      summary:
+        severity === 'warn' ? t('Profile.passkeys.title') : t('Common.error'),
+      detail,
+      life: severity === 'warn' ? 4000 : 6000,
+    })
+  } finally {
+    registering.value = false
+  }
+}
+
+const confirmRemove = (pk: Passkey) => {
+  confirm.require({
+    header: t('Profile.passkeys.deleteTitle'),
+    message: t('Profile.passkeys.deleteConfirm', { name: passkeyLabel(pk) }),
+    rejectProps: {
+      label: t('Common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+    },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    accept: async () => {
+      try {
+        await passkeys.remove(pk.id)
+        toast.add({
+          severity: 'success',
+          summary: t('Common.success'),
+          detail: t('Profile.passkeys.deleted'),
+          life: 3000,
+        })
+      } catch (err) {
+        toast.add({
+          severity: 'error',
+          summary: t('Common.error'),
+          detail:
+            err instanceof FetcherError && err.body
+              ? err.body
+              : t('Profile.passkeys.errors.deleteFailed'),
+          life: 6000,
+        })
+      }
+    },
+  })
+}
 
 const initials = computed(() => {
   const user = app.state.user

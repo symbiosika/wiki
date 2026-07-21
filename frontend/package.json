@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "@ai-sdk/vue": "3.0.230",
-    "ai": "6.0.230",
     "@floating-ui/dom": "^1.8.0",
+    "@simplewebauthn/browser": "^13.0.0",
     "@tailwindcss/vite": "^4.1.17",
     "@tiptap/core": "^3.27.3",
     "@tiptap/extension-bubble-menu": "^3.27.3",
@@ -33,6 +33,7 @@
     "@tiptap/starter-kit": "^3.27.3",
     "@tiptap/suggestion": "^3.27.3",
     "@tiptap/vue-3": "^3.27.3",
+    "ai": "6.0.230",
     "html-to-pdfmake": "^2.5.33",
     "marked": "^18.0.6",
     "mitt": "^3.0.1",

@@ -32,6 +32,36 @@
     "saveSuccess": "Search preference saved",
     "saveFailed": "Could not save search preference"
   },
+  "passkeys": {
+    "title": "Passkeys",
+    "hint": "Sign in without a password using your fingerprint, face, or device lock. Passkeys are tied to this device or your password manager.",
+    "add": "Add passkey",
+    "addTitle": "Add passkey",
+    "create": "Create passkey",
+    "nickname": "Name (optional)",
+    "nicknamePlaceholder": "e.g. MacBook, iPhone, YubiKey",
+    "nicknameHint": "A name helps you recognize this passkey later.",
+    "unnamed": "Passkey",
+    "synced": "Synced",
+    "added": "Added",
+    "lastUsed": "Last used",
+    "neverUsed": "Not used yet",
+    "empty": "You haven't created any passkeys yet.",
+    "unsupported": "Your browser doesn't support passkeys. Use an up-to-date browser to set one up.",
+    "created": "Passkey created successfully",
+    "deleted": "Passkey deleted",
+    "deleteTitle": "Delete passkey",
+    "deleteConfirm": "Delete the passkey “{name}”? You won't be able to sign in with it anymore.",
+    "errors": {
+      "aborted": "Cancelled. No passkey was created.",
+      "alreadyRegistered": "This device already has a passkey registered.",
+      "domain": "Passkeys aren't configured correctly for this address. Please contact your administrator.",
+      "unsupportedAuthenticator": "This device doesn't meet the requirements for a passkey.",
+      "emailNotVerified": "Please verify your email address before setting up a passkey.",
+      "createFailed": "Could not create the passkey.",
+      "deleteFailed": "Could not delete the passkey."
+    }
+  },
   "errors": {
     "loadFailed": "Could not load profile",
     "saveFailed": "Could not save profile",

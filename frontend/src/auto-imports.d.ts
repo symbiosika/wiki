@@ -105,6 +105,7 @@ declare global {
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
   const useOAuthClients: typeof import('./stores/oauthClients').useOAuthClients
+  const usePasskeys: typeof import('./stores/passkeys').usePasskeys
   const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
   const useReadOnly: typeof import('./stores/readonly').useReadOnly
@@ -134,6 +135,9 @@ declare global {
   // @ts-ignore
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
   import('./stores/documentAssistant')
+  // @ts-ignore
+  export type { Passkey } from './stores/passkeys'
+  import('./stores/passkeys')
   // @ts-ignore
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
