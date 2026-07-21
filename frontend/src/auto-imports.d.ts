@@ -10,6 +10,7 @@ declare global {
   const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
   const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
@@ -92,11 +93,13 @@ declare global {
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
+  const useChatConfig: typeof import('./stores/chatConfig').useChatConfig
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
   const useDocumentAssistant: typeof import('./stores/documentAssistant').useDocumentAssistant
   const useI18n: typeof import('vue-i18n').useI18n
   const useId: typeof import('vue').useId
+  const useKnowledgeConfig: typeof import('./stores/knowledgeConfig').useKnowledgeConfig
   const useLayout: typeof import('./stores/layout').useLayout
   const useLink: typeof import('vue-router').useLink
   const useModel: typeof import('vue').useModel
@@ -126,6 +129,9 @@ declare global {
   export type { AiChatMode } from './stores/aiChat'
   import('./stores/aiChat')
   // @ts-ignore
+  export type { ChatAgentConfig } from './stores/chatConfig'
+  import('./stores/chatConfig')
+  // @ts-ignore
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
   import('./stores/documentAssistant')
   // @ts-ignore
@@ -150,7 +156,7 @@ declare global {
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
