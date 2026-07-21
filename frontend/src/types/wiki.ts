@@ -15,6 +15,21 @@ export interface WikiTreeNode {
   children: WikiTreeNode[]
 }
 
+/** The page currently being dragged in the sidebar tree (shared via provide). */
+export interface WikiDragState {
+  id: string
+  /** the section the page lives in — moves are only allowed within one section */
+  scopeKey: string
+}
+
+/** A drag & drop move request emitted by a tree item. */
+export interface WikiMovePayload {
+  dragId: string
+  targetId: string
+  /** drop position relative to the target: sibling before/after, or child */
+  mode: 'before' | 'inside' | 'after'
+}
+
 export interface WikiTeamSection {
   teamId: string
   name: string

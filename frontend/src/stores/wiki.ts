@@ -397,6 +397,119 @@ export const useWiki = defineStore('wiki', () => {
     await loadTree(tenantId)
   }
 
+  // ----- move (drag & drop reordering / re-parenting) ---------------------
+
+  /** The section a node lives in; moves are only allowed within one section. */
+  const scopeKey = (node: WikiTreeNode): string =>
+    node.teamId ? `team:${node.teamId}` : node.tenantWide ? 'org' : 'personal'
+
+  /** Locate a node in the reactive tree: its containing array, parent and index. */
+  interface TreeLocation {
+    siblings: WikiTreeNode[]
+    parent: WikiTreeNode | null
+    index: number
+  }
+  const locate = (id: string): TreeLocation | null => {
+    const search = (
+      siblings: WikiTreeNode[],
+      parent: WikiTreeNode | null,
+    ): TreeLocation | null => {
+      for (let i = 0; i < siblings.length; i++) {
+        const node = siblings[i]!
+        if (node.id === id) return { siblings, parent, index: i }
+        const hit = search(node.children, node)
+        if (hit) return hit
+      }
+      return null
+    }
+    const { personal, teams, organisation } = state.value.tree
+    return (
+      search(personal, null) ??
+      search(organisation, null) ??
+      teams.reduce<TreeLocation | null>(
+        (acc, team) => acc ?? search(team.pages, null),
+        null,
+      )
+    )
+  }
+
+  /** True when `ancestorId` is `node` itself or one of its descendants. */
+  const containsNode = (node: WikiTreeNode, id: string): boolean => {
+    if (node.id === id) return true
+    return node.children.some((child) => containsNode(child, id))
+  }
+
+  /**
+   * Move a page within its sidebar section via drag & drop.
+   *
+   * `mode` describes the drop relative to `targetId`:
+   *   - `before` / `after` — become a sibling before/after the target
+   *   - `inside`           — become the target's (last) child
+   *
+   * The tree is updated optimistically and the new order persisted; on failure
+   * we reload from the server to resync. Returns false when the move is invalid
+   * (dropping onto itself, into its own subtree, or across sections).
+   */
+  const movePage = async (
+    tenantId: string,
+    dragId: string,
+    targetId: string,
+    mode: 'before' | 'inside' | 'after',
+  ): Promise<boolean> => {
+    if (dragId === targetId) return false
+
+    const dragLoc = locate(dragId)
+    const targetLoc = locate(targetId)
+    if (!dragLoc || !targetLoc) return false
+
+    const dragNode = dragLoc.siblings[dragLoc.index]!
+    const targetNode = targetLoc.siblings[targetLoc.index]!
+
+    // no cross-section moves, and never drop a page into its own subtree
+    if (scopeKey(dragNode) !== scopeKey(targetNode)) return false
+    if (containsNode(dragNode, targetId)) return false
+
+    // resolve the destination sibling array, new parent and insert index
+    let destSiblings: WikiTreeNode[]
+    let newParentId: string | null
+    let insertIndex: number
+    if (mode === 'inside') {
+      destSiblings = targetNode.children
+      newParentId = targetNode.id
+      insertIndex = destSiblings.length
+    } else {
+      destSiblings = targetLoc.siblings
+      newParentId = targetNode.parentId
+      insertIndex = targetLoc.index + (mode === 'after' ? 1 : 0)
+    }
+
+    const originalParentId = dragNode.parentId
+
+    // --- optimistic tree update ---
+    dragLoc.siblings.splice(dragLoc.index, 1)
+    // removing an earlier item from the same array shifts the insert point
+    if (dragLoc.siblings === destSiblings && dragLoc.index < insertIndex) {
+      insertIndex--
+    }
+    destSiblings.splice(insertIndex, 0, dragNode)
+    dragNode.parentId = newParentId
+
+    const orderedIds = destSiblings.map((n) => n.id)
+
+    try {
+      await fetcher.post(`${api(tenantId)}/wiki/${dragId}/move`, {
+        parentId: newParentId,
+        orderedIds,
+      })
+      return true
+    } catch (error) {
+      // resync from the server so the UI never drifts from persisted state
+      dragNode.parentId = originalParentId
+      await loadTree(tenantId)
+      throw error
+    }
+  }
+
   // ----- search -------------------------------------------------------------
 
   const search = async (
@@ -455,6 +568,7 @@ export const useWiki = defineStore('wiki', () => {
     savePageMeta,
     saveBlocks,
     deletePage,
+    movePage,
     search,
     getLinks,
     getBacklinks,

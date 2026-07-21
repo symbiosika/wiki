@@ -173,6 +173,7 @@
           :node="node"
           @add-child="addChild"
           @delete="confirmDelete"
+          @move="onMove"
         />
         <p
           v-if="!wiki.state.tree.personal.length"
@@ -205,6 +206,7 @@
             :node="node"
             @add-child="addChild"
             @delete="confirmDelete"
+            @move="onMove"
           />
           <p
             v-if="!team.pages.length"
@@ -229,6 +231,7 @@
           :node="node"
           @add-child="addChild"
           @delete="confirmDelete"
+          @move="onMove"
         />
         <p
           v-if="!wiki.state.tree.organisation.length"
@@ -403,6 +406,7 @@
 
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
 import IconChat from '~icons/mdi/robot-happy-outline'
 import IconMicrophone from '~icons/mdi/microphone'
@@ -418,7 +422,12 @@ import IconPanelLeft from '~icons/mdi/dock-left'
 import IconChevronUp from '~icons/mdi/chevron-up'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
-import type { WikiScope, WikiSearchResult, WikiTreeNode } from '@/types/wiki'
+import type {
+  WikiMovePayload,
+  WikiScope,
+  WikiSearchResult,
+  WikiTreeNode,
+} from '@/types/wiki'
 
 const app = useApp()
 const protocol = useProtocol()
@@ -431,6 +440,7 @@ const layout = useLayout()
 const route = useRoute()
 const router = useRouter()
 const confirm = useConfirm()
+const toast = useToast()
 const { t } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId ?? ''))
@@ -468,6 +478,34 @@ const tenantMenuItems = computed(() =>
 
 const expandedIds = ref(new Set<string>())
 provide('wikiExpandedIds', expandedIds)
+
+// ----- drag & drop (shared drag state + move handler) ----------------------
+
+/** The page currently being dragged (null while idle). Read by WikiTreeItem. */
+const dragState = ref<{ id: string; scopeKey: string } | null>(null)
+provide('wikiDragState', dragState)
+
+const onMove = async (payload: WikiMovePayload) => {
+  try {
+    const moved = await wiki.movePage(
+      tenantId.value,
+      payload.dragId,
+      payload.targetId,
+      payload.mode,
+    )
+    // reveal the moved page when it was dropped into a (possibly collapsed) parent
+    if (moved && payload.mode === 'inside') {
+      expandedIds.value = new Set([...expandedIds.value, payload.targetId])
+    }
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Wiki.moveError'),
+      life: 5000,
+    })
+  }
+}
 
 // ----- footer: actions/account drawer, collapsed by default, persisted -----
 
