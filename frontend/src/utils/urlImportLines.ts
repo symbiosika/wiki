@@ -1,24 +1,28 @@
 /**
  * Parse / serialize the URL-import editor textarea.
  *
- * One entry per line. Besides the plain URL a line may carry two optional,
- * order-independent extras, each introduced by its own delimiter:
+ * One entry per line. A line is a list of fields separated by a comma OR a
+ * semicolon (use whichever you like — they are interchangeable), in this
+ * order:
  *
- *   - a title,  after a "|"
- *   - a subpath, after a "," or ";" — slash-separated category page titles
- *     (top→bottom) the imported page is filed under, relative to the job's
- *     parent page. Created on demand during a run.
+ *   URL [ SEP  title [ SEP  subpath ] ]
+ *
+ *   - title:   optional page-title override (otherwise the parsed page title
+ *              is used). Leave it empty to give a subpath without a title.
+ *   - subpath: optional "/"-separated category page titles (top→bottom) the
+ *              imported page is filed under, relative to the job's parent page.
+ *              Created on demand during a run.
  *
  * Examples:
  *   https://example.com/a
- *   https://example.com/b | Nice title
- *   https://example.com/c , Docs/API Reference
- *   https://example.com/d | Nice title ; Team Wiki/Onboarding
+ *   https://example.com/b ; Nice title
+ *   https://example.com/c ; Nice title ; Docs/API Reference
+ *   https://example.com/d ; ; Docs/API Reference          (subpath, no title)
  *
- * The URL is everything before the first delimiter, so a title or category
- * name may contain spaces freely. A "/" inside a category name is treated as
- * a level separator, and a "," / ";" is reserved for the subpath — keep those
- * out of titles (or rely on the page's own parsed title instead).
+ * Fields may contain spaces freely. "/" separates the levels inside the
+ * subpath. Because "," and ";" separate the fields, a title cannot itself
+ * contain one of those characters. The legacy "url | title" form is still
+ * accepted on read.
  */
 
 export interface ParsedUrlLine {
@@ -26,8 +30,6 @@ export interface ParsedUrlLine {
   title?: string | null
   subPath?: string[]
 }
-
-const DELIM = /[|,;]/
 
 /** Split a raw path string into trimmed, non-empty level titles. */
 export const splitSubPath = (raw: string): string[] =>
@@ -41,22 +43,30 @@ export const parseUrlLine = (raw: string): ParsedUrlLine | null => {
   const line = raw.trim()
   if (!line) return null
 
-  const first = line.search(DELIM)
-  if (first === -1) return { url: line }
+  // Fields are separated by a comma OR a semicolon (interchangeable). Keep
+  // empty fields so an empty title slot ("url ; ; path") still works.
+  const fields = line.split(/[;,]/).map((field) => field.trim())
 
-  const url = line.slice(0, first).trim()
+  // The first field holds the URL, optionally with a legacy "| title" suffix.
+  let urlField = fields[0] ?? ''
+  let title: string | null = null
+  const pipe = urlField.indexOf('|')
+  if (pipe !== -1) {
+    title = urlField.slice(pipe + 1).trim() || null
+    urlField = urlField.slice(0, pipe).trim()
+  }
+  const url = urlField
   if (!url) return null
 
-  // Walk the remainder as [delimiter, value] tokens so title (|) and subpath
-  // (, / ;) can appear in any order; the last of each kind wins.
-  let title: string | null = null
-  let subPath: string[] = []
-  for (const match of line.slice(first).matchAll(/([|,;])([^|,;]*)/g)) {
-    const delim = match[1]
-    const value = match[2] ?? ''
-    if (delim === '|') title = value.trim() || null
-    else subPath = splitSubPath(value)
+  // With a legacy pipe title the remaining fields are all subpath; otherwise
+  // field 2 is the title and fields 3+ are the subpath. Extra fields are
+  // folded into the subpath so "; a ; b" works as an alternative to "; a/b".
+  const pathFields = pipe !== -1 ? fields.slice(1) : fields.slice(2)
+  if (pipe === -1) {
+    const titleField = fields[1] ?? ''
+    title = titleField.length > 0 ? titleField : null
   }
+  const subPath = pathFields.flatMap(splitSubPath)
 
   return { url, title, subPath }
 }
@@ -68,14 +78,22 @@ export const parseUrlLines = (text: string): ParsedUrlLine[] =>
     .map(parseUrlLine)
     .filter((entry): entry is ParsedUrlLine => entry !== null)
 
-/** Serialize one entry back to its canonical `url [| title] [, a / b]` line. */
+/**
+ * Serialize one entry back to its canonical line. Uses ";" as the field
+ * separator; a subpath without a title keeps the empty title slot so the
+ * line round-trips ("url ; ; a / b").
+ */
 export const urlLineToText = (entry: ParsedUrlLine): string => {
-  let line = entry.url
-  if (entry.title) line += ` | ${entry.title}`
-  if (entry.subPath && entry.subPath.length > 0) {
-    line += ` , ${entry.subPath.join(' / ')}`
+  const title = entry.title ?? ''
+  const path = entry.subPath ?? []
+  if (path.length > 0) {
+    const mid = title ? ` ${title} ` : ' '
+    return `${entry.url} ;${mid}; ${path.join(' / ')}`
   }
-  return line
+  if (title) {
+    return `${entry.url} ; ${title}`
+  }
+  return entry.url
 }
 
 /** Serialize a list of entries into textarea content. */
