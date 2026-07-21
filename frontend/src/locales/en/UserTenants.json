@@ -61,6 +61,25 @@
       "fetchFailed": "Failed to load invitations"
     }
   },
+  "metadata": {
+    "title": "Document tags",
+    "description": "Define the key-value tags every document in this organisation can use. Each key can allow free text or a fixed list of values.",
+    "key": "Key",
+    "keyPlaceholder": "e.g. manufacturer",
+    "label": "Label",
+    "labelPlaceholder": "Shown to users (optional)",
+    "values": "Allowed values",
+    "valuesPlaceholder": "e.g. Miele, Bosch, Siemens",
+    "valuesHint": "Comma-separated. Leave empty to allow free text.",
+    "addAttribute": "Add tag",
+    "remove": "Remove tag",
+    "empty": "No tags defined yet.",
+    "save": "Save tags",
+    "saved": "Tags saved",
+    "duplicateKey": "Each tag key must be unique.",
+    "loadError": "Failed to load document tags",
+    "saveError": "Failed to save document tags"
+  },
   "errors": {
     "setupFailed": "Failed to create organisation",
     "leaveFailed": "Failed to leave organisation",
