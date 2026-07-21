@@ -21,7 +21,7 @@
     <template v-else-if="page">
       <!-- meta bar -->
       <div
-        class="sticky top-0 z-10 -mx-4 flex shrink-0 items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center justify-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
         <span
           class="rounded-full border border-surface-200 px-2 py-0.5 dark:border-surface-700"
@@ -111,7 +111,9 @@
           <span>{{ $t('Wiki.attributes.button') }}</span>
         </button>
 
-        <span class="min-w-0 flex-1 truncate">{{ breadcrumb }}</span>
+        <span v-if="breadcrumb" class="min-w-0 max-w-full truncate">{{
+          breadcrumb
+        }}</span>
         <span v-if="wiki.state.saveError" class="text-red-500">
           {{ $t('Wiki.saveError') }}
         </span>
@@ -163,7 +165,7 @@
 
         <button
           type="button"
-          class="ml-1 flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
           :class="{ 'border-primary text-primary': assistant.open }"
           :title="$t('Assistant.title')"
           :disabled="!editable"
