@@ -5,8 +5,8 @@
  *   - discovery  : overview (start here), tree, search, resolve by title,
  *                  recent changes, flat list, facet config
  *   - read       : page content, metadata (explicit), batch read, outline +
- *                  section, line range, bounded subtree, links, backlinks,
- *                  related, history + single version
+ *                  section, line range, chunk context (by position), bounded
+ *                  subtree, links, backlinks, related, history + single version
  *   - write      : create, update/move/curate facets, append, edit content,
  *                  delete
  *
