@@ -4,6 +4,7 @@ import { blocksAreEqual } from '@/utils/wikiBlocks'
 import type {
   WikiBacklink,
   WikiBlock,
+  WikiKnowledgeConfig,
   WikiOutgoingLink,
   WikiPage,
   WikiRelatedPage,
@@ -25,6 +26,8 @@ interface WikiState {
   saveError: string | null
   /** UI: whether the "import page" dialog is open (mounted once in the layout) */
   importDialogOpen: boolean
+  /** tenant facet vocabularies (page types / statuses); null until loaded */
+  config: WikiKnowledgeConfig | null
 }
 
 /** Options shared by the file and URL import endpoints. */
@@ -94,10 +97,30 @@ export const useWiki = defineStore('wiki', () => {
     lastSavedAt: null,
     saveError: null,
     importDialogOpen: false,
+    config: null,
   })
 
   const openImportDialog = () => {
     state.value.importDialogOpen = true
+  }
+
+  // ----- config (facet vocabularies) --------------------------------------
+
+  /**
+   * Load the tenant's knowledge config (page-type / status vocabularies) once.
+   * Cached for the session — the vocabularies rarely change and every page
+   * uses the same lists, so we avoid re-fetching on each page switch.
+   */
+  const loadConfig = async (tenantId: string) => {
+    if (state.value.config) return
+    try {
+      state.value.config = await fetcher.get<WikiKnowledgeConfig>(
+        `${api(tenantId)}/knowledge/texts/config`,
+      )
+    } catch {
+      // fall back to empty vocabularies — the facet selectors simply stay empty
+      state.value.config = { autoSummaries: true, pageTypes: [], statuses: [] }
+    }
   }
 
   // ----- tree -------------------------------------------------------------
@@ -290,6 +313,55 @@ export const useWiki = defineStore('wiki', () => {
     }
   }
 
+  /**
+   * Update a page's controlled facets (classification / status). The backend
+   * validates the values against the tenant vocabulary. When the status moves
+   * to (or away from) "verified" we also stamp verifiedAt/verifiedBy so the
+   * trust signal carries who confirmed it and when.
+   */
+  const savePageMeta = async (
+    tenantId: string,
+    pageId: string,
+    patch: { pageType?: string | null; status?: string | null },
+    verifiedByUserId?: string,
+  ) => {
+    const body: Record<string, unknown> = { tenantId, ...patch }
+    if ('status' in patch) {
+      if (patch.status === 'verified') {
+        body.verifiedAt = new Date().toISOString()
+        body.verifiedBy = verifiedByUserId ?? null
+      } else {
+        // leaving the verified state clears the verification stamp
+        body.verifiedAt = null
+        body.verifiedBy = null
+      }
+    }
+
+    state.value.saving = true
+    state.value.saveError = null
+    try {
+      const updated = await fetcher.put<WikiPage>(
+        `${api(tenantId)}/knowledge/texts/${pageId}`,
+        body,
+      )
+      if (state.value.page?.id === pageId) {
+        if ('pageType' in patch) state.value.page.pageType = updated.pageType
+        if ('status' in patch) {
+          state.value.page.status = updated.status
+          state.value.page.verifiedAt = updated.verifiedAt
+          state.value.page.verifiedBy = updated.verifiedBy
+        }
+      }
+      state.value.lastSavedAt = new Date().toISOString()
+    } catch (error) {
+      state.value.saveError =
+        error instanceof Error ? error.message : 'Failed to save page metadata'
+      throw error
+    } finally {
+      state.value.saving = false
+    }
+  }
+
   const saveBlocks = async (
     tenantId: string,
     pageId: string,
@@ -368,6 +440,7 @@ export const useWiki = defineStore('wiki', () => {
   return {
     state,
     openImportDialog,
+    loadConfig,
     loadTree,
     findTreeNode,
     loadPage,
@@ -377,6 +450,7 @@ export const useWiki = defineStore('wiki', () => {
     importUrl,
     uploadImage,
     saveTitle,
+    savePageMeta,
     saveBlocks,
     deletePage,
     search,

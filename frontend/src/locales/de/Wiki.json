@@ -78,6 +78,29 @@
     "team": "Team",
     "organisation": "Organisation"
   },
+  "pageType": {
+    "empty": "Klassifizieren",
+    "hint": "Klassifizierung der Seite wählen",
+    "values": {
+      "FAQ": "FAQ",
+      "manual": "Handbuch",
+      "text": "Text",
+      "policy": "Richtlinie",
+      "note": "Notiz"
+    }
+  },
+  "status": {
+    "empty": "Status",
+    "hint": "Status der Seite setzen",
+    "values": {
+      "draft": "Entwurf",
+      "verified": "Geprüft",
+      "outdated": "Veraltet"
+    }
+  },
+  "facets": {
+    "clear": "Zurücksetzen"
+  },
   "logout": "Abmelden",
   "tenant": "Organisation",
   "manage": "Verwaltung",

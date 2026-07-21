@@ -78,6 +78,29 @@
     "team": "Team",
     "organisation": "Organisation"
   },
+  "pageType": {
+    "empty": "Classify",
+    "hint": "Choose the page classification",
+    "values": {
+      "FAQ": "FAQ",
+      "manual": "Manual",
+      "text": "Text",
+      "policy": "Policy",
+      "note": "Note"
+    }
+  },
+  "status": {
+    "empty": "Status",
+    "hint": "Set the page status",
+    "values": {
+      "draft": "Draft",
+      "verified": "Verified",
+      "outdated": "Outdated"
+    }
+  },
+  "facets": {
+    "clear": "Clear"
+  },
   "logout": "Log out",
   "tenant": "Organisation",
   "manage": "Manage",
