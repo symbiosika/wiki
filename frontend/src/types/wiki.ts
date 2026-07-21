@@ -42,6 +42,11 @@ export interface WikiPage {
   position: string | null
   updatedAt: string
   createdAt: string
+  // --- authorship (see framework knowledge.ts) ---
+  /** User who created the page. */
+  createdBy: string | null
+  /** User who last edited the page. */
+  updatedBy: string | null
   // --- controlled facets (see framework knowledge-config.ts) ---
   /** Classification, e.g. "FAQ" | "manual" | "text" | "policy" | "note". */
   pageType: string | null

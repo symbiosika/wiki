@@ -48,6 +48,14 @@
     "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
     "pageOf": "{current} von {total}"
   },
+  "info": {
+    "button": "Info",
+    "hint": "Dokumentdetails anzeigen",
+    "created": "Erstellt",
+    "updated": "Zuletzt bearbeitet",
+    "verified": "Geprüft",
+    "by": "von {name}"
+  },
   "references": {
     "backlinks": "Verlinkt von",
     "outgoing": "Verweist auf",

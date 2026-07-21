@@ -48,6 +48,14 @@
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
   },
+  "info": {
+    "button": "Info",
+    "hint": "Show document details",
+    "created": "Created",
+    "updated": "Last edited",
+    "verified": "Verified",
+    "by": "by {name}"
+  },
   "references": {
     "backlinks": "Linked from",
     "outgoing": "Links to",
