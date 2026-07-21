@@ -57,6 +57,12 @@
     "verified": "Geprüft",
     "by": "von {name}"
   },
+  "summary": {
+    "button": "Zusammenfassung",
+    "hint": "KI-generierte Seitenzusammenfassung anzeigen",
+    "title": "Zusammenfassung",
+    "updated": "Erstellt {date}"
+  },
   "references": {
     "backlinks": "Verlinkt von",
     "outgoing": "Verweist auf",

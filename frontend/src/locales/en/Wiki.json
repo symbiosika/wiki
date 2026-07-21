@@ -57,6 +57,12 @@
     "verified": "Verified",
     "by": "by {name}"
   },
+  "summary": {
+    "button": "Summary",
+    "hint": "Show the AI-generated page summary",
+    "title": "Summary",
+    "updated": "Generated {date}"
+  },
   "references": {
     "backlinks": "Linked from",
     "outgoing": "Links to",

@@ -41,6 +41,23 @@
           <span>{{ $t('Wiki.info.button') }}</span>
         </button>
 
+        <!--
+          summary: clickable chip that opens the AI page summary. Only rendered
+          when a summary exists (which itself only happens when a global LLM is
+          configured and auto-summaries are enabled — see framework summaries.ts).
+        -->
+        <button
+          v-if="page.summary"
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': summaryOpen }"
+          :title="$t('Wiki.summary.hint')"
+          @click="toggleSummary"
+        >
+          <IconTextBox class="h-3.5 w-3.5" />
+          <span>{{ $t('Wiki.summary.button') }}</span>
+        </button>
+
         <!-- classification (pageType): clickable chip that opens a chooser -->
         <button
           v-if="page.pageType || editable"
@@ -244,6 +261,28 @@
       <Menu ref="pageTypeMenuRef" :model="pageTypeItems" popup />
       <Menu ref="statusMenuRef" :model="statusItems" popup />
 
+      <!-- AI page summary, opened by the "Summary" chip -->
+      <Popover ref="summaryPopoverRef" @hide="summaryOpen = false">
+        <div class="w-72 space-y-2 text-xs">
+          <p class="font-medium text-surface-500 dark:text-surface-400">
+            {{ $t('Wiki.summary.title') }}
+          </p>
+          <p class="leading-relaxed text-surface-800 dark:text-surface-100">
+            {{ page.summary }}
+          </p>
+          <p
+            v-if="page.summaryUpdatedAt"
+            class="text-surface-400 dark:text-surface-500"
+          >
+            {{
+              $t('Wiki.summary.updated', {
+                date: formatDateTime(page.summaryUpdatedAt),
+              })
+            }}
+          </p>
+        </div>
+      </Popover>
+
       <!-- document metadata, opened by the "Info" chip -->
       <Popover ref="infoPopoverRef" @hide="infoOpen = false">
         <dl class="w-64 space-y-3 text-xs">
@@ -349,6 +388,7 @@ import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconTag from '~icons/mdi/tag-outline'
 import IconInfo from '~icons/mdi/information-outline'
+import IconTextBox from '~icons/mdi/text-box-outline'
 import IconCircle from '~icons/mdi/circle-outline'
 import IconCheckCircle from '~icons/mdi/check-circle-outline'
 import IconAlertCircle from '~icons/mdi/alert-circle-outline'
@@ -702,6 +742,16 @@ const infoOpen = ref(false)
 const toggleInfo = (event: Event) => {
   infoOpen.value = !infoOpen.value
   infoPopoverRef.value?.toggle(event)
+}
+
+// ----- summary popover (AI page summary) ------------------------------------
+
+const summaryPopoverRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const summaryOpen = ref(false)
+
+const toggleSummary = (event: Event) => {
+  summaryOpen.value = !summaryOpen.value
+  summaryPopoverRef.value?.toggle(event)
 }
 
 // userId -> email lookup, so authorship fields (createdBy / updatedBy /
