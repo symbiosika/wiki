@@ -65,6 +65,13 @@ type CallOptions = {
   json?: unknown;
   /** Query parameters (empty/undefined values are dropped). */
   query?: Record<string, string | number | boolean | undefined>;
+  /**
+   * Shape the (unwrapped) response data before it becomes the tool result.
+   * Used to keep tool outputs context-friendly: drop internal bookkeeping
+   * columns, strip nulls, compute derived fields. Only applied to successful
+   * responses.
+   */
+  transform?: (data: unknown) => unknown;
 };
 
 /**
@@ -125,8 +132,8 @@ export async function callApi(
     "success" in (parsed as any) &&
     "data" in (parsed as any)
   ) {
-    return ok((parsed as any).data);
+    parsed = (parsed as any).data;
   }
 
-  return ok(parsed);
+  return ok(opts.transform ? opts.transform(parsed) : parsed);
 }

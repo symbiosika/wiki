@@ -1,13 +1,16 @@
 /**
  * Writing tools: let the assistant author and maintain the wiki. Create pages
- * (personal, in a team, or organisation-wide), move/rename them, make surgical
- * string-replace edits, or delete them. Every write runs with the user's own
- * permissions — the app rejects writes to pages the user may not change.
+ * (personal, in a team, or organisation-wide), move/rename/curate them
+ * (facets: pageType, status, validUntil, supersedes), append to them, make
+ * surgical string-replace edits, or delete them. Every write runs with the
+ * user's own permissions — the app rejects writes to pages the user may not
+ * change.
  */
 
 import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
 import { callApi, tenantPath, resolveTenantId } from "../app-api.ts";
+import { pageMetadata } from "./_shapes.ts";
 
 export function registerWriteTools(mcp: any): void {
   defineTool(
@@ -19,7 +22,10 @@ export function registerWriteTools(mcp: any): void {
         "Creates a new wiki page. By default it is a personal (private) page. " +
         "Set `parentId` to nest it under another page, `teamId` to place it in " +
         "a team, or `organisation: true` to make it organisation-wide. Provide " +
-        "the body as markdown in `content`. Returns the created page (incl. id).",
+        "the body as markdown in `content`; link related pages with " +
+        "[[wikilinks]]. Optionally classify it right away with `pageType` / " +
+        "`status` (allowed values: `get_wiki_config`). Returns the created " +
+        "page reference (incl. id).",
       inputSchema: z.object({
         title: z.string().min(1).describe("The page title."),
         content: z
@@ -41,6 +47,14 @@ export function registerWriteTools(mcp: any): void {
             "If true, make the page organisation-wide (visible to all members). " +
               "Ignored when `teamId` is set.",
           ),
+        pageType: z
+          .string()
+          .optional()
+          .describe("Facet: kind of page (controlled vocabulary)."),
+        status: z
+          .string()
+          .optional()
+          .describe("Facet: trust status (controlled vocabulary)."),
       }),
     },
     async (args, authInfo) =>
@@ -58,7 +72,10 @@ export function registerWriteTools(mcp: any): void {
           parentId: args.parentId,
           teamId: args.teamId,
           tenantWide: args.teamId ? false : Boolean(args.organisation),
+          pageType: args.pageType,
+          status: args.status,
         },
+        transform: pageMetadata,
       }),
   );
 
@@ -66,12 +83,17 @@ export function registerWriteTools(mcp: any): void {
     mcp,
     {
       name: "update_page",
-      title: "Update a page (title / move)",
+      title: "Update a page (title / move / facets)",
       description:
         "Updates a page's metadata: rename it (`title`), move it under another " +
-        "page (`parentId`, use null to make it a root), move it into a team " +
-        "(`teamId`) or make it organisation-wide (`organisation`). To change the " +
-        "body text use `edit_page_content` instead.",
+        "page (`parentId`, null for top level), move it into a team (`teamId`) " +
+        "or make it organisation-wide (`organisation`). Also curates the " +
+        "facets: `pageType` and `status` (controlled vocabularies, see " +
+        "`get_wiki_config`), `validUntil` (expiry of time-bound content), " +
+        "`supersedesId` (this page replaces another) and `summary` (setting " +
+        "it switches the page to a manual summary that auto-generation never " +
+        "overwrites). To change the body text use `edit_page_content` or " +
+        "`append_to_page` instead.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         title: z.string().optional().describe("New title."),
@@ -89,6 +111,33 @@ export function registerWriteTools(mcp: any): void {
           .boolean()
           .optional()
           .describe("Set organisation-wide visibility."),
+        pageType: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Facet: kind of page (null clears it)."),
+        status: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Facet: trust status (null clears it)."),
+        validUntil: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Facet: ISO expiry timestamp (null clears it)."),
+        supersedesId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Facet: id of the page this one replaces (null clears it)."),
+        summary: z
+          .string()
+          .optional()
+          .describe(
+            "Manual 1-2 sentence summary; switches the page to manual " +
+              "summary mode.",
+          ),
       }),
     },
     async (args, authInfo) => {
@@ -97,12 +146,54 @@ export function registerWriteTools(mcp: any): void {
       if (args.parentId !== undefined) body.parentId = args.parentId;
       if (args.teamId !== undefined) body.teamId = args.teamId;
       if (args.organisation !== undefined) body.tenantWide = args.organisation;
+      if (args.pageType !== undefined) body.pageType = args.pageType;
+      if (args.status !== undefined) body.status = args.status;
+      if (args.validUntil !== undefined) body.validUntil = args.validUntil;
+      if (args.supersedesId !== undefined) body.supersedesId = args.supersedesId;
+      if (args.summary !== undefined) {
+        body.summary = args.summary;
+        body.summaryMode = "manual";
+      }
       return callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}`),
-        { method: "PUT", json: body },
+        { method: "PUT", json: body, transform: pageMetadata },
       );
     },
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "append_to_page",
+      title: "Append to a page",
+      description:
+        "Appends markdown to the END of a page — the robust way to add a " +
+        "note, log entry or new section: no reading first, no string " +
+        "matching, no edit conflicts. A blank line separates the appended " +
+        "text by default (override with `separator`). Returns only counters " +
+        "(appendedChars, totalChars), not the full content.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+        content: z
+          .string()
+          .min(1)
+          .describe("The markdown to append."),
+        separator: z
+          .string()
+          .optional()
+          .describe('Separator before the appended text (default "\\n\\n").'),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/append`),
+        {
+          method: "POST",
+          json: { text: args.content, separator: args.separator },
+        },
+      ),
   );
 
   defineTool(
@@ -116,7 +207,8 @@ export function registerWriteTools(mcp: any): void {
         "exactly and unambiguously (read it first with `read_page_content`). " +
         "Set `replaceAll: true` to replace every occurrence. Returns the number " +
         "of replacements and the new content. Fails (409) if the string is " +
-        "missing or ambiguous.",
+        "missing or ambiguous. For adding at the end, `append_to_page` is " +
+        "simpler and safer.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         oldString: z

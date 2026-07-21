@@ -1,30 +1,147 @@
 /**
- * Reading tools: pull the actual knowledge out of the wiki. From reading a
- * single page or a line range (file-like), to whole subtrees as clean JSON,
- * to the link graph (outgoing links, backlinks, semantically related pages)
- * and the version history.
+ * Reading tools: pull the actual knowledge out of the wiki — with context
+ * economy as the design rule. `get_page` returns just id/title/content;
+ * metadata is an explicit request (`get_page_metadata`). Long pages are read
+ * via outline + section or line ranges instead of whole; subtrees can be
+ * bounded by depth and a character budget; several pages load in one batch
+ * call. The link graph (outgoing, backlinks, related) and the version history
+ * complete the picture.
  */
 
 import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
 import { callApi, tenantPath } from "../app-api.ts";
+import {
+  pageMetadata,
+  pageVersion,
+  slimBatchRows,
+  slimHistoryRows,
+} from "./_shapes.ts";
 
 export function registerReadTools(mcp: any): void {
   defineTool(
     mcp,
     {
       name: "get_page",
-      title: "Get a page",
+      title: "Get a page (content)",
       description:
-        "Returns a single page in full, including its materialized text/markdown " +
-        "content, title, parentId and scope (personal / team / organisation). " +
-        "Use the page id from the tree or search results.",
+        "Returns a page as clean `{ id, title, content }` — the full body as " +
+        "markdown, no metadata noise. Use the page id from the overview, " +
+        "tree, search results or `resolve_page`. For scope, facets, authorship " +
+        "etc. call `get_page_metadata`; for very long pages prefer " +
+        "`get_page_outline` + `read_page_section`.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
     },
     async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, `/knowledge/texts/${args.pageId}`)),
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+      ),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "get_page_metadata",
+      title: "Get page metadata",
+      description:
+        "Returns a page's metadata WITHOUT the body text: title, parentId, " +
+        "scope (personal/team/organisation), summary, facets (pageType, " +
+        "status, owner, validUntil, supersedes), authorship (createdBy/" +
+        "updatedBy, timestamps), contentMode and size (contentChars). Ask for " +
+        "this explicitly when you need context about a page — reading the " +
+        "content itself is `get_page`.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}`),
+        { transform: pageMetadata },
+      ),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "get_pages",
+      title: "Get several pages at once (batch)",
+      description:
+        "Reads up to ~20 pages in ONE call — for research across multiple " +
+        "search hits instead of one `get_page` per id. Returns each visible " +
+        "page as a compact reference plus `content` (set `includeText: false` " +
+        "to fetch references only). Ids the user may not see are silently " +
+        "omitted from the result.",
+      inputSchema: z.object({
+        pageIds: z
+          .array(z.string())
+          .min(1)
+          .describe("The page ids to read."),
+        includeText: z
+          .boolean()
+          .optional()
+          .describe("Include the full body text (default true)."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/batch"), {
+        method: "POST",
+        json: {
+          ids: args.pageIds,
+          includeText: args.includeText ?? true,
+        },
+        transform: slimBatchRows,
+      }),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "get_page_outline",
+      title: "Get a page's heading outline",
+      description:
+        "Returns the heading structure of a page (level, title, stable " +
+        "anchor, line number) WITHOUT the body text. The cheap way to " +
+        "navigate a long page: fetch the outline, pick a section, then read " +
+        "just that section with `read_page_section`.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/outline`),
+      ),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "read_page_section",
+      title: "Read one section of a page",
+      description:
+        "Reads a single section of a page addressed by its heading anchor " +
+        "(from `get_page_outline`). The section spans from the heading to the " +
+        "next heading of the same or higher level, subsections included. Use " +
+        "this instead of `get_page` for long documents.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+        anchor: z
+          .string()
+          .describe("The section's anchor slug from the outline."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/section`),
+        { query: { anchor: args.anchor } },
+      ),
   );
 
   defineTool(
@@ -35,8 +152,8 @@ export function registerReadTools(mcp: any): void {
       description:
         "Reads a page's content like a file, optionally as a line range " +
         "(fromLine / maxLines). Returns the content plus fromLine, toLine and " +
-        "totalLines. Ideal for large pages or for locating an exact string " +
-        "before editing it with `edit_page_content`.",
+        "totalLines. Ideal for locating an exact string before editing it " +
+        "with `edit_page_content`.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         fromLine: z
@@ -67,19 +184,41 @@ export function registerReadTools(mcp: any): void {
       name: "get_page_subtree",
       title: "Get a page and its subtree",
       description:
-        "Returns a page and, recursively, all of its child pages as clean, " +
-        "LLM-friendly JSON ({ id, title, content, children[] }). Use this to " +
-        "load an entire section of the wiki (e.g. a handbook and all its " +
-        "chapters) in one call.",
+        "Returns a page and, recursively, its child pages as clean JSON " +
+        "({ id, title, content, children[] }). Use this to load a whole " +
+        "section (e.g. a handbook) in one call — and BOUND it: `maxDepth` " +
+        "limits how deep children are expanded (nodes with unexpanded " +
+        "children get `childrenOmitted: true`), `maxChars` is a total " +
+        "character budget across all contents (cut nodes get " +
+        "`contentTruncated: true`; structure always stays complete, so you " +
+        "can fetch what's missing individually).",
       inputSchema: z.object({
         pageId: z.string().describe("The root page id of the subtree."),
+        maxDepth: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Maximum depth to expand (root = 0)."),
+        maxChars: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Total character budget across all node contents."),
       }),
     },
     async (args, authInfo) =>
       callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
-        { query: { recursive: "true" } },
+        {
+          query: {
+            recursive: "true",
+            maxDepth: args.maxDepth,
+            maxChars: args.maxChars,
+          },
+        },
       ),
   );
 
@@ -149,16 +288,52 @@ export function registerReadTools(mcp: any): void {
       name: "get_page_history",
       title: "Get page version history",
       description:
-        "Returns the version history (snapshots) of a page, newest first. Each " +
-        "snapshot captures title, content and structure at the time of an edit.",
+        "Returns the version history of a page, newest first — as a compact " +
+        "list (versionId, title, size, author, timestamps) WITHOUT the old " +
+        "contents. Load a specific old version in full with " +
+        "`get_page_version`.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Maximum number of versions to return."),
       }),
     },
     async (args, authInfo) =>
       callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/history`),
+        { query: { limit: args.limit }, transform: slimHistoryRows },
+      ),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "get_page_version",
+      title: "Get one historic version of a page",
+      description:
+        "Returns a single archived version of a page in full (title + " +
+        "content at that time, authorship, when it was superseded). Use the " +
+        "versionId from `get_page_history`.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+        versionId: z
+          .string()
+          .describe("The history entry id from `get_page_history`."),
+      }),
+    },
+    async (args, authInfo) =>
+      callApi(
+        authInfo,
+        tenantPath(
+          authInfo,
+          `/knowledge/texts/${args.pageId}/history/${args.versionId}`,
+        ),
+        { transform: pageVersion },
       ),
   );
 }
