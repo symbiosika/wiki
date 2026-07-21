@@ -64,9 +64,9 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
     volumes:
       # >>> This is what persists the log files <<<
-      - app_logs:/usr/src/app/logs
+      # - app_logs:/usr/src/app/logs
       # Alternatively bind-mount to a host directory:
-      # - ./logs:/usr/src/app/logs
+      # - ./logs/app:/usr/src/app/logs
 
   postgres:
     image: pgvector/pgvector:pg17
