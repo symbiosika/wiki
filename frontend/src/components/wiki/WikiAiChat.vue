@@ -58,6 +58,16 @@
           <span>{{ isEdit ? $t('Chat.mode.edit') : $t('Chat.mode.read') }}</span>
         </button>
 
+        <!-- quick settings: adjust the org system prompt -->
+        <button
+          type="button"
+          :title="$t('Chat.config.settingsTitle')"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300"
+          @click="openSettings"
+        >
+          <IconCog class="h-4 w-4" />
+        </button>
+
         <!-- clear conversation -->
         <button
           v-if="messages.length"
@@ -192,6 +202,59 @@
       </form>
     </aside>
   </Transition>
+
+  <!-- quick-settings dialog: edit this organisation's chat-agent prompt -->
+  <Dialog
+    v-model:visible="settingsOpen"
+    modal
+    :header="$t('Chat.config.settingsTitle')"
+    class="w-[560px] max-w-[92vw]"
+  >
+    <div class="flex flex-col gap-1">
+      <label
+        for="chat-quick-system-prompt"
+        class="text-sm font-medium text-surface-700 dark:text-surface-300"
+      >
+        {{ $t('Chat.config.systemPrompt') }}
+      </label>
+      <Textarea
+        id="chat-quick-system-prompt"
+        v-model="systemPrompt"
+        class="w-full"
+        rows="8"
+        :maxlength="MAX_SYSTEM_PROMPT_CHARS"
+        :placeholder="$t('Chat.config.placeholder')"
+        :disabled="chatConfig.loading"
+      />
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Chat.config.systemPromptHint') }}
+        </span>
+        <span class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500">
+          {{
+            $t('Chat.config.charCount', {
+              count: systemPrompt.length,
+              max: MAX_SYSTEM_PROMPT_CHARS,
+            })
+          }}
+        </span>
+      </div>
+    </div>
+    <template #footer>
+      <SecondaryButton
+        :label="$t('Chat.close')"
+        size="small"
+        @click="settingsOpen = false"
+      />
+      <Button
+        :label="$t('Chat.config.save')"
+        size="small"
+        :loading="chatConfig.saving"
+        :disabled="chatConfig.loading || systemPrompt === savedSystemPrompt"
+        @click="saveSettings"
+      />
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -205,14 +268,67 @@ import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconBroom from '~icons/mdi/broom'
 import IconAlert from '~icons/mdi/alert-circle-outline'
+import IconCog from '~icons/mdi/cog-outline'
 import ToolCallCard from './ToolCallCard.vue'
 import { normalizeToolPart } from './toolCall'
+import { useToast } from 'primevue/usetoast'
+import { useChatConfig, MAX_SYSTEM_PROMPT_CHARS } from '@/stores/chatConfig'
 
 const route = useRoute()
 const aiChat = useAiChat()
+const chatConfig = useChatConfig()
+const toast = useToast()
+const { t } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId ?? ''))
 const isEdit = computed(() => aiChat.mode === 'edit')
+
+// quick-settings: this organisation's custom chat-agent system prompt
+const settingsOpen = ref(false)
+const systemPrompt = ref('')
+const savedSystemPrompt = ref('')
+
+const openSettings = async () => {
+  settingsOpen.value = true
+  if (!tenantId.value) return
+  try {
+    const config = await chatConfig.loadConfig(tenantId.value)
+    systemPrompt.value = config.systemPrompt
+    savedSystemPrompt.value = config.systemPrompt
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Chat.config.loadError'),
+      life: 3000,
+    })
+  }
+}
+
+const saveSettings = async () => {
+  if (!tenantId.value) return
+  try {
+    const config = await chatConfig.saveConfig(tenantId.value, {
+      systemPrompt: systemPrompt.value,
+    })
+    systemPrompt.value = config.systemPrompt
+    savedSystemPrompt.value = config.systemPrompt
+    settingsOpen.value = false
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('Chat.config.saved'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Chat.config.saveError'),
+      life: 3000,
+    })
+  }
+}
 
 const input = ref('')
 const scrollRef = ref<HTMLElement | null>(null)

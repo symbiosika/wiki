@@ -33,6 +33,11 @@ import {
   buildWikiChatSystemPrompt,
   type WikiChatMode,
 } from "../../../../ai/tools/wiki";
+import {
+  getChatAgentConfig,
+  setChatAgentConfig,
+  MAX_SYSTEM_PROMPT_CHARS,
+} from "../../../../lib/chat-config/store";
 
 /**
  * Request schema. Messages are AI-SDK UIMessages: their `parts` carry text as
@@ -106,7 +111,9 @@ export default function defineChatRoutes(
 
       try {
         const tools = createWikiChatTools({ tenantId, userId }, mode);
-        const system = buildWikiChatSystemPrompt(mode);
+        const { systemPrompt: orgSystemPrompt } =
+          await getChatAgentConfig(tenantId);
+        const system = buildWikiChatSystemPrompt(mode, orgSystemPrompt);
 
         const result = streamText({
           model: getModel(),
@@ -134,6 +141,64 @@ export default function defineChatRoutes(
           message: `Failed to stream chat: ${(error as Error).message}`,
         });
       }
+    },
+  );
+
+  /**
+   * GET /tenant/:tenantId/chat/config
+   * Read the organisation's chat-agent config (currently the custom system
+   * prompt). Available to every tenant member so the chat panel and the
+   * Verwaltung page can show the current value.
+   */
+  app.get(
+    `${baseRoute}/config`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Get the organisation's chat-agent configuration",
+      responses: { 200: { description: "The chat-agent configuration" } },
+    }),
+    validator("param", v.object({ tenantId: v.string() })),
+    isTenantMember,
+    async (c) => {
+      const { tenantId } = c.req.valid("param");
+      const config = await getChatAgentConfig(tenantId);
+      return c.json(config);
+    },
+  );
+
+  /**
+   * PUT /tenant/:tenantId/chat/config
+   * Update the organisation's chat-agent config. Org-wide setting; matching the
+   * app's other org-managed config it is open to any tenant member.
+   * Body: { systemPrompt: string }
+   */
+  app.put(
+    `${baseRoute}/config`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Update the organisation's chat-agent configuration",
+      responses: { 200: { description: "The stored chat-agent configuration" } },
+    }),
+    validator("param", v.object({ tenantId: v.string() })),
+    validator(
+      "json",
+      v.object({
+        systemPrompt: v.pipe(
+          v.string(),
+          v.maxLength(MAX_SYSTEM_PROMPT_CHARS),
+        ),
+      }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId } = c.req.valid("param");
+      const { systemPrompt } = c.req.valid("json");
+      const config = await setChatAgentConfig(tenantId, { systemPrompt });
+      return c.json(config);
     },
   );
 }
