@@ -90,6 +90,7 @@ declare global {
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
   const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
   const useAiChat: typeof import('./stores/aiChat').useAiChat
+  const useApiTokens: typeof import('./stores/apiTokens').useApiTokens
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
@@ -105,6 +106,7 @@ declare global {
   const useModel: typeof import('vue').useModel
   const useNotificationsStore: typeof import('./stores/notifications').useNotificationsStore
   const useOAuthClients: typeof import('./stores/oauthClients').useOAuthClients
+  const usePasskeys: typeof import('./stores/passkeys').usePasskeys
   const usePostProcessingAgents: typeof import('./stores/postProcessingAgents').usePostProcessingAgents
   const useProtocol: typeof import('./stores/protocol').useProtocol
   const useReadOnly: typeof import('./stores/readonly').useReadOnly
@@ -129,11 +131,17 @@ declare global {
   export type { AiChatMode } from './stores/aiChat'
   import('./stores/aiChat')
   // @ts-ignore
+  export type { ApiToken, CreateApiTokenInput } from './stores/apiTokens'
+  import('./stores/apiTokens')
+  // @ts-ignore
   export type { ChatAgentConfig } from './stores/chatConfig'
   import('./stores/chatConfig')
   // @ts-ignore
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
   import('./stores/documentAssistant')
+  // @ts-ignore
+  export type { Passkey } from './stores/passkeys'
+  import('./stores/passkeys')
   // @ts-ignore
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
