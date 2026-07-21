@@ -29,6 +29,18 @@
           {{ scopeLabel }}
         </span>
 
+        <!-- info: clickable chip that opens a metadata popover -->
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': infoOpen }"
+          :title="$t('Wiki.info.hint')"
+          @click="toggleInfo"
+        >
+          <IconInfo class="h-3.5 w-3.5" />
+          <span>{{ $t('Wiki.info.button') }}</span>
+        </button>
+
         <!-- classification (pageType): clickable chip that opens a chooser -->
         <button
           v-if="page.pageType || editable"
@@ -203,6 +215,56 @@
       <!-- facet choosers, opened by the chips in the meta bar -->
       <Menu ref="pageTypeMenuRef" :model="pageTypeItems" popup />
       <Menu ref="statusMenuRef" :model="statusItems" popup />
+
+      <!-- document metadata, opened by the "Info" chip -->
+      <Popover ref="infoPopoverRef" @hide="infoOpen = false">
+        <dl class="w-64 space-y-3 text-xs">
+          <div class="flex flex-col gap-0.5">
+            <dt class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.created') }}
+            </dt>
+            <dd class="text-surface-800 dark:text-surface-100">
+              {{ formatDateTime(page.createdAt) }}
+            </dd>
+            <dd
+              v-if="userLabel(page.createdBy)"
+              class="text-surface-500 dark:text-surface-400"
+            >
+              {{ $t('Wiki.info.by', { name: userLabel(page.createdBy) }) }}
+            </dd>
+          </div>
+
+          <div class="flex flex-col gap-0.5">
+            <dt class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.updated') }}
+            </dt>
+            <dd class="text-surface-800 dark:text-surface-100">
+              {{ formatDateTime(page.updatedAt) }}
+            </dd>
+            <dd
+              v-if="userLabel(page.updatedBy)"
+              class="text-surface-500 dark:text-surface-400"
+            >
+              {{ $t('Wiki.info.by', { name: userLabel(page.updatedBy) }) }}
+            </dd>
+          </div>
+
+          <div v-if="page.verifiedAt" class="flex flex-col gap-0.5">
+            <dt class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.verified') }}
+            </dt>
+            <dd class="text-surface-800 dark:text-surface-100">
+              {{ formatDateTime(page.verifiedAt) }}
+            </dd>
+            <dd
+              v-if="userLabel(page.verifiedBy)"
+              class="text-surface-500 dark:text-surface-400"
+            >
+              {{ $t('Wiki.info.by', { name: userLabel(page.verifiedBy) }) }}
+            </dd>
+          </div>
+        </dl>
+      </Popover>
     </template>
   </div>
 </template>
@@ -215,6 +277,7 @@ import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconTag from '~icons/mdi/tag-outline'
+import IconInfo from '~icons/mdi/information-outline'
 import IconCircle from '~icons/mdi/circle-outline'
 import IconCheckCircle from '~icons/mdi/check-circle-outline'
 import IconAlertCircle from '~icons/mdi/alert-circle-outline'
@@ -233,7 +296,7 @@ const assistant = useDocumentAssistant()
 const readOnly = useReadOnly()
 const route = useRoute()
 const toast = useToast()
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId))
 const pageId = computed(() => String(route.params.pageId))
@@ -491,4 +554,50 @@ const breadcrumb = computed(() => {
   }
   return parts.join(' / ')
 })
+
+// ----- info popover (document metadata) -------------------------------------
+
+const infoPopoverRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const infoOpen = ref(false)
+
+const toggleInfo = (event: Event) => {
+  infoOpen.value = !infoOpen.value
+  infoPopoverRef.value?.toggle(event)
+}
+
+// userId -> email lookup, so authorship fields (createdBy / updatedBy /
+// verifiedBy) can be shown as human-readable names. Loaded once per tenant.
+const memberEmails = ref<Record<string, string>>({})
+
+watch(
+  tenantId,
+  async (id) => {
+    if (!id) return
+    try {
+      const members = await app.getTenantMembers(id)
+      memberEmails.value = Object.fromEntries(
+        members.map((member) => [member.id, member.userEmail]),
+      )
+    } catch {
+      // membership list is a nicety; fall back to showing nothing for authors
+      memberEmails.value = {}
+    }
+  },
+  { immediate: true },
+)
+
+/** Human label for an author user id (email), or '' if unknown. */
+const userLabel = (userId: string | null | undefined): string =>
+  userId ? (memberEmails.value[userId] ?? '') : ''
+
+/** Full date + time in the active locale, or '—' when missing. */
+const formatDateTime = (value: string | null | undefined): string => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString(locale.value, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
 </script>
