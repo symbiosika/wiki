@@ -20,6 +20,18 @@
     "light": "Hell",
     "dark": "Dunkel"
   },
+  "search": {
+    "title": "Suche",
+    "hint": "Lege fest, wie die Suche in der Seitenleiste Seiten findet.",
+    "hybrid": "Klug (hybrid)",
+    "hybridHint": "Kombiniert Volltext- und bedeutungsbasierte (Embedding-)Suche – beste Ergebnisse.",
+    "fulltext": "Volltext",
+    "fulltextHint": "Findet exakt die eingegebenen Wörter. Am schnellsten.",
+    "semantic": "Semantisch",
+    "semanticHint": "Findet Seiten nach Bedeutung, auch ohne wörtliche Übereinstimmung.",
+    "saveSuccess": "Sucheinstellung gespeichert",
+    "saveFailed": "Sucheinstellung konnte nicht gespeichert werden"
+  },
   "errors": {
     "loadFailed": "Profil konnte nicht geladen werden",
     "saveFailed": "Profil konnte nicht gespeichert werden",

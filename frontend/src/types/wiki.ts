@@ -66,6 +66,14 @@ export interface WikiSearchResult {
   matchedBy: string[]
 }
 
+/**
+ * How the sidebar search queries the backend:
+ * - `hybrid`   — full-text + semantic (embedding) fused via RRF (smartest)
+ * - `fulltext` — Postgres tsvector / ILIKE lexical match only (fastest)
+ * - `semantic` — embedding similarity only
+ */
+export type WikiSearchMode = 'hybrid' | 'fulltext' | 'semantic'
+
 /** An outgoing `[[wikilink]]` of a page (resolved target or phantom link). */
 export interface WikiOutgoingLink {
   targetTitle: string

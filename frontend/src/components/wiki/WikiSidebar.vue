@@ -568,7 +568,11 @@ watch(searchQuery, (query) => {
   searchPending.value = true
   searchTimer = setTimeout(async () => {
     try {
-      searchResults.value = await wiki.search(tenantId.value, query)
+      searchResults.value = await wiki.search(
+        tenantId.value,
+        query,
+        app.state.searchMode,
+      )
     } finally {
       searchPending.value = false
     }

@@ -14,6 +14,7 @@ declare global {
   const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
+  const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
@@ -24,6 +25,8 @@ declare global {
   const effectScope: typeof import('vue').effectScope
   const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
+  const findPageTitle: typeof import('./utils/wikiTreeOptions').findPageTitle
+  const flagsFromScope: typeof import('./utils/wikiTreeOptions').flagsFromScope
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
@@ -58,6 +61,8 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pageOptionsForScope: typeof import('./utils/wikiTreeOptions').pageOptionsForScope
+  const parseUrlLine: typeof import('./utils/urlImportLines').parseUrlLine
+  const parseUrlLines: typeof import('./utils/urlImportLines').parseUrlLines
   const prefersDark: typeof import('./utils/theme').prefersDark
   const provide: typeof import('vue').provide
   const ptViewMerge: typeof import('./volt/utils').ptViewMerge
@@ -68,10 +73,12 @@ declare global {
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveDark: typeof import('./utils/theme').resolveDark
   const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags
+  const scopeLabel: typeof import('./utils/wikiTreeOptions').scopeLabel
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
+  const splitSubPath: typeof import('./utils/urlImportLines').splitSubPath
   const storeTheme: typeof import('./utils/theme').storeTheme
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
@@ -79,6 +86,8 @@ declare global {
   const toValue: typeof import('vue').toValue
   const triggerRef: typeof import('vue').triggerRef
   const unref: typeof import('vue').unref
+  const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
+  const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
   const useAiChat: typeof import('./stores/aiChat').useAiChat
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
@@ -141,7 +150,7 @@ declare global {
   export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiTeamSection, WikiTree, WikiPage, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
@@ -149,6 +158,9 @@ declare global {
   // @ts-ignore
   export type { ThemePreference } from './utils/theme'
   import('./utils/theme')
+  // @ts-ignore
+  export type { ParsedUrlLine } from './utils/urlImportLines'
+  import('./utils/urlImportLines')
   // @ts-ignore
   export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
   import('./utils/wikiPdf')

@@ -20,6 +20,18 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "search": {
+    "title": "Search",
+    "hint": "Choose how the sidebar search finds pages.",
+    "hybrid": "Smart (hybrid)",
+    "hybridHint": "Combines full-text and meaning-based (embedding) search — best results.",
+    "fulltext": "Full-text",
+    "fulltextHint": "Matches the exact words you type. Fastest.",
+    "semantic": "Semantic",
+    "semanticHint": "Finds pages by meaning, even without matching words.",
+    "saveSuccess": "Search preference saved",
+    "saveFailed": "Could not save search preference"
+  },
   "errors": {
     "loadFailed": "Could not load profile",
     "saveFailed": "Could not save profile",
