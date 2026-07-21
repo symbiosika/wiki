@@ -71,6 +71,8 @@ declare global {
   const readonly: typeof import('vue').readonly
   const ref: typeof import('vue').ref
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
+  const renderMarkdown: typeof import('./utils/markdown').renderMarkdown
+  const renderMarkdownInline: typeof import('./utils/markdown').renderMarkdownInline
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveDark: typeof import('./utils/theme').resolveDark
   const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags

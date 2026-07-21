@@ -127,14 +127,15 @@
               <!-- text -->
               <div
                 v-if="part.type === 'text' && part.text"
-                class="rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap"
+                class="rounded-2xl px-3.5 py-2 text-sm"
                 :class="
                   m.role === 'user'
-                    ? 'rounded-br-md bg-primary text-primary-contrast'
+                    ? 'rounded-br-md bg-primary text-primary-contrast whitespace-pre-wrap'
                     : 'rounded-bl-md bg-surface-100 text-surface-800 dark:bg-surface-800 dark:text-surface-100'
                 "
               >
-                {{ part.text }}
+                <span v-if="m.role === 'user'">{{ part.text }}</span>
+                <MarkdownRenderer v-else :content="part.text" />
               </div>
 
               <!-- tool call -->
