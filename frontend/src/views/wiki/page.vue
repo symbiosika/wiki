@@ -28,6 +28,51 @@
         >
           {{ scopeLabel }}
         </span>
+
+        <!-- classification (pageType): clickable chip that opens a chooser -->
+        <button
+          v-if="page.pageType || editable"
+          type="button"
+          class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors disabled:cursor-default"
+          :class="
+            page.pageType
+              ? 'border-primary/40 bg-primary/5 text-primary'
+              : 'border-dashed border-surface-300 text-surface-400 hover:border-primary hover:text-primary dark:border-surface-600'
+          "
+          :disabled="!editable"
+          :title="$t('Wiki.pageType.hint')"
+          @click="pageTypeMenuRef?.toggle($event)"
+        >
+          <IconTag class="h-3.5 w-3.5" />
+          <span>{{
+            page.pageType
+              ? facetLabel('pageType', page.pageType)
+              : $t('Wiki.pageType.empty')
+          }}</span>
+        </button>
+
+        <!-- status (trust signal): clickable chip that opens a chooser -->
+        <button
+          v-if="page.status || editable"
+          type="button"
+          class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors disabled:cursor-default"
+          :class="
+            page.status
+              ? statusChipClass
+              : 'border-dashed border-surface-300 text-surface-400 hover:border-primary hover:text-primary dark:border-surface-600'
+          "
+          :disabled="!editable"
+          :title="$t('Wiki.status.hint')"
+          @click="statusMenuRef?.toggle($event)"
+        >
+          <component :is="statusIcon" class="h-3.5 w-3.5" />
+          <span>{{
+            page.status
+              ? facetLabel('status', page.status)
+              : $t('Wiki.status.empty')
+          }}</span>
+        </button>
+
         <span class="min-w-0 flex-1 truncate">{{ breadcrumb }}</span>
         <span v-if="wiki.state.saveError" class="text-red-500">
           {{ $t('Wiki.saveError') }}
@@ -67,9 +112,14 @@
           "
           @click="readOnly.toggle()"
         >
-          <component :is="editable ? IconPencil : IconLock" class="h-3.5 w-3.5" />
+          <component
+            :is="editable ? IconPencil : IconLock"
+            class="h-3.5 w-3.5"
+          />
           <span class="hidden sm:inline">{{
-            editable ? $t('Wiki.readonly.editing') : $t('Wiki.readonly.readOnly')
+            editable
+              ? $t('Wiki.readonly.editing')
+              : $t('Wiki.readonly.readOnly')
           }}</span>
         </button>
 
@@ -149,6 +199,10 @@
         :entry-id="page.id"
         @applied="onAssistantApplied"
       />
+
+      <!-- facet choosers, opened by the chips in the meta bar -->
+      <Menu ref="pageTypeMenuRef" :model="pageTypeItems" popup />
+      <Menu ref="statusMenuRef" :model="statusItems" popup />
     </template>
   </div>
 </template>
@@ -160,6 +214,11 @@ import IconFilePdf from '~icons/mdi/file-pdf-box'
 import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
+import IconTag from '~icons/mdi/tag-outline'
+import IconCircle from '~icons/mdi/circle-outline'
+import IconCheckCircle from '~icons/mdi/check-circle-outline'
+import IconAlertCircle from '~icons/mdi/alert-circle-outline'
+import IconDraft from '~icons/mdi/file-document-edit-outline'
 import { useToast } from 'primevue/usetoast'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
@@ -174,7 +233,7 @@ const assistant = useDocumentAssistant()
 const readOnly = useReadOnly()
 const route = useRoute()
 const toast = useToast()
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId))
 const pageId = computed(() => String(route.params.pageId))
@@ -258,6 +317,9 @@ const loadPage = async () => {
   editorRef.value?.flush()
   // the assistant chat log is per-page
   assistant.reset()
+  // facet vocabularies (page types / statuses) — cached, so this is a no-op
+  // after the first page open
+  void wiki.loadConfig(tenantId.value)
   try {
     await wiki.loadPage(tenantId.value, pageId.value)
     title.value = wiki.state.page?.title ?? ''
@@ -307,6 +369,100 @@ const onBlocksChange = async (blocks: WikiBlock[]) => {
   if (!page.value || !editable.value) return
   await wiki.saveBlocks(tenantId.value, page.value.id, blocks)
 }
+
+// ----- facets (classification / status) -------------------------------------
+
+const pageTypeMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const statusMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+
+/**
+ * Human label for a facet value. Falls back to the raw value so tenant-custom
+ * vocabularies (outside the shipped i18n keys) still render.
+ */
+const facetLabel = (
+  facet: 'pageType' | 'status',
+  value: string | null | undefined,
+): string => {
+  if (!value) return ''
+  const key = `Wiki.${facet}.values.${value}`
+  return te(key) ? t(key) : value
+}
+
+const setPageType = async (value: string | null) => {
+  if (!page.value || !editable.value) return
+  await wiki.savePageMeta(tenantId.value, page.value.id, { pageType: value })
+}
+
+const setStatus = async (value: string | null) => {
+  if (!page.value || !editable.value) return
+  await wiki.savePageMeta(
+    tenantId.value,
+    page.value.id,
+    { status: value },
+    app.state.user?.id,
+  )
+}
+
+/** Build a popup-menu model from a vocabulary + a "clear" entry when set. */
+const facetItems = (
+  facet: 'pageType' | 'status',
+  vocabulary: string[],
+  current: string | null | undefined,
+  choose: (value: string | null) => void,
+) => {
+  const items = vocabulary.map((value) => ({
+    label: facetLabel(facet, value),
+    command: () => choose(value),
+  }))
+  if (current) {
+    items.push({ label: t('Wiki.facets.clear'), command: () => choose(null) })
+  }
+  return items
+}
+
+const pageTypeItems = computed(() =>
+  facetItems(
+    'pageType',
+    wiki.state.config?.pageTypes ?? [],
+    page.value?.pageType,
+    setPageType,
+  ),
+)
+
+const statusItems = computed(() =>
+  facetItems(
+    'status',
+    wiki.state.config?.statuses ?? [],
+    page.value?.status,
+    setStatus,
+  ),
+)
+
+const statusIcon = computed(() => {
+  switch (page.value?.status) {
+    case 'verified':
+      return IconCheckCircle
+    case 'outdated':
+      return IconAlertCircle
+    case 'draft':
+      return IconDraft
+    default:
+      return IconCircle
+  }
+})
+
+const statusChipClass = computed(() => {
+  switch (page.value?.status) {
+    case 'verified':
+      return 'border-green-300 bg-green-50 text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-400'
+    case 'outdated':
+      return 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400'
+    case 'draft':
+      return 'border-surface-300 bg-surface-100 text-surface-600 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
+    default:
+      return 'border-surface-200 text-surface-500 dark:border-surface-700 dark:text-surface-400'
+  }
+})
 
 // ----- meta -----------------------------------------------------------------
 

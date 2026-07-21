@@ -42,6 +42,25 @@ export interface WikiPage {
   position: string | null
   updatedAt: string
   createdAt: string
+  // --- controlled facets (see framework knowledge-config.ts) ---
+  /** Classification, e.g. "FAQ" | "manual" | "text" | "policy" | "note". */
+  pageType: string | null
+  /** Trust signal, e.g. "draft" | "verified" | "outdated". */
+  status: string | null
+  /** Set when `status` transitions to "verified": when and by whom. */
+  verifiedAt: string | null
+  verifiedBy: string | null
+}
+
+/**
+ * Tenant knowledge configuration (facet vocabularies + flags), as returned by
+ * GET /knowledge/texts/config. The `pageTypes` / `statuses` lists are the
+ * closed vocabularies a page's facets are validated against on write.
+ */
+export interface WikiKnowledgeConfig {
+  autoSummaries: boolean
+  pageTypes: string[]
+  statuses: string[]
 }
 
 /** A content block as stored by the backend */
