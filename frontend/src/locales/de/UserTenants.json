@@ -69,7 +69,7 @@
     "label": "Bezeichnung",
     "labelPlaceholder": "Anzeige für Nutzer (optional)",
     "values": "Erlaubte Werte",
-    "valuesPlaceholder": "z. B. Miele, Bosch, Siemens",
+    "valuesPlaceholder": "z.B. Variante A, Variante B",
     "valuesHint": "Kommagetrennt. Leer lassen, um Freitext zu erlauben.",
     "addAttribute": "Tag hinzufügen",
     "remove": "Tag entfernen",

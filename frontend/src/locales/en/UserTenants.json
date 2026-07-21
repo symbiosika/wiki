@@ -69,7 +69,7 @@
     "label": "Label",
     "labelPlaceholder": "Shown to users (optional)",
     "values": "Allowed values",
-    "valuesPlaceholder": "e.g. Miele, Bosch, Siemens",
+    "valuesPlaceholder": "e.g. Variant A, Variant B",
     "valuesHint": "Comma-separated. Leave empty to allow free text.",
     "addAttribute": "Add tag",
     "remove": "Remove tag",
