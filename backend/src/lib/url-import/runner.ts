@@ -92,8 +92,8 @@ export const enqueueRun = async (
  * Every lookup and insert is scoped exactly like the job's imported pages
  * (same team / tenant-wide / owner), so a category page is matched by its
  * title *within the job's own bucket* — never one that merely shares the title
- * in another team or another user's space — and created there if missing
- * ("anlegen wenn fehlt"). Titles are matched verbatim, so spaces are fine.
+ * in another team or another user's space — and created there if missing.
+ * Titles are matched verbatim, so spaces are fine.
  *
  * `cache` is shared across a whole run so URLs that share ancestors reuse the
  * same pages (no duplicates, no per-URL re-query) — the key encodes the parent
