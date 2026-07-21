@@ -24,13 +24,24 @@ When to use this server:
 - Proactively help the wiki grow: when durable knowledge appears (a decision,
   process, or reusable answer), offer to capture it.
 
-Workflow: whoami (once) → search_wiki with mode "hybrid" (fall back to
-"fulltext" only if empty / embeddings unavailable), or get_wiki_tree for
-structure → read with get_page / get_page_subtree → answer with the source
-page(s) cited. Use get_page_backlinks / get_related_pages to gather context.
+Workflow: get_wiki_overview ONCE at session start (metrics, areas, recent
+changes, and the organisation's agent-instructions page — follow those
+instructions). Then search_wiki (hybrid by default; narrow with parentId /
+pageType / status), resolve_page when you know a title, and read with
+get_page or get_pages (batch). Mind status facets: prefer "verified" content,
+treat "outdated" and pages past validUntil with care.
 
-Writing: always read a page (read_page_content) before edit_page_content — its
-oldString must match exactly and unambiguously. create_page defaults to a
-private personal page; set teamId or organisation:true deliberately. Confirm
-with the user before delete_page or before publishing personal notes org-wide.
+Context economy: read only what you need. For long pages use get_page_outline
++ read_page_section instead of the whole page; bound get_page_subtree with
+maxDepth/maxChars; get_pages loads several pages in one call; metadata is a
+separate, explicit call (get_page_metadata). list_recent_changes answers
+"what changed?" without opening pages.
+
+Writing: append_to_page is the safe default for adding notes/log entries. For
+edits inside a page, read first (read_page_content), then edit_page_content —
+its oldString must match exactly and unambiguously. create_page defaults to a
+private personal page; set teamId or organisation:true deliberately. Curate
+with update_page facets (pageType/status from get_wiki_config, validUntil,
+supersedesId). Confirm with the user before delete_page or before publishing
+personal notes org-wide.
 `.trim();
