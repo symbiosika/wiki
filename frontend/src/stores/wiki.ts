@@ -8,6 +8,7 @@ import type {
   WikiPage,
   WikiRelatedPage,
   WikiScope,
+  WikiSearchMode,
   WikiSearchResult,
   WikiTree,
   WikiTreeNode,
@@ -329,10 +330,11 @@ export const useWiki = defineStore('wiki', () => {
   const search = async (
     tenantId: string,
     query: string,
+    mode: WikiSearchMode = 'hybrid',
   ): Promise<WikiSearchResult[]> => {
     if (!query.trim()) return []
     return await fetcher.get<WikiSearchResult[]>(
-      `${api(tenantId)}/knowledge/texts/search?q=${encodeURIComponent(query)}&mode=fulltext`,
+      `${api(tenantId)}/knowledge/texts/search?q=${encodeURIComponent(query)}&mode=${mode}`,
     )
   }
 

@@ -139,6 +139,57 @@
         </button>
       </div>
     </section>
+
+    <!-- Search -->
+    <section class="mt-8">
+      <h2
+        class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
+      >
+        {{ $t('Profile.search.title') }}
+      </h2>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('Profile.search.hint') }}
+      </p>
+
+      <div class="flex flex-col gap-2">
+        <button
+          v-for="option in searchModeOptions"
+          :key="option.value"
+          type="button"
+          class="flex items-start gap-3 rounded-lg border p-3 text-left transition-colors"
+          :class="
+            app.state.searchMode === option.value
+              ? 'border-primary bg-primary/5'
+              : 'border-surface-200 hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800'
+          "
+          @click="selectSearchMode(option.value)"
+        >
+          <component
+            :is="option.icon"
+            class="mt-0.5 h-5 w-5 shrink-0"
+            :class="
+              app.state.searchMode === option.value
+                ? 'text-primary'
+                : 'text-surface-400'
+            "
+          />
+          <span class="min-w-0 flex-1">
+            <span
+              class="block text-sm font-medium text-surface-900 dark:text-surface-0"
+            >
+              {{ option.label }}
+            </span>
+            <span class="block text-xs text-surface-500 dark:text-surface-400">
+              {{ option.description }}
+            </span>
+          </span>
+          <IconCheck
+            v-if="app.state.searchMode === option.value"
+            class="mt-0.5 h-5 w-5 shrink-0 text-primary"
+          />
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -149,7 +200,12 @@ import IconCamera from '~icons/mdi/camera-outline'
 import IconMonitor from '~icons/mdi/monitor'
 import IconWhiteBalanceSunny from '~icons/mdi/white-balance-sunny'
 import IconMoonWaningCrescent from '~icons/mdi/moon-waning-crescent'
+import IconCheck from '~icons/mdi/check'
+import IconAutoFix from '~icons/mdi/auto-fix'
+import IconTextSearch from '~icons/mdi/text-box-search-outline'
+import IconBrain from '~icons/mdi/brain'
 import type { ThemePreference } from '@/utils/theme'
+import type { WikiSearchMode } from '@/types/wiki'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -183,6 +239,52 @@ const themeOptions: {
     icon: IconMoonWaningCrescent,
   },
 ]
+
+const searchModeOptions: {
+  value: WikiSearchMode
+  label: string
+  description: string
+  icon: unknown
+}[] = [
+  {
+    value: 'hybrid',
+    label: t('Profile.search.hybrid'),
+    description: t('Profile.search.hybridHint'),
+    icon: IconAutoFix,
+  },
+  {
+    value: 'fulltext',
+    label: t('Profile.search.fulltext'),
+    description: t('Profile.search.fulltextHint'),
+    icon: IconTextSearch,
+  },
+  {
+    value: 'semantic',
+    label: t('Profile.search.semantic'),
+    description: t('Profile.search.semanticHint'),
+    icon: IconBrain,
+  },
+]
+
+const selectSearchMode = async (mode: WikiSearchMode) => {
+  if (mode === app.state.searchMode) return
+  try {
+    await app.setSearchMode(mode)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('Profile.search.saveSuccess'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Profile.search.saveFailed'),
+      life: 3000,
+    })
+  }
+}
 
 const syncFromUser = () => {
   firstname.value = app.state.user?.firstname ?? ''
