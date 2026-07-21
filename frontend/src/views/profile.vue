@@ -6,8 +6,29 @@
       back-route-name="Wiki"
     />
 
+    <!-- Desktop: tabbed navigation. Mobile: everything is stacked below. -->
+    <div
+      v-if="isDesktop"
+      class="mb-8 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
+    >
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="shrink-0 border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary text-primary'
+            : 'border-transparent text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+        "
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
     <!-- Personal information -->
-    <section class="mb-8">
+    <section v-show="isVisible('profile')" class="mb-10 md:mb-0">
       <h2
         class="mb-4 text-lg font-semibold text-surface-900 dark:text-surface-0"
       >
@@ -109,7 +130,11 @@
     </section>
 
     <!-- Passkeys -->
-    <section v-if="passkeys.enabled !== false" class="mb-8">
+    <section
+      v-if="passkeys.enabled !== false"
+      v-show="isVisible('security')"
+      class="mb-10 md:mb-8"
+    >
       <div class="mb-1 flex items-center justify-between gap-4">
         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0">
           {{ $t('Profile.passkeys.title') }}
@@ -249,7 +274,7 @@
     </Dialog>
 
     <!-- API tokens -->
-    <section class="mb-8">
+    <section v-show="isVisible('security')" class="mb-10 md:mb-0">
       <div class="mb-1 flex items-center justify-between gap-4">
         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0">
           {{ $t('Profile.apiTokens.title') }}
@@ -432,14 +457,26 @@
                 ({{ tokenForm.scopes.length }})
               </span>
             </label>
-            <button
-              type="button"
-              class="text-xs underline"
-              style="color: var(--p-primary-500)"
-              @click="clearScopes"
-            >
-              {{ $t('Common.unselectAll') }}
-            </button>
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="text-xs underline disabled:opacity-40"
+                style="color: var(--p-primary-500)"
+                :disabled="allScopesSelected"
+                @click="selectAllScopes"
+              >
+                {{ $t('Profile.apiTokens.selectAll') }}
+              </button>
+              <button
+                type="button"
+                class="text-xs underline disabled:opacity-40"
+                style="color: var(--p-primary-500)"
+                :disabled="tokenForm.scopes.length === 0"
+                @click="clearScopes"
+              >
+                {{ $t('Common.unselectAll') }}
+              </button>
+            </div>
           </div>
           <InputText
             v-model="scopeFilter"
@@ -526,7 +563,7 @@
     </Dialog>
 
     <!-- Appearance / theme -->
-    <section>
+    <section v-show="isVisible('preferences')" class="mb-10 md:mb-8">
       <h2
         class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
       >
@@ -558,7 +595,7 @@
     </section>
 
     <!-- Search -->
-    <section class="mt-8">
+    <section v-show="isVisible('preferences')" class="md:mt-0">
       <h2
         class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
       >
@@ -642,6 +679,27 @@ const theme = useTheme()
 const passkeys = usePasskeys()
 const apiTokens = useApiTokens()
 
+// ----- tabs (desktop) / stacked (mobile) -----------------------------------
+
+type TabId = 'profile' | 'security' | 'preferences'
+const activeTab = ref<TabId>('profile')
+
+const tabs = computed<{ id: TabId; label: string }[]>(() => [
+  { id: 'profile', label: t('Profile.tabs.profile') },
+  { id: 'security', label: t('Profile.tabs.security') },
+  { id: 'preferences', label: t('Profile.tabs.preferences') },
+])
+
+// Tabs only kick in on md+; on mobile every section is shown stacked.
+const isDesktop = ref(false)
+let tabMediaQuery: MediaQueryList | null = null
+const syncIsDesktop = () => {
+  isDesktop.value = tabMediaQuery?.matches ?? false
+}
+
+/** A section is visible when stacked (mobile) or when its tab is active. */
+const isVisible = (tab: TabId) => !isDesktop.value || activeTab.value === tab
+
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 const firstname = ref('')
@@ -722,6 +780,10 @@ const syncFromUser = () => {
 }
 
 onMounted(async () => {
+  tabMediaQuery = window.matchMedia('(min-width: 768px)')
+  syncIsDesktop()
+  tabMediaQuery.addEventListener('change', syncIsDesktop)
+
   await app.waitForInit()
   syncFromUser()
   // best-effort: hides the section on 404 (passkeys disabled for this instance)
@@ -731,6 +793,10 @@ onMounted(async () => {
   apiTokens.load().catch(() => {
     /* a real load failure just leaves the list empty */
   })
+})
+
+onUnmounted(() => {
+  tabMediaQuery?.removeEventListener('change', syncIsDesktop)
 })
 
 // ----- passkeys ------------------------------------------------------------
@@ -940,6 +1006,16 @@ const toggleGroup = (group: ScopeGroup) => {
 
 const clearScopes = () => {
   tokenForm.value.scopes = []
+}
+
+const allScopesSelected = computed(
+  () =>
+    apiTokens.availableScopes.length > 0 &&
+    tokenForm.value.scopes.length === apiTokens.availableScopes.length,
+)
+
+const selectAllScopes = () => {
+  tokenForm.value.scopes = [...apiTokens.availableScopes]
 }
 
 const canCreateToken = computed(

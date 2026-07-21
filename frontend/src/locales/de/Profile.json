@@ -1,6 +1,11 @@
 {
   "title": "Profil",
   "backTitle": "Zurück zum Wiki",
+  "tabs": {
+    "profile": "Profil",
+    "security": "Sicherheit",
+    "preferences": "Einstellungen"
+  },
   "personalInfo": "Persönliche Angaben",
   "firstname": "Vorname",
   "firstnamePlaceholder": "Vorname",
@@ -77,6 +82,7 @@
     "expiry1y": "1 Jahr",
     "scopes": "Berechtigungen",
     "scopeFilter": "Berechtigungen filtern …",
+    "selectAll": "Alle auswählen",
     "selectGroup": "Alle auswählen",
     "noScopeMatch": "Keine passenden Berechtigungen.",
     "scopeCount": "Berechtigungen",
