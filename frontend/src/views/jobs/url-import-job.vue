@@ -7,6 +7,14 @@
     >
       <template #actions>
         <SecondaryButton
+          :label="$t('Jobs.urlImport.deleteJob')"
+          size="small"
+          :disabled="deleting || !job"
+          @click="deleteJob"
+        >
+          <template #icon><IconTrash /></template>
+        </SecondaryButton>
+        <SecondaryButton
           :label="$t('Jobs.urlImport.refresh')"
           size="small"
           :disabled="loading"
@@ -303,6 +311,7 @@
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import IconPlay from '~icons/mdi/play'
+import IconTrash from '~icons/mdi/trash-can-outline'
 import IconFolder from '~icons/mdi/folder-outline'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
@@ -549,6 +558,32 @@ const scheduleRefreshes = () => {
 }
 
 onBeforeUnmount(() => refreshTimers.forEach(clearTimeout))
+
+// ----- delete ---------------------------------------------------------------
+
+const router = useRouter()
+const deleting = ref(false)
+const deleteJob = () => {
+  confirm.require({
+    header: t('Jobs.urlImport.deleteJob'),
+    message: t('Jobs.urlImport.deleteConfirm', {
+      name: job.value?.name || t('Jobs.urlImport.jobFallback'),
+    }),
+    rejectProps: { label: t('Common.cancel') },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    accept: async () => {
+      deleting.value = true
+      try {
+        await store.deleteJob(tenantId.value, jobId.value)
+        router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
+      } catch (error) {
+        notifyError(error, 'Jobs.urlImport.deleteError')
+      } finally {
+        deleting.value = false
+      }
+    },
+  })
+}
 
 // ----- run detail -----------------------------------------------------------
 
