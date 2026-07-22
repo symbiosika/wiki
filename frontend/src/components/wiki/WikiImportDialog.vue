@@ -200,16 +200,39 @@
       </div>
 
       <!-- base location (Ablageort) -->
-      <div class="flex flex-col gap-1">
+      <div class="flex flex-col gap-1.5">
         <label class="text-sm text-surface-700 dark:text-surface-300">
           {{ $t('Wiki.import.scopeLabel') }}
         </label>
+        <!-- segmented multi-switch: pick the base location kind -->
+        <div
+          class="inline-flex flex-wrap gap-1 rounded-lg bg-surface-100 p-1 dark:bg-surface-800"
+        >
+          <button
+            v-for="option in scopeKindOptions"
+            :key="option.value"
+            type="button"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+            :class="
+              scopeKind === option.value
+                ? 'bg-primary text-primary-contrast shadow-sm'
+                : 'text-surface-600 hover:text-surface-900 dark:text-surface-300 dark:hover:text-surface-50'
+            "
+            @click="scopeKind = option.value"
+          >
+            <component :is="option.icon" class="h-4 w-4" />
+            {{ option.label }}
+          </button>
+        </div>
+        <!-- team picker, only when the "team" segment is active -->
         <Select
-          v-model="scopeValue"
-          :options="scopeOptions"
+          v-if="scopeKind === 'team'"
+          v-model="selectedTeamId"
+          :options="teamOptions"
           option-label="label"
           option-value="value"
           class="w-full"
+          :placeholder="$t('Wiki.scope.team')"
         />
         <span class="text-xs text-surface-400 dark:text-surface-500">
           {{ $t('Wiki.import.baseLocationHint') }}
@@ -266,7 +289,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Component } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
@@ -275,6 +298,10 @@ import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconFolder from '~icons/mdi/folder-outline'
 import IconFile from '~icons/mdi/file-document-outline'
 import IconClose from '~icons/mdi/close'
+import IconPersonal from '~icons/mdi/account-outline'
+import IconTeam from '~icons/mdi/account-group-outline'
+import IconOrganisation from '~icons/mdi/domain'
+import IconCurrent from '~icons/mdi/file-tree-outline'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
@@ -476,43 +503,77 @@ const pageScope = (page: {
       ? { kind: 'organisation' }
       : { kind: 'personal' }
 
-// scope: "current" | "personal" | "organisation" | "team:<id>"
-const scopeValue = ref('personal')
-const scopeOptions = computed(() => {
-  const options: { label: string; value: string }[] = []
-  const page = currentPage.value
-  if (page) {
-    const name = page.title?.trim() || t('Wiki.untitled')
+// base location, chosen via the segmented multi-switch below. "team" narrows
+// further to a specific team via `selectedTeamId`; "current" nests everything
+// under the page that was open when the dialog was opened.
+type ScopeKind = 'current' | 'personal' | 'team' | 'organisation'
+const scopeKind = ref<ScopeKind>('personal')
+const selectedTeamId = ref('')
+
+const teamOptions = computed(() =>
+  wiki.state.tree.teams.map((team) => ({
+    label: team.name,
+    value: team.teamId,
+  })),
+)
+
+/** Segments shown in the switch — "current"/"team" only when applicable. */
+const scopeKindOptions = computed(() => {
+  const options: { value: ScopeKind; label: string; icon: Component }[] = []
+  if (currentPage.value) {
     options.push({
-      label: `${t('Wiki.import.underSelected')}: ${name}`,
       value: 'current',
+      label: t('Wiki.import.underSelected'),
+      icon: IconCurrent,
     })
   }
-  options.push(
-    { label: t('Wiki.scope.personal'), value: 'personal' },
-    ...wiki.state.tree.teams.map((team) => ({
-      label: `${t('Wiki.scope.team')}: ${team.name}`,
-      value: `team:${team.teamId}`,
-    })),
-    { label: t('Wiki.scope.organisation'), value: 'organisation' },
-  )
+  options.push({
+    value: 'personal',
+    label: t('Wiki.scope.personal'),
+    icon: IconPersonal,
+  })
+  if (teamOptions.value.length) {
+    options.push({
+      value: 'team',
+      label: t('Wiki.scope.team'),
+      icon: IconTeam,
+    })
+  }
+  options.push({
+    value: 'organisation',
+    label: t('Wiki.scope.organisation'),
+    icon: IconOrganisation,
+  })
   return options
 })
 
+// default the team picker to the first team, and keep it valid as it changes
+watch(
+  [scopeKind, teamOptions],
+  () => {
+    if (scopeKind.value !== 'team') return
+    const valid = teamOptions.value.some(
+      (o) => o.value === selectedTeamId.value,
+    )
+    if (!valid) selectedTeamId.value = teamOptions.value[0]?.value ?? ''
+  },
+  { immediate: true },
+)
+
 const scope = computed<WikiScope>(() => {
-  if (scopeValue.value === 'current' && currentPage.value) {
+  if (scopeKind.value === 'current' && currentPage.value) {
     return pageScope(currentPage.value)
   }
-  if (scopeValue.value === 'organisation') return { kind: 'organisation' }
-  if (scopeValue.value.startsWith('team:')) {
-    return { kind: 'team', teamId: scopeValue.value.slice('team:'.length) }
+  if (scopeKind.value === 'organisation') return { kind: 'organisation' }
+  if (scopeKind.value === 'team' && selectedTeamId.value) {
+    return { kind: 'team', teamId: selectedTeamId.value }
   }
   return { kind: 'personal' }
 })
 
 // when importing under the selected page, nest the new pages beneath it
 const baseParentId = computed(() =>
-  scopeValue.value === 'current' ? currentPage.value?.id : undefined,
+  scopeKind.value === 'current' ? currentPage.value?.id : undefined,
 )
 
 const canSubmit = computed(() =>
@@ -627,7 +688,7 @@ const reset = () => {
   url.value = ''
   title.value = ''
   splitIntoBlocks.value = true
-  scopeValue.value = 'personal'
+  scopeKind.value = 'personal'
   postProcessorValue.value = ''
   dragOver.value = false
   submitting.value = false
@@ -639,7 +700,7 @@ const reset = () => {
 watch(visible, (open) => {
   if (open) {
     reset()
-    if (currentPage.value) scopeValue.value = 'current'
+    if (currentPage.value) scopeKind.value = 'current'
     agentsStore.loadAgents(props.tenantId).catch(() => {})
   }
 })
