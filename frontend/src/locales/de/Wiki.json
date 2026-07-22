@@ -52,6 +52,7 @@
   "info": {
     "button": "Info",
     "hint": "Dokumentdetails anzeigen",
+    "scope": "Bereich",
     "created": "Erstellt",
     "updated": "Zuletzt bearbeitet",
     "verified": "Geprüft",
