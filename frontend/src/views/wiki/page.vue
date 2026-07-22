@@ -181,6 +181,18 @@
         <button
           type="button"
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': copied }"
+          :title="$t('Wiki.copyMarkdown.hint')"
+          :disabled="copying"
+          @click="copyMarkdown"
+        >
+          <IconSpinner v-if="copying" class="h-3.5 w-3.5 animate-spin" />
+          <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
+          <IconContentCopy v-else class="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
           :title="$t('Wiki.export.title')"
           :disabled="exporting"
           @click="exportPdf"
@@ -408,6 +420,8 @@ import type { KnowledgeAttributeDefinition, WikiBlock } from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
 import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
+import IconContentCopy from '~icons/mdi/content-copy'
+import IconCheck from '~icons/mdi/check'
 import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
@@ -427,6 +441,7 @@ import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
 import { useWikiPresence } from '@/composables/useWikiPresence'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'
+import { blocksToMarkdown } from '@/utils/wikiMarkdown'
 
 const wiki = useWiki()
 const app = useApp()
@@ -496,6 +511,45 @@ const markdownDialogOpen = ref(false)
 const onInsertMarkdown = (markdown: string) => {
   editorRef.value?.insertMarkdown(markdown)
 }
+
+// ----- copy as markdown ------------------------------------------------------
+
+// Icon-only chip that copies the page (title + content) as markdown, so it can
+// be pasted straight into an AI agent / chat. Uses the live editor blocks so
+// unsaved edits are included, matching the PDF export.
+const copying = ref(false)
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const copyMarkdown = async () => {
+  if (!page.value || copying.value) return
+  copying.value = true
+  try {
+    const blocks = editorRef.value?.getBlocks() ?? wiki.state.blocks
+    const markdown = await blocksToMarkdown(
+      blocks,
+      title.value.trim() || page.value.title,
+    )
+    await navigator.clipboard.writeText(markdown)
+    copied.value = true
+    if (copiedTimer) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  } catch (error) {
+    console.error('Copy as markdown failed', error)
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Wiki.copyMarkdown.error'),
+      life: 4000,
+    })
+  } finally {
+    copying.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  if (copiedTimer) clearTimeout(copiedTimer)
+})
 
 // ----- PDF export -----------------------------------------------------------
 

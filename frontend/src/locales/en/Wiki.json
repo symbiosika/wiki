@@ -49,6 +49,10 @@
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
   },
+  "copyMarkdown": {
+    "hint": "Copy as markdown (for AI agents & co.)",
+    "error": "Copy failed. Please try again."
+  },
   "info": {
     "button": "Info",
     "hint": "Show document details",
