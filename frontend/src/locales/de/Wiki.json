@@ -44,6 +44,14 @@
     "partialError": "{count} Datei(en) konnten nicht importiert werden.",
     "underSelected": "Unter ausgewählte Seite",
     "splitIntoBlocks": "An Überschriften in Abschnitte aufteilen",
+    "parserOptionsLabel": "Zusätzliche Verarbeitung",
+    "parserOptionsHint": "Vom konfigurierten Parsing-Dienst unterstützte Zusatzdienste. Die Auswahl wird gespeichert.",
+    "flags": {
+      "extractImages": "Bilder extrahieren",
+      "ocr": "OCR (Text aus Scans/Bildern erkennen)",
+      "parseImagesInDoc": "Bilder im Dokument analysieren",
+      "detectTables": "Tabellen erkennen"
+    },
     "postProcessingLabel": "KI-Nachbearbeitung",
     "postProcessingNone": "Keine",
     "postProcessingHint": "Optional ein KI-Agent das Dokument vor dem Speichern bereinigen und neu strukturieren lassen.",
