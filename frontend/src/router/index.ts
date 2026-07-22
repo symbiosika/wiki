@@ -80,6 +80,21 @@ const router = createRouter({
           name: 'UrlImportJob',
           component: () => import('../views/jobs/url-import-job.vue'),
         },
+        {
+          path: 'tenant/:tenantId/ai-tests',
+          name: 'AiTests',
+          component: () => import('../views/ai-tests/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/ai-tests/:suiteId',
+          name: 'AiTestSuite',
+          component: () => import('../views/ai-tests/suite-detail.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/ai-tests/:suiteId/runs/:runId',
+          name: 'AiTestRun',
+          component: () => import('../views/ai-tests/run-detail.vue'),
+        },
       ],
     },
 

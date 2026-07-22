@@ -21,18 +21,10 @@ import { isTenantMember } from "@framework/routes/tenant";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator } from "hono-openapi";
 import * as v from "valibot";
-import {
-  streamText,
-  convertToModelMessages,
-  stepCountIs,
-  type UIMessage,
-} from "ai";
-import { getModel, assertOpenRouterConfigured } from "../../../../ai";
-import {
-  createWikiChatTools,
-  buildWikiChatSystemPrompt,
-  type WikiChatMode,
-} from "../../../../ai/tools/wiki";
+import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import { assertOpenRouterConfigured } from "../../../../ai";
+import { buildWikiAgentConfig } from "../../../../ai/wiki-agent";
+import type { WikiChatMode } from "../../../../ai/tools/wiki";
 import {
   getChatAgentConfig,
   setChatAgentConfig,
@@ -110,17 +102,11 @@ export default function defineChatRoutes(
       const mode: WikiChatMode = rawMode === "edit" ? "edit" : "read";
 
       try {
-        const tools = createWikiChatTools({ tenantId, userId }, mode);
         const { systemPrompt: orgSystemPrompt } =
           await getChatAgentConfig(tenantId);
-        const system = buildWikiChatSystemPrompt(mode, orgSystemPrompt);
 
         const result = streamText({
-          model: getModel(),
-          system,
-          tools,
-          stopWhen: stepCountIs(10),
-          maxOutputTokens: 8192,
+          ...buildWikiAgentConfig({ tenantId, userId, mode, orgSystemPrompt }),
           messages: await convertToModelMessages(messages as UIMessage[]),
           onError: (error) => {
             console.error(`[Chat] stream error mode=${mode}`, error);

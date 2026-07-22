@@ -5,6 +5,7 @@ import {
   text,
   boolean,
   integer,
+  real,
   timestamp,
   jsonb,
   index,
@@ -257,3 +258,336 @@ export type PostProcessingAgentSelect =
   typeof postProcessingAgents.$inferSelect;
 export type PostProcessingAgentInsert =
   typeof postProcessingAgents.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// AI test suites — automated evaluation of the wiki chat agent
+//
+// A suite owns a list of real customer questions. Each run drives the *same*
+// wiki agent that production uses (see ai/wiki-agent.ts) once per active
+// question, records the full tool trajectory + answer, and scores it along
+// three axes (tool usage, groundedness/evidence, answer relevance) plus hard
+// gates. Results are their own table (not a jsonb array on the run) because
+// trajectories/judge reports are large, the UI drills down per question, and
+// per-question time series need `WHERE question_id = …`.
+//
+// Everything is scoped by organisationId (== tenantId). A run executes with
+// the permissions of the user who started it, so it only ever sees the wiki
+// pages that user can see.
+// ---------------------------------------------------------------------------
+
+/** Behaviour class of a test question — "correct behaviour" is type-dependent. */
+export const AI_TEST_QUESTION_TYPES = [
+  "answerable",
+  "synthesis",
+  "not-in-wiki",
+  "ambiguous",
+] as const;
+
+/** Overall status of a single run. */
+export const AI_TEST_RUN_STATUSES = [
+  "running",
+  "success",
+  "partial",
+  "error",
+  "cancelled",
+] as const;
+
+/** Per-question verdict. */
+export const AI_TEST_VERDICTS = ["pass", "warn", "fail"] as const;
+
+/** Per-claim groundedness verdict from the judge. */
+export const AI_TEST_CLAIM_VERDICTS = [
+  "supported",
+  "unsupported",
+  "contradicted",
+] as const;
+
+export const aiTestSuites = pgBaseTable(
+  "ai_test_suites",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    organisationId: uuid("organisation_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** optional OpenRouter model override for the *judge* (never the chat agent) */
+    judgeModelId: text("judge_model_id"),
+    /** optional step-budget override for the agent under test */
+    stepLimit: integer("step_limit"),
+    createdBy: uuid("created_by"),
+    lastRunId: uuid("last_run_id"),
+    lastRunAt: timestamp("last_run_at", { mode: "string" }),
+    lastRunStatus: text("last_run_status"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("ai_test_suites_org_idx").on(table.organisationId)],
+);
+
+export const aiTestQuestions = pgBaseTable(
+  "ai_test_questions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    suiteId: uuid("suite_id")
+      .notNull()
+      .references(() => aiTestSuites.id, { onDelete: "cascade" }),
+    organisationId: uuid("organisation_id").notNull(),
+    question: text("question").notNull(),
+    /** one of AI_TEST_QUESTION_TYPES */
+    type: text("type").notNull().default("answerable"),
+    /** optional expected source page ids (deterministic recall) */
+    expectedPageIds: jsonb("expected_page_ids")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    /** optional 2–5 must-have facts (coverage via judge) */
+    expectedFacts: jsonb("expected_facts")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("ai_test_questions_suite_idx").on(table.suiteId)],
+);
+
+export const aiTestRuns = pgBaseTable(
+  "ai_test_runs",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    suiteId: uuid("suite_id")
+      .notNull()
+      .references(() => aiTestSuites.id, { onDelete: "cascade" }),
+    organisationId: uuid("organisation_id").notNull(),
+    status: text("status").notNull().default("running"),
+    /** the user whose permissions the run executes with (required) */
+    startedBy: uuid("started_by").notNull(),
+    /** resolved judge model actually used for this run */
+    judgeModelId: text("judge_model_id"),
+    total: integer("total").notNull().default(0),
+    completed: integer("completed").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    passed: integer("passed").notNull().default(0),
+    warned: integer("warned").notNull().default(0),
+    hardGateFails: integer("hard_gate_fails").notNull().default(0),
+    /** per-metric means, pass-rate, per-type breakdown */
+    aggregates: jsonb("aggregates").$type<AiTestRunAggregates | null>(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    /** fatal error that aborted the whole run (rare) */
+    error: text("error"),
+    startedAt: timestamp("started_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { mode: "string" }),
+  },
+  (table) => [
+    index("ai_test_runs_suite_idx").on(table.suiteId),
+    index("ai_test_runs_started_idx").on(table.startedAt),
+  ],
+);
+
+export const aiTestResults = pgBaseTable(
+  "ai_test_results",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => aiTestRuns.id, { onDelete: "cascade" }),
+    organisationId: uuid("organisation_id").notNull(),
+    /**
+     * The question this result came from. `set null` + a text snapshot below
+     * so a per-question time series survives the question being edited or
+     * deleted.
+     */
+    questionId: uuid("question_id").references(() => aiTestQuestions.id, {
+      onDelete: "set null",
+    }),
+    questionText: text("question_text").notNull(),
+    questionType: text("question_type").notNull(),
+    expectedPageIds: jsonb("expected_page_ids")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    expectedFacts: jsonb("expected_facts")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    /** the agent's final answer */
+    answer: text("answer"),
+    /** step-by-step tool trajectory (tool outputs clipped for storage) */
+    trajectory: jsonb("trajectory").$type<AiTestTrajectory | null>(),
+    /** full numeric score breakdown + deterministic metrics */
+    scores: jsonb("scores").$type<AiTestScores | null>(),
+    /** judge reasoning, claim verdicts, flags, hard-gate reasons */
+    judgeReport: jsonb("judge_report").$type<AiTestJudgeReport | null>(),
+    /** pass | warn | fail */
+    verdict: text("verdict"),
+    // individual scores as columns too, so per-question time series and
+    // ordering are plain SQL (WHERE question_id = … ORDER BY created_at)
+    toolUsageScore: real("tool_usage_score"),
+    groundednessScore: real("groundedness_score"),
+    relevanceScore: real("relevance_score"),
+    referenceScore: real("reference_score"),
+    totalScore: real("total_score"),
+    durationMs: integer("duration_ms"),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    /** per-question error (never aborts the run) */
+    error: text("error"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("ai_test_results_run_idx").on(table.runId),
+    index("ai_test_results_question_idx").on(table.questionId),
+  ],
+);
+
+// ---- jsonb payload types ----------------------------------------------------
+
+/** One tool invocation in a trajectory. */
+export interface AiTestTrajectoryStep {
+  index: number;
+  toolName: string;
+  input: unknown;
+  /** clipped tool output as returned to the model */
+  output: unknown;
+  /** false when the tool returned `{ success: false }` */
+  ok: boolean;
+}
+
+export interface AiTestTrajectory {
+  steps: AiTestTrajectoryStep[];
+  stepCount: number;
+  finishReason?: string;
+}
+
+/** One atomic factual claim checked against the tool outputs. */
+export interface AiTestClaim {
+  claim: string;
+  verdict: (typeof AI_TEST_CLAIM_VERDICTS)[number];
+  reasoning?: string;
+}
+
+/** Everything the judge produced for a single question. */
+export interface AiTestJudgeReport {
+  relevance: number;
+  relevanceReasoning?: string;
+  saysWikiHasNoAnswer?: boolean;
+  trajectoryVerdict?: string;
+  /** page titles the answer claims to cite (for the invented-source gate) */
+  citedPageTitles?: string[];
+  factsCovered?: { fact: string; covered: boolean }[];
+  claims?: AiTestClaim[];
+  flags: {
+    generalKnowledgeSuspected?: boolean;
+    noAnswerCase?: boolean;
+    hardGateReasons?: string[];
+  };
+}
+
+/** Deterministic, non-scored metrics captured per question. */
+export interface AiTestMetrics {
+  durationMs: number;
+  totalTokens: number;
+  steps: number;
+  searchCount: number;
+  readCount: number;
+  failedToolCalls: number;
+  duplicateToolCalls: number;
+  /** read∩expected / expected, only when expectedPageIds is non-empty */
+  pageRecall?: number | null;
+}
+
+export interface AiTestScores {
+  toolUsage: number;
+  groundedness: number;
+  relevance: number;
+  /** mean of reference-data sub-scores, only when reference data exists */
+  reference?: number | null;
+  total: number;
+  metrics: AiTestMetrics;
+}
+
+export interface AiTestRunAggregates {
+  passRate: number;
+  meanTotal: number;
+  meanToolUsage: number;
+  meanGroundedness: number;
+  meanRelevance: number;
+  hardGateFails: number;
+  byType: Record<
+    string,
+    { count: number; passRate: number; meanTotal: number }
+  >;
+}
+
+// ---- relations --------------------------------------------------------------
+
+export const aiTestSuitesRelations = relations(aiTestSuites, ({ many }) => ({
+  questions: many(aiTestQuestions),
+  runs: many(aiTestRuns),
+}));
+
+export const aiTestQuestionsRelations = relations(
+  aiTestQuestions,
+  ({ one }) => ({
+    suite: one(aiTestSuites, {
+      fields: [aiTestQuestions.suiteId],
+      references: [aiTestSuites.id],
+    }),
+  }),
+);
+
+export const aiTestRunsRelations = relations(aiTestRuns, ({ one, many }) => ({
+  suite: one(aiTestSuites, {
+    fields: [aiTestRuns.suiteId],
+    references: [aiTestSuites.id],
+  }),
+  results: many(aiTestResults),
+}));
+
+export const aiTestResultsRelations = relations(aiTestResults, ({ one }) => ({
+  run: one(aiTestRuns, {
+    fields: [aiTestResults.runId],
+    references: [aiTestRuns.id],
+  }),
+}));
+
+// ---- valibot schemas + types ------------------------------------------------
+
+export const aiTestSuiteSelectSchema = createSelectSchema(aiTestSuites);
+export const aiTestSuiteInsertSchema = createInsertSchema(aiTestSuites);
+export const aiTestSuiteUpdateSchema = createUpdateSchema(aiTestSuites);
+
+export const aiTestQuestionSelectSchema = createSelectSchema(aiTestQuestions);
+export const aiTestRunSelectSchema = createSelectSchema(aiTestRuns);
+export const aiTestResultSelectSchema = createSelectSchema(aiTestResults);
+
+export type AiTestSuiteSelect = typeof aiTestSuites.$inferSelect;
+export type AiTestSuiteInsert = typeof aiTestSuites.$inferInsert;
+export type AiTestQuestionSelect = typeof aiTestQuestions.$inferSelect;
+export type AiTestQuestionInsert = typeof aiTestQuestions.$inferInsert;
+export type AiTestRunSelect = typeof aiTestRuns.$inferSelect;
+export type AiTestResultSelect = typeof aiTestResults.$inferSelect;

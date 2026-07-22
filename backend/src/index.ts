@@ -6,7 +6,9 @@ import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
+import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
+import { aiTestJobHandler } from "./lib/ai-tests/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
 import { websocket } from "./lib/ws/bun-ws";
 import * as emailTemplates from "./lib/email-templates";
@@ -79,11 +81,12 @@ const server = defineServer({
         defineDocumentAssistantRoutes(app);
         defineUrlImportRoutes(app);
         definePostProcessingAgentRoutes(app);
+        defineAiTestRoutes(app);
       },
     },
   ],
-  // durable async execution of URL-import runs (survives restarts)
-  jobHandlers: [urlImportJobHandler],
+  // durable async execution of URL-import + AI-test runs (survives restarts)
+  jobHandlers: [urlImportJobHandler, aiTestJobHandler],
   // master tick: every minute, enqueue runs for jobs whose cron is due
   customCronJobs: [
     {
