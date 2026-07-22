@@ -204,6 +204,20 @@
           }}</span>
         </button>
 
+        <!--
+          import a page from a file or URL. Lives here on the open page (rather
+          than in the sidebar) so it reads as an "upload into the wiki" action,
+          right where the content is.
+        -->
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :title="$t('Wiki.import.button')"
+          @click="wiki.openImportDialog()"
+        >
+          <IconUpload class="h-3.5 w-3.5" />
+        </button>
+
         <!-- pinned to the right edge: info chip + save status -->
         <div class="ml-auto flex items-center gap-2">
           <!-- info: clickable chip that opens a metadata popover -->
@@ -420,6 +434,7 @@ import type { KnowledgeAttributeDefinition, WikiBlock } from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
 import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
+import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconContentCopy from '~icons/mdi/content-copy'
 import IconCheck from '~icons/mdi/check'
 import IconSpinner from '~icons/mdi/loading'
