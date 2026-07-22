@@ -1,6 +1,6 @@
 {
   "menu": "KI-Tests",
-  "tabTitle": "KI-Tests",
+  "tabTitle": "Validierungsläufe / Qualitätsprüfung",
   "title": "KI-Test-Suiten",
   "intro": "Automatisierte Tests für den Wiki-Chat: Für jede Frage prüfen und bewerten wir Tool-Nutzung, Evidenz (Grounding) und Antwortqualität – um Regressionen über die Zeit zu messen.",
   "addSuite": "Neue Suite",

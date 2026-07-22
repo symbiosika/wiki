@@ -1,6 +1,6 @@
 {
   "menu": "AI Tests",
-  "tabTitle": "AI Tests",
+  "tabTitle": "Validation runs / Quality check",
   "title": "AI Test Suites",
   "intro": "Automated tests for the wiki chat: for every question we check and score tool usage, evidence (groundedness) and answer quality — to measure regressions over time.",
   "addSuite": "New suite",
