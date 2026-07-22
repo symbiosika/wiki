@@ -3,7 +3,7 @@
     v-model:visible="visible"
     modal
     :header="$t('Wiki.import.title')"
-    class="w-[540px] max-w-[92vw]"
+    class="w-[680px] max-w-[94vw]"
     @hide="reset"
   >
     <div class="flex flex-col gap-4">
@@ -24,10 +24,10 @@
       </div>
 
       <!-- file dropzone -->
-      <div v-if="mode === 'file'">
+      <div v-if="mode === 'file'" class="flex flex-col gap-3">
         <button
           type="button"
-          class="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors"
+          class="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors"
           :class="
             dragOver
               ? 'border-primary bg-primary/5'
@@ -39,32 +39,145 @@
           @drop.prevent="onDrop"
         >
           <IconUpload class="h-8 w-8 text-surface-400" />
-          <span
-            v-if="file"
-            class="text-sm font-medium text-surface-800 dark:text-surface-100"
-          >
-            {{ file.name }}
+          <span class="text-sm text-surface-600 dark:text-surface-300">
+            {{ $t('Wiki.import.dropHint') }}
           </span>
-          <template v-else>
-            <span class="text-sm text-surface-600 dark:text-surface-300">
-              {{ $t('Wiki.import.dropHint') }}
-            </span>
-            <span class="text-xs text-surface-400 dark:text-surface-500">
-              {{ $t('Wiki.import.fileTypes') }}
-            </span>
-          </template>
+          <span class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Wiki.import.fileTypes') }}
+          </span>
+          <span
+            class="mt-1 flex items-center gap-1 text-xs text-surface-400 dark:text-surface-500"
+          >
+            <IconFolder class="h-3.5 w-3.5" />
+            {{ $t('Wiki.import.dropFolderHint') }}
+          </span>
         </button>
+
+        <!-- hidden inputs: one for files, one for a whole folder -->
         <input
           ref="fileInputRef"
           type="file"
+          multiple
           class="hidden"
           :accept="FILE_ACCEPT"
-          @change="onFileSelected"
+          @change="onFilesSelected"
         />
+        <input
+          ref="folderInputRef"
+          type="file"
+          multiple
+          webkitdirectory
+          class="hidden"
+          @change="onFilesSelected"
+        />
+
+        <div class="flex items-center justify-between">
+          <SecondaryButton
+            size="small"
+            :label="$t('Wiki.import.selectFolder')"
+            @click="folderInputRef?.click()"
+          >
+            <template #icon>
+              <IconFolder class="mr-1 h-4 w-4" />
+            </template>
+          </SecondaryButton>
+          <button
+            v-if="entries.length"
+            type="button"
+            class="text-xs text-surface-500 hover:text-surface-800 dark:hover:text-surface-100"
+            @click="entries = []"
+          >
+            {{ $t('Wiki.import.clearAll') }}
+          </button>
+        </div>
+
+        <!-- per-file table -->
+        <div
+          v-if="entries.length"
+          class="overflow-x-auto rounded-md border border-surface-200 dark:border-surface-700"
+        >
+          <table class="w-full border-collapse text-sm">
+            <thead>
+              <tr
+                class="bg-surface-50 text-left text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
+              >
+                <th class="px-3 py-2 font-medium">
+                  {{ $t('Wiki.import.colFile') }}
+                </th>
+                <th class="px-3 py-2 font-medium">
+                  {{ $t('Wiki.import.colTitle') }}
+                </th>
+                <th class="px-3 py-2 font-medium">
+                  {{ $t('Wiki.import.colPath') }}
+                </th>
+                <th class="w-8 px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="entry in entries"
+                :key="entry.uid"
+                class="border-t border-surface-200 align-top dark:border-surface-700"
+              >
+                <td class="px-3 py-2">
+                  <div class="flex items-start gap-1.5">
+                    <IconFile
+                      class="mt-0.5 h-4 w-4 shrink-0 text-surface-400"
+                    />
+                    <div class="min-w-0">
+                      <div
+                        class="truncate text-surface-800 dark:text-surface-100"
+                        :title="entry.file.name"
+                      >
+                        {{ entry.file.name }}
+                      </div>
+                      <div
+                        class="text-xs text-surface-400 dark:text-surface-500"
+                      >
+                        {{ formatSize(entry.file.size) }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-3 py-2">
+                  <InputText
+                    v-model="entry.title"
+                    class="w-full"
+                    size="small"
+                    :placeholder="stripExtension(entry.file.name)"
+                  />
+                </td>
+                <td class="px-3 py-2">
+                  <InputText
+                    v-model="entry.path"
+                    class="w-full"
+                    size="small"
+                    :placeholder="$t('Wiki.import.pathPlaceholder')"
+                  />
+                </td>
+                <td class="px-2 py-2 text-center">
+                  <button
+                    type="button"
+                    class="text-surface-400 hover:text-red-500"
+                    :aria-label="$t('Wiki.import.removeFile')"
+                    @click="removeEntry(entry.uid)"
+                  >
+                    <IconClose class="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p
+            class="border-t border-surface-200 px-3 py-1.5 text-xs text-surface-400 dark:border-surface-700 dark:text-surface-500"
+          >
+            {{ $t('Wiki.import.pathColHint') }}
+          </p>
+        </div>
       </div>
 
       <!-- url -->
-      <div v-else class="flex flex-col gap-1">
+      <div v-else class="flex flex-col gap-3">
         <InputText
           v-model="url"
           type="url"
@@ -72,21 +185,19 @@
           placeholder="https://…"
           @keydown.enter="canSubmit && submit()"
         />
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Wiki.import.titleLabel') }}
+          </label>
+          <InputText
+            v-model="title"
+            class="w-full"
+            :placeholder="$t('Wiki.import.titlePlaceholder')"
+          />
+        </div>
       </div>
 
-      <!-- title (optional) -->
-      <div class="flex flex-col gap-1">
-        <label class="text-sm text-surface-700 dark:text-surface-300">
-          {{ $t('Wiki.import.titleLabel') }}
-        </label>
-        <InputText
-          v-model="title"
-          class="w-full"
-          :placeholder="$t('Wiki.import.titlePlaceholder')"
-        />
-      </div>
-
-      <!-- scope -->
+      <!-- base location (Ablageort) -->
       <div class="flex flex-col gap-1">
         <label class="text-sm text-surface-700 dark:text-surface-300">
           {{ $t('Wiki.import.scopeLabel') }}
@@ -98,6 +209,9 @@
           option-value="value"
           class="w-full"
         />
+        <span class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Wiki.import.baseLocationHint') }}
+        </span>
       </div>
 
       <!-- AI post-processing -->
@@ -140,7 +254,7 @@
         @click="visible = false"
       />
       <Button
-        :label="$t('Wiki.import.submit')"
+        :label="submitLabel"
         size="small"
         :disabled="!canSubmit || submitting"
         @click="submit"
@@ -156,6 +270,9 @@ import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
+import IconFolder from '~icons/mdi/folder-outline'
+import IconFile from '~icons/mdi/file-document-outline'
+import IconClose from '~icons/mdi/close'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
@@ -173,15 +290,157 @@ const agentsStore = usePostProcessingAgents()
 /** accepted upload types (backend also parses PDF and office docs) */
 const FILE_ACCEPT =
   '.md,.markdown,.txt,.html,.htm,.pdf,.doc,.docx,text/markdown,text/plain,text/html,application/pdf'
+/** extensions we keep when a folder / mixed selection is dropped */
+const SUPPORTED_EXTENSIONS = [
+  'md',
+  'markdown',
+  'txt',
+  'html',
+  'htm',
+  'pdf',
+  'doc',
+  'docx',
+]
+
+/** One queued file plus its editable title and (additional) target path. */
+interface ImportEntry {
+  uid: string
+  file: File
+  title: string
+  /** additional path segments (slash separated), relative to the base location */
+  path: string
+}
 
 const mode = ref<'file' | 'url'>('file')
-const file = ref<File | null>(null)
+const entries = ref<ImportEntry[]>([])
 const url = ref('')
 const title = ref('')
 const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
 const submitting = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const folderInputRef = ref<HTMLInputElement | null>(null)
+
+let uidCounter = 0
+
+const stripExtension = (name: string): string => name.replace(/\.[^.]+$/, '')
+
+const isSupported = (name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  return SUPPORTED_EXTENSIONS.includes(ext)
+}
+
+/** Human-readable file size (B / KB / MB). */
+const formatSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Directory portion of a relative file path ("a/b/c.pdf" -> "a/b", "c.pdf" -> ""). */
+const dirOf = (relativePath: string): string => {
+  const idx = relativePath.lastIndexOf('/')
+  return idx > 0 ? relativePath.slice(0, idx) : ''
+}
+
+const addPicked = (picked: { file: File; relPath: string }[]) => {
+  for (const { file, relPath } of picked) {
+    if (!isSupported(file.name)) continue
+    entries.value.push({
+      uid: `f${uidCounter++}`,
+      file,
+      title: stripExtension(file.name),
+      path: relPath,
+    })
+  }
+}
+
+const removeEntry = (uid: string) => {
+  entries.value = entries.value.filter((e) => e.uid !== uid)
+}
+
+// ----- file / folder selection ------------------------------------------
+
+const onFilesSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const picked = Array.from(input.files ?? []).map((file) => ({
+    file,
+    // webkitRelativePath is set for a directory pick, "" for a plain file pick
+    relPath: dirOf(file.webkitRelativePath ?? ''),
+  }))
+  addPicked(picked)
+  // reset so selecting the same file/folder again re-triggers change
+  input.value = ''
+}
+
+// ----- drag & drop (with folder support via the entries API) -------------
+
+/** Drain a directory reader (readEntries returns at most ~100 entries per call). */
+const readAllEntries = (
+  reader: FileSystemDirectoryReader,
+): Promise<FileSystemEntry[]> =>
+  new Promise((resolve, reject) => {
+    const all: FileSystemEntry[] = []
+    const pump = () => {
+      reader.readEntries((batch) => {
+        if (batch.length === 0) {
+          resolve(all)
+          return
+        }
+        all.push(...batch)
+        pump()
+      }, reject)
+    }
+    pump()
+  })
+
+/** Recursively collect files from a dropped filesystem entry, tracking their folder path. */
+const traverseEntry = async (
+  entry: FileSystemEntry,
+  parentDir: string,
+  out: { file: File; relPath: string }[],
+): Promise<void> => {
+  if (entry.isFile) {
+    const fileEntry = entry as FileSystemFileEntry
+    const file = await new Promise<File>((res, rej) => fileEntry.file(res, rej))
+    out.push({ file, relPath: parentDir })
+  } else if (entry.isDirectory) {
+    const dir = parentDir ? `${parentDir}/${entry.name}` : entry.name
+    const children = await readAllEntries(
+      (entry as FileSystemDirectoryEntry).createReader(),
+    )
+    for (const child of children) await traverseEntry(child, dir, out)
+  }
+}
+
+const onDrop = async (event: DragEvent) => {
+  dragOver.value = false
+  const items = event.dataTransfer?.items
+  const picked: { file: File; relPath: string }[] = []
+
+  // Collect the entry handles synchronously — the DataTransferItemList is
+  // emptied once the handler yields, but the FileSystemEntry objects survive.
+  const entryHandles =
+    items && items.length
+      ? Array.from(items)
+          .map((it) =>
+            typeof it.webkitGetAsEntry === 'function'
+              ? it.webkitGetAsEntry()
+              : null,
+          )
+          .filter((e): e is FileSystemEntry => !!e)
+      : []
+
+  if (entryHandles.length) {
+    for (const entry of entryHandles) await traverseEntry(entry, '', picked)
+  } else {
+    // fallback: no entries API — treat as a flat file list
+    for (const file of Array.from(event.dataTransfer?.files ?? [])) {
+      picked.push({ file, relPath: '' })
+    }
+  }
+  addPicked(picked)
+}
 
 // AI post-processing: '' = none, otherwise the agent id (sent as agent:<id>)
 const postProcessorValue = ref('')
@@ -249,53 +508,94 @@ const scope = computed<WikiScope>(() => {
   return { kind: 'personal' }
 })
 
-// when importing under the selected page, nest the new page beneath it
-const parentId = computed(() =>
+// when importing under the selected page, nest the new pages beneath it
+const baseParentId = computed(() =>
   scopeValue.value === 'current' ? currentPage.value?.id : undefined,
 )
 
 const canSubmit = computed(() =>
-  mode.value === 'file' ? !!file.value : url.value.trim().length > 0,
+  mode.value === 'file'
+    ? entries.value.length > 0
+    : url.value.trim().length > 0,
 )
 
-const onFileSelected = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  file.value = input.files?.[0] ?? null
-}
+const submitLabel = computed(() => {
+  if (submitting.value && mode.value === 'file' && entries.value.length > 1) {
+    return t('Wiki.import.progress', {
+      done: importedCount.value,
+      total: entries.value.length,
+    })
+  }
+  if (mode.value === 'file' && entries.value.length > 1) {
+    return t('Wiki.import.submitMulti', { count: entries.value.length })
+  }
+  return t('Wiki.import.submit')
+})
 
-const onDrop = (event: DragEvent) => {
-  dragOver.value = false
-  const dropped = event.dataTransfer?.files?.[0]
-  if (dropped) file.value = dropped
-}
+const importedCount = ref(0)
+
+/** Split an additional path into clean segments. */
+const pathSegments = (path: string): string[] =>
+  path
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean)
 
 /**
- * Enqueue the import as a background job. Ingestion (especially PDFs and large
- * pages) can take minutes, so we no longer wait for the finished page: the job
- * runs on the queue and pushes a completion message into the inbox
- * (`notifyOnCompletion`). We just confirm it started and close.
+ * Enqueue the import(s) as background jobs. Each file is imported on its own,
+ * nested under any additional path (folders are created on demand). Ingestion
+ * (especially PDFs and large pages) can take minutes, so we don't wait for the
+ * finished pages: the jobs run on the queue and push a completion message into
+ * the inbox (`notifyOnCompletion`). We just confirm they started and close.
  */
 const submit = async () => {
   if (!canSubmit.value || submitting.value) return
   submitting.value = true
-  const options = {
-    title: title.value.trim() || undefined,
+
+  const commonOptions = {
     splitIntoBlocks: splitIntoBlocks.value,
-    parentId: parentId.value,
     postProcessorNames: postProcessorNames.value,
     notifyOnCompletion: true,
   }
+
   try {
-    if (mode.value === 'file') {
-      await wiki.importFile(props.tenantId, scope.value, file.value!, options)
+    if (mode.value === 'url') {
+      await wiki.importUrl(props.tenantId, scope.value, url.value.trim(), {
+        ...commonOptions,
+        title: title.value.trim() || undefined,
+        parentId: baseParentId.value,
+      })
     } else {
-      await wiki.importUrl(
-        props.tenantId,
-        scope.value,
-        url.value.trim(),
-        options,
-      )
+      importedCount.value = 0
+      let failures = 0
+      for (const entry of entries.value) {
+        try {
+          const parentId = await wiki.ensurePagePath(
+            props.tenantId,
+            scope.value,
+            pathSegments(entry.path),
+            baseParentId.value,
+          )
+          await wiki.importFile(props.tenantId, scope.value, entry.file, {
+            ...commonOptions,
+            title: entry.title.trim() || undefined,
+            parentId,
+          })
+        } catch {
+          failures++
+        }
+        importedCount.value++
+      }
+      if (failures > 0) {
+        toast.add({
+          severity: 'warn',
+          summary: t('Common.error'),
+          detail: t('Wiki.import.partialError', { count: failures }),
+          life: 6000,
+        })
+      }
     }
+
     visible.value = false
     toast.add({
       severity: 'info',
@@ -321,7 +621,7 @@ const submit = async () => {
 
 const reset = () => {
   mode.value = 'file'
-  file.value = null
+  entries.value = []
   url.value = ''
   title.value = ''
   splitIntoBlocks.value = true
@@ -329,6 +629,7 @@ const reset = () => {
   postProcessorValue.value = ''
   dragOver.value = false
   submitting.value = false
+  importedCount.value = 0
 }
 
 // On open, default to nesting under the page the user just had selected and

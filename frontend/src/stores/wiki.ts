@@ -224,6 +224,63 @@ export const useWiki = defineStore('wiki', () => {
   }
 
   /**
+   * Find a direct child page by title, case-insensitively. With a `parentId`
+   * the lookup is scoped to that page's children; without one it looks at the
+   * given scope's root level (personal / team / organisation). Used to reuse an
+   * existing "folder" page instead of creating a duplicate on import.
+   */
+  const findChildPageByTitle = (
+    scope: WikiScope,
+    parentId: string | undefined,
+    title: string,
+  ): WikiTreeNode | null => {
+    const wanted = title.trim().toLowerCase()
+    const inList = (nodes: WikiTreeNode[]) =>
+      nodes.find((n) => n.title.trim().toLowerCase() === wanted) ?? null
+
+    if (parentId) {
+      const parent = findTreeNode(parentId)
+      return parent ? inList(parent.children) : null
+    }
+    if (scope.kind === 'organisation')
+      return inList(state.value.tree.organisation)
+    if (scope.kind === 'team') {
+      const team = state.value.tree.teams.find((t) => t.teamId === scope.teamId)
+      return team ? inList(team.pages) : null
+    }
+    return inList(state.value.tree.personal)
+  }
+
+  /**
+   * Ensure a chain of "folder" pages exists for the given path segments,
+   * creating any missing ones as empty pages under the running parent. Returns
+   * the id of the deepest segment, or the untouched `baseParentId` when there
+   * are no segments. Segments are matched/created level by level so importing a
+   * whole dropped folder reuses shared parents instead of duplicating them.
+   */
+  const ensurePagePath = async (
+    tenantId: string,
+    scope: WikiScope,
+    segments: string[],
+    baseParentId?: string,
+  ): Promise<string | undefined> => {
+    let parentId = baseParentId
+    for (const raw of segments) {
+      const title = raw.trim()
+      if (!title) continue
+      const existing = findChildPageByTitle(scope, parentId, title)
+      if (existing) {
+        parentId = existing.id
+      } else {
+        // createPage refreshes the tree, so the next lookup sees this folder
+        const page = await createPage(tenantId, scope, { title, parentId })
+        parentId = page.id
+      }
+    }
+    return parentId
+  }
+
+  /**
    * Import an uploaded file (markdown, html, txt, PDF, …) as a new page.
    *
    * Ingestion now runs on the framework job queue: the endpoint enqueues a
@@ -611,6 +668,8 @@ export const useWiki = defineStore('wiki', () => {
     loadPage,
     closePage,
     createPage,
+    ensurePagePath,
+    findChildPageByTitle,
     importFile,
     importUrl,
     uploadImage,
