@@ -30,24 +30,21 @@
             </span>
           </div>
           <div class="flex flex-wrap gap-1.5">
-            <span class="chip">
+            <span :class="chip">
               {{ $t('AiTests.progress') }}: {{ run.completed }}/{{ run.total }}
             </span>
-            <span class="chip">
+            <span :class="chip">
               {{ $t('AiTests.passRate') }}:
               {{ pct(run.aggregates?.passRate) }}
             </span>
-            <span class="chip">
+            <span :class="chip">
               {{ $t('AiTests.meanScore') }}:
               {{ score(run.aggregates?.meanTotal) }}
             </span>
-            <span
-              class="chip"
-              :class="run.hardGateFails > 0 ? 'chip-danger' : ''"
-            >
+            <span :class="run.hardGateFails > 0 ? chipDanger : chip">
               {{ $t('AiTests.hardGateFails') }}: {{ run.hardGateFails }}
             </span>
-            <span class="chip">
+            <span :class="chip">
               {{ $t('AiTests.tokens') }}: {{ run.totalTokens }}
             </span>
           </div>
@@ -122,19 +119,19 @@
 
             <!-- scores -->
             <div v-if="r.scores" class="flex flex-wrap gap-1.5">
-              <span class="chip">
+              <span :class="chip">
                 {{ $t('AiTests.toolUsage') }}:
                 {{ score(r.scores.toolUsage) }}
               </span>
-              <span class="chip">
+              <span :class="chip">
                 {{ $t('AiTests.groundedness') }}:
                 {{ score(r.scores.groundedness) }}
               </span>
-              <span class="chip">
+              <span :class="chip">
                 {{ $t('AiTests.relevance') }}:
                 {{ score(r.scores.relevance) }}
               </span>
-              <span v-if="r.scores.reference != null" class="chip">
+              <span v-if="r.scores.reference != null" :class="chip">
                 {{ $t('AiTests.reference') }}:
                 {{ score(r.scores.reference) }}
               </span>
@@ -147,20 +144,20 @@
             >
               <span
                 v-if="r.judgeReport?.flags?.noAnswerCase"
-                class="chip chip-info"
+                :class="chipInfo"
               >
                 {{ $t('AiTests.flags.noAnswerCase') }}
               </span>
               <span
                 v-if="r.judgeReport?.flags?.generalKnowledgeSuspected"
-                class="chip chip-warn"
+                :class="chipWarn"
               >
                 {{ $t('AiTests.flags.generalKnowledgeSuspected') }}
               </span>
               <span
                 v-for="reason in r.judgeReport?.flags?.hardGateReasons ?? []"
                 :key="reason"
-                class="chip chip-danger"
+                :class="chipDanger"
               >
                 {{ $t('AiTests.hardGate') }}: {{ reason }}
               </span>
@@ -418,6 +415,15 @@ const prettyOutput = (output: unknown) => {
   }
 }
 
+const chip =
+  'inline-block rounded-full bg-surface-100 px-2.5 py-1 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300'
+const chipDanger =
+  'inline-block rounded-full bg-red-100 px-2.5 py-1 text-xs text-red-700 dark:bg-red-950 dark:text-red-300'
+const chipWarn =
+  'inline-block rounded-full bg-amber-100 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+const chipInfo =
+  'inline-block rounded-full bg-sky-100 px-2.5 py-1 text-xs text-sky-700 dark:bg-sky-950 dark:text-sky-300'
+
 const goBackToSuite = () => {
   router.push({
     name: 'AiTestSuite',
@@ -447,18 +453,3 @@ const cancel = async () => {
   }
 }
 </script>
-
-<style scoped>
-.chip {
-  @apply rounded-full bg-surface-100 px-2.5 py-1 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300;
-}
-.chip-danger {
-  @apply bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300;
-}
-.chip-warn {
-  @apply bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300;
-}
-.chip-info {
-  @apply bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300;
-}
-</style>

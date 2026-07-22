@@ -92,6 +92,7 @@ declare global {
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
   const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
   const useAiChat: typeof import('./stores/aiChat').useAiChat
+  const useAiTests: typeof import('./stores/aiTests').useAiTests
   const useApiTokens: typeof import('./stores/apiTokens').useApiTokens
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
@@ -150,6 +151,9 @@ declare global {
   // @ts-ignore
   export type { WikiImportOptions, IngestJob, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
+  // @ts-ignore
+  export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
+  import('./types/aiTests')
   // @ts-ignore
   export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
   import('./types/notifications')
