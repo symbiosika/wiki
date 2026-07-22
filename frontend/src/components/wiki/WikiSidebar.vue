@@ -290,21 +290,6 @@
           {{ $t('Jobs.menu') }}
         </button>
 
-        <!-- ai tests (automated wiki-chat evaluation) -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          :class="
-            isAiTestsActive
-              ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-              : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
-          "
-          @click="gotoAiTests"
-        >
-          <IconAiTests class="h-4 w-4" />
-          {{ $t('AiTests.menu') }}
-        </button>
-
         <!-- inbox (user notification queue) with unread chip -->
         <button
           type="button"
@@ -427,7 +412,6 @@ import IconChat from '~icons/mdi/robot-happy-outline'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconJobs from '~icons/mdi/calendar-sync-outline'
-import IconAiTests from '~icons/mdi/clipboard-check-outline'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
@@ -674,14 +658,6 @@ const isJobsActive = computed(
 
 const gotoJobs = () => {
   router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
-}
-
-const isAiTestsActive = computed(() =>
-  String(route.name ?? '').startsWith('AiTest'),
-)
-
-const gotoAiTests = () => {
-  router.push({ name: 'AiTests', params: { tenantId: tenantId.value } })
 }
 
 const isNotificationsActive = computed(

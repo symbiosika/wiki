@@ -12,6 +12,8 @@
       </template>
     </ManageHeader>
 
+    <ManageTabs />
+
     <p class="mb-6 text-sm text-surface-500 dark:text-surface-400">
       {{ $t('AiTests.intro') }}
     </p>
@@ -120,6 +122,7 @@
 import { useToast } from 'primevue/usetoast'
 import IconPlus from '~icons/mdi/plus'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 import { useAiTests } from '@/stores/aiTests'
 import { FetcherError } from '@/utils/fetcher'
 import type { AiTestRunStatus } from '@/types/aiTests'
