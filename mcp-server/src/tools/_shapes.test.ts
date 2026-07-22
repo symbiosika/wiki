@@ -4,6 +4,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import {
+  annotateEmbeddedImages,
   stripEmpty,
   slimPageRow,
   slimPageRows,
@@ -161,5 +162,33 @@ describe("composite shapes", () => {
     // without includeText the rows simply have no content field
     const { text, ...noText } = fullRow;
     expect(slimBatchRows([noText])[0]!.content).toBeUndefined();
+  });
+});
+
+describe("annotateEmbeddedImages", () => {
+  const ref =
+    "/api/v1/tenant/t1/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png";
+
+  test("lists embedded images and adds the hint", () => {
+    const out = annotateEmbeddedImages({
+      id: "p1",
+      title: "T",
+      content: `intro\n\n![diagram](${ref})\n\n<img src="${ref}">`,
+    }) as Record<string, unknown>;
+    expect(out.embeddedImages).toEqual([
+      "/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png",
+    ]);
+    expect(String(out.embeddedImagesHint)).toContain("get_page_image");
+  });
+
+  test("leaves pages without images untouched", () => {
+    const page = { id: "p1", content: "plain text" };
+    expect(annotateEmbeddedImages(page)).toBe(page);
+  });
+
+  test("ignores non-page payloads", () => {
+    expect(annotateEmbeddedImages("x")).toBe("x");
+    expect(annotateEmbeddedImages(null)).toBe(null);
+    expect(annotateEmbeddedImages([1])).toEqual([1]);
   });
 });

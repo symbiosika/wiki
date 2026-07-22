@@ -21,6 +21,7 @@
 
 import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
+import { annotateEmbeddedImages } from "./_shapes.ts";
 import { callApi, fail, tenantPath, type ToolResult } from "../app-api.ts";
 import { ISSUER } from "../config.ts";
 import { buildPageViewHtml } from "../ui/build.ts";
@@ -33,6 +34,19 @@ const RESOURCE_MIME_TYPE = "text/html;profile=mcp-app";
 const PAGE_VIEW_TOOL_META = {
   ui: { resourceUri: PAGE_VIEW_RESOURCE_URI },
   "ui/resourceUri": PAGE_VIEW_RESOURCE_URI,
+};
+
+/**
+ * `_meta.ui` of the resource itself. The view is fully self-contained
+ * (bundled script, images arrive as data: URIs through tool calls), so the
+ * CSP allowlists are explicitly empty — the host's most restrictive sandbox
+ * is exactly what we want, stated rather than defaulted.
+ */
+const PAGE_VIEW_RESOURCE_META = {
+  ui: {
+    csp: { connectDomains: [], resourceDomains: [] },
+    prefersBorder: true,
+  },
 };
 
 /** Images above this raw size are not inlined (base64 in a tool result). */
@@ -110,6 +124,7 @@ export function registerAppUiTools(mcp: any): void {
       description:
         "Interactive rendering of a wiki page (used by the view_page tool).",
       mimeType: RESOURCE_MIME_TYPE,
+      _meta: PAGE_VIEW_RESOURCE_META,
     },
     async () => ({
       contents: [
@@ -117,6 +132,7 @@ export function registerAppUiTools(mcp: any): void {
           uri: PAGE_VIEW_RESOURCE_URI,
           mimeType: RESOURCE_MIME_TYPE,
           text: await buildPageViewHtml(),
+          _meta: PAGE_VIEW_RESOURCE_META,
         },
       ],
     }),
@@ -142,6 +158,7 @@ export function registerAppUiTools(mcp: any): void {
       callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        { transform: annotateEmbeddedImages },
       ),
   );
 
