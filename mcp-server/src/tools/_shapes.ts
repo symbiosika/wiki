@@ -24,6 +24,11 @@ export const stripEmpty = (row: Row): Row => {
 const IMAGE_REF_RE =
   /\/files\/db\/knowledge\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}/gi;
 
+/** All unique wiki image references embedded in a page's content. */
+export const extractEmbeddedImageRefs = (content: string): string[] => [
+  ...new Set(content.match(IMAGE_REF_RE) ?? []),
+];
+
 /**
  * If a page's `content` embeds wiki images, list them explicitly and say how
  * to load one. This lands in the tool result at exactly the moment the model
@@ -34,7 +39,7 @@ export const annotateEmbeddedImages = (data: unknown): unknown => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return data;
   const page = data as Row;
   if (typeof page.content !== "string") return data;
-  const refs = [...new Set(page.content.match(IMAGE_REF_RE) ?? [])];
+  const refs = extractEmbeddedImageRefs(page.content);
   if (refs.length === 0) return data;
   return {
     ...page,

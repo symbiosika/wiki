@@ -1,37 +1,46 @@
 /**
- * Builds the single-file HTML of the MCP App (page view) — on demand, in
- * process, via Bun's bundler. The browser entry (page-view.ts, which pulls in
- * the MCP Apps SDK + marked) is bundled to one script and inlined into the
- * HTML template; hosts fetch the result as the `ui://…/page-view.html`
- * resource. Memoized: the first `resources/read` pays ~100ms, all later
- * reads are free.
+ * Builds the single-file HTMLs of the MCP Apps — on demand, in process, via
+ * Bun's bundler. Each app is a browser entry (`./<name>.ts`, pulls in the MCP
+ * Apps SDK) plus an HTML template (`./<name>.html`) with an `__APP_SCRIPT__`
+ * placeholder comment; the bundled script is inlined and hosts fetch the
+ * result as the `ui://…` resource. Memoized per app: the first
+ * `resources/read` pays ~100ms, later reads are free.
  */
 
-const TEMPLATE_URL = new URL("./page-view.html", import.meta.url);
-const ENTRY_URL = new URL("./page-view.ts", import.meta.url);
+const APPS = {
+  "page-view": true,
+  "image-view": true,
+} as const;
 
-let cached: string | null = null;
+export type AppName = keyof typeof APPS;
 
-export async function buildPageViewHtml(): Promise<string> {
+const cache = new Map<AppName, string>();
+
+export async function buildAppHtml(name: AppName): Promise<string> {
+  const cached = cache.get(name);
   if (cached) return cached;
 
+  const entry = new URL(`./${name}.ts`, import.meta.url).pathname;
   const result = await Bun.build({
-    entrypoints: [ENTRY_URL.pathname],
+    entrypoints: [entry],
     target: "browser",
     format: "esm",
     minify: true,
   });
   if (!result.success || !result.outputs[0]) {
     throw new Error(
-      `Failed to bundle the page-view app: ${result.logs.join("\n")}`,
+      `Failed to bundle the ${name} app: ${result.logs.join("\n")}`,
     );
   }
 
   const js = await result.outputs[0].text();
-  const template = await Bun.file(TEMPLATE_URL).text();
+  const template = await Bun.file(
+    new URL(`./${name}.html`, import.meta.url),
+  ).text();
 
   // `</script` inside the bundled code would end the inline tag early.
   const safeJs = js.replaceAll("</script", "<\\/script");
-  cached = template.replace("/*__APP_SCRIPT__*/", () => safeJs);
-  return cached;
+  const html = template.replace("/*__APP_SCRIPT__*/", () => safeJs);
+  cache.set(name, html);
+  return html;
 }
