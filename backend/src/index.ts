@@ -24,6 +24,9 @@ const server = defineServer({
   magicLoginVerifyUrl: "/magic-login-verify.html",
   staticPublicDataPath: "./public",
   staticPrivateDataPath: "./static",
+  // activate additional parameters for PDF parsing
+  enablePdfParserExtraction: true,
+
   // OAuth2 / OIDC Authorization Server. Enabling it mounts all OAuth
   // endpoints (/oauth/authorize, /oauth/token, /oauth/introspect,
   // /oauth/userinfo, /.well-known/*, …). The standalone MCP server in
