@@ -75,7 +75,9 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
     description:
       "Search the wiki for pages relevant to a query. Uses hybrid semantic + " +
       "full-text search and returns the best matching pages with a short " +
-      "snippet and their pageId. This is the primary way to find knowledge — " +
+      "snippet, an AI-generated one-line `summary` (when available) and their " +
+      "pageId. Use the summary to judge which hits are worth reading in full. " +
+      "This is the primary way to find knowledge — " +
       "start here, then read the most promising pages with read_wiki_page. " +
       "When a hit matched semantically it also carries `chunkOrder` (the " +
       "position of the matching chunk) — pass it to get_wiki_chunk_context to " +
@@ -123,6 +125,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
             pageId: r.id,
             title: r.title,
             snippet: r.snippet,
+            summary: r.summary,
             matchedBy: r.matchedBy,
             chunkOrder: r.chunkOrder,
             sourcePage: r.sourcePage,
@@ -136,7 +139,8 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
 
   const list_wiki_pages = tool({
     description:
-      "List wiki pages (title + pageId) the user can access. Useful to get an " +
+      "List wiki pages (title + pageId, plus a short `summary` when available) " +
+      "the user can access. Useful to get an " +
       "overview of what exists when a search is too narrow. Does not return " +
       "page bodies — use read_wiki_page for the content.",
     inputSchema: valibotSchema(
@@ -164,6 +168,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           pages: pages.map((p) => ({
             pageId: p.id,
             title: p.title,
+            summary: p.summary,
             parentId: p.parentId,
             tenantWide: p.tenantWide,
             teamId: p.teamId,
