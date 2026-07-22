@@ -27,12 +27,13 @@
       <div v-if="mode === 'file'" class="flex flex-col gap-3">
         <button
           type="button"
-          class="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors"
+          class="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors disabled:opacity-50"
           :class="
             dragOver
               ? 'border-primary bg-primary/5'
               : 'border-surface-300 hover:border-primary dark:border-surface-600'
           "
+          :disabled="submitting"
           @click="fileInputRef?.click()"
           @dragover.prevent="dragOver = true"
           @dragleave.prevent="dragOver = false"
@@ -75,6 +76,7 @@
           <SecondaryButton
             size="small"
             :label="$t('Wiki.import.selectFolder')"
+            :disabled="submitting"
             @click="folderInputRef?.click()"
           >
             <template #icon>
@@ -82,7 +84,7 @@
             </template>
           </SecondaryButton>
           <button
-            v-if="entries.length"
+            v-if="entries.length && !submitting"
             type="button"
             class="text-xs text-surface-500 hover:text-surface-800 dark:hover:text-surface-100"
             @click="entries = []"
@@ -98,10 +100,11 @@
         >
           <table class="w-full table-fixed border-collapse text-xs">
             <colgroup>
-              <col class="w-[28%]" />
-              <col class="w-[36%]" />
-              <col class="w-[30%]" />
-              <col class="w-8" />
+              <col class="w-[26%]" />
+              <col class="w-[33%]" />
+              <col class="w-[29%]" />
+              <col class="w-7" />
+              <col class="w-7" />
             </colgroup>
             <thead>
               <tr
@@ -116,6 +119,7 @@
                 <th class="px-2 py-1.5 font-medium">
                   {{ $t('Wiki.import.colPath') }}
                 </th>
+                <th class="px-1 py-1.5"></th>
                 <th class="px-1 py-1.5"></th>
               </tr>
             </thead>
@@ -147,6 +151,7 @@
                   <InputText
                     v-model="entry.title"
                     class="w-full !px-2 !py-1 !text-xs"
+                    :disabled="submitting"
                     :placeholder="stripExtension(entry.file.name)"
                   />
                 </td>
@@ -154,13 +159,34 @@
                   <InputText
                     v-model="entry.path"
                     class="w-full !px-2 !py-1 !text-xs"
+                    :disabled="submitting"
                     :placeholder="$t('Wiki.import.pathPlaceholder')"
                   />
                 </td>
-                <td class="px-1 py-1.5 text-center">
+                <td class="px-1 py-1.5 text-center align-middle">
+                  <IconClock
+                    v-if="entry.status === 'queued'"
+                    class="mx-auto h-4 w-4 text-surface-300 dark:text-surface-600"
+                  />
+                  <IconLoading
+                    v-else-if="entry.status === 'uploading'"
+                    class="mx-auto h-4 w-4 animate-spin text-primary"
+                  />
+                  <IconCheck
+                    v-else-if="entry.status === 'done'"
+                    class="mx-auto h-4 w-4 text-green-500"
+                  />
+                  <IconAlert
+                    v-else-if="entry.status === 'error'"
+                    class="mx-auto h-4 w-4 text-red-500"
+                    :title="entry.error"
+                  />
+                </td>
+                <td class="px-1 py-1.5 text-center align-middle">
                   <button
                     type="button"
-                    class="text-surface-400 hover:text-red-500"
+                    class="text-surface-400 hover:text-red-500 disabled:opacity-40 disabled:hover:text-surface-400"
+                    :disabled="submitting"
                     :aria-label="$t('Wiki.import.removeFile')"
                     @click="removeEntry(entry.uid)"
                   >
@@ -298,6 +324,10 @@ import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconFolder from '~icons/mdi/folder-outline'
 import IconFile from '~icons/mdi/file-document-outline'
 import IconClose from '~icons/mdi/close'
+import IconLoading from '~icons/mdi/loading'
+import IconCheck from '~icons/mdi/check-circle'
+import IconAlert from '~icons/mdi/alert-circle'
+import IconClock from '~icons/mdi/clock-outline'
 import IconPersonal from '~icons/mdi/account-outline'
 import IconTeam from '~icons/mdi/account-group-outline'
 import IconOrganisation from '~icons/mdi/domain'
@@ -331,6 +361,9 @@ const SUPPORTED_EXTENSIONS = [
   'docx',
 ]
 
+/** Per-file state while the import jobs are being enqueued. */
+type ImportStatus = 'idle' | 'queued' | 'uploading' | 'done' | 'error'
+
 /** One queued file plus its editable title and (additional) target path. */
 interface ImportEntry {
   uid: string
@@ -338,6 +371,10 @@ interface ImportEntry {
   title: string
   /** additional path segments (slash separated), relative to the base location */
   path: string
+  /** progress while enqueuing the import job for this file */
+  status: ImportStatus
+  /** error message when status === 'error' */
+  error?: string
 }
 
 const mode = ref<'file' | 'url'>('file')
@@ -373,6 +410,7 @@ const dirOf = (relativePath: string): string => {
 }
 
 const addPicked = (picked: { file: File; relPath: string }[]) => {
+  if (submitting.value) return
   for (const { file, relPath } of picked) {
     if (!isSupported(file.name)) continue
     entries.value.push({
@@ -380,6 +418,7 @@ const addPicked = (picked: { file: File; relPath: string }[]) => {
       file,
       title: stripExtension(file.name),
       path: relPath,
+      status: 'idle',
     })
   }
 }
@@ -582,12 +621,20 @@ const canSubmit = computed(() =>
     : url.value.trim().length > 0,
 )
 
+const failedCount = computed(
+  () => entries.value.filter((e) => e.status === 'error').length,
+)
+
 const submitLabel = computed(() => {
   if (submitting.value && mode.value === 'file' && entries.value.length > 1) {
     return t('Wiki.import.progress', {
       done: importedCount.value,
       total: entries.value.length,
     })
+  }
+  // after a partial failure the dialog stays open — offer to retry the rest
+  if (!submitting.value && mode.value === 'file' && failedCount.value > 0) {
+    return t('Wiki.import.retry', { count: failedCount.value })
   }
   if (mode.value === 'file' && entries.value.length > 1) {
     return t('Wiki.import.submitMulti', { count: entries.value.length })
@@ -604,61 +651,29 @@ const pathSegments = (path: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean)
 
+/** Extract a human-readable message from a failed import. */
+const errorMessage = (error: unknown): string =>
+  error instanceof FetcherError && error.body
+    ? error.body
+    : error instanceof Error
+      ? error.message
+      : t('Wiki.import.error')
+
 /**
- * Enqueue the import(s) as background jobs. Each file is imported on its own,
- * nested under any additional path (folders are created on demand). Ingestion
- * (especially PDFs and large pages) can take minutes, so we don't wait for the
- * finished pages: the jobs run on the queue and push a completion message into
- * the inbox (`notifyOnCompletion`). We just confirm they started and close.
+ * Enqueue the URL import as a background job and close the dialog. Ingestion
+ * (large pages, AI post-processing) runs on the queue and notifies the inbox
+ * on completion (`notifyOnCompletion`).
  */
-const submit = async () => {
-  if (!canSubmit.value || submitting.value) return
+const submitUrl = async () => {
   submitting.value = true
-
-  const commonOptions = {
-    splitIntoBlocks: splitIntoBlocks.value,
-    postProcessorNames: postProcessorNames.value,
-    notifyOnCompletion: true,
-  }
-
   try {
-    if (mode.value === 'url') {
-      await wiki.importUrl(props.tenantId, scope.value, url.value.trim(), {
-        ...commonOptions,
-        title: title.value.trim() || undefined,
-        parentId: baseParentId.value,
-      })
-    } else {
-      importedCount.value = 0
-      let failures = 0
-      for (const entry of entries.value) {
-        try {
-          const parentId = await wiki.ensurePagePath(
-            props.tenantId,
-            scope.value,
-            pathSegments(entry.path),
-            baseParentId.value,
-          )
-          await wiki.importFile(props.tenantId, scope.value, entry.file, {
-            ...commonOptions,
-            title: entry.title.trim() || undefined,
-            parentId,
-          })
-        } catch {
-          failures++
-        }
-        importedCount.value++
-      }
-      if (failures > 0) {
-        toast.add({
-          severity: 'warn',
-          summary: t('Common.error'),
-          detail: t('Wiki.import.partialError', { count: failures }),
-          life: 6000,
-        })
-      }
-    }
-
+    await wiki.importUrl(props.tenantId, scope.value, url.value.trim(), {
+      splitIntoBlocks: splitIntoBlocks.value,
+      postProcessorNames: postProcessorNames.value,
+      notifyOnCompletion: true,
+      title: title.value.trim() || undefined,
+      parentId: baseParentId.value,
+    })
     visible.value = false
     toast.add({
       severity: 'info',
@@ -667,18 +682,93 @@ const submit = async () => {
       life: 5000,
     })
   } catch (error) {
-    const detail =
-      error instanceof FetcherError && error.body
-        ? error.body
-        : t('Wiki.import.error')
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail,
+      detail: errorMessage(error),
       life: 5000,
     })
   } finally {
     submitting.value = false
+  }
+}
+
+/**
+ * Enqueue the file imports one after another, updating each row's status so
+ * the user can watch progress and see per-file errors. We wait until every job
+ * is created; only when they all succeed do we close. On any failure the dialog
+ * stays open with the failed rows marked — pressing Import again retries just
+ * those (already-created ones are skipped).
+ */
+const submitFiles = async () => {
+  submitting.value = true
+  importedCount.value = 0
+  // reset transient state; keep already-enqueued files as done so a retry
+  // after a partial failure doesn't import them twice
+  for (const entry of entries.value) {
+    if (entry.status !== 'done') {
+      entry.status = 'queued'
+      entry.error = undefined
+    }
+  }
+
+  let failures = 0
+  for (const entry of entries.value) {
+    if (entry.status === 'done') {
+      importedCount.value++
+      continue
+    }
+    entry.status = 'uploading'
+    try {
+      const parentId = await wiki.ensurePagePath(
+        props.tenantId,
+        scope.value,
+        pathSegments(entry.path),
+        baseParentId.value,
+      )
+      await wiki.importFile(props.tenantId, scope.value, entry.file, {
+        splitIntoBlocks: splitIntoBlocks.value,
+        postProcessorNames: postProcessorNames.value,
+        notifyOnCompletion: true,
+        title: entry.title.trim() || undefined,
+        parentId,
+      })
+      entry.status = 'done'
+    } catch (error) {
+      entry.status = 'error'
+      entry.error = errorMessage(error)
+      failures++
+    }
+    importedCount.value++
+  }
+
+  submitting.value = false
+
+  if (failures > 0) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('Wiki.import.partialError', { count: failures }),
+      life: 6000,
+    })
+    return // keep the dialog open so failed rows stay visible for a retry
+  }
+
+  visible.value = false
+  toast.add({
+    severity: 'info',
+    summary: t('Wiki.import.started'),
+    detail: t('Wiki.import.startedDetail'),
+    life: 5000,
+  })
+}
+
+const submit = async () => {
+  if (!canSubmit.value || submitting.value) return
+  if (mode.value === 'url') {
+    await submitUrl()
+  } else {
+    await submitFiles()
   }
 }
 

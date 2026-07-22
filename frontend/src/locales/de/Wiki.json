@@ -39,6 +39,7 @@
     "scopeLabel": "Ablageort",
     "baseLocationHint": "Basis-Ablageort für alle Dateien",
     "submitMulti": "{count} importieren",
+    "retry": "{count} erneut versuchen",
     "progress": "{done} von {total}…",
     "partialError": "{count} Datei(en) konnten nicht importiert werden.",
     "underSelected": "Unter ausgewählte Seite",
