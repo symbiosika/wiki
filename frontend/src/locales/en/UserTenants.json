@@ -62,6 +62,7 @@
     }
   },
   "metadata": {
+    "tabTitle": "Document tags",
     "title": "Document tags",
     "description": "Define the key-value tags every document in this organisation can use. Each key can allow free text or a fixed list of values.",
     "key": "Key",

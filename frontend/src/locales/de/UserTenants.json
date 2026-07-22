@@ -62,6 +62,7 @@
     }
   },
   "metadata": {
+    "tabTitle": "Dokument-Tags",
     "title": "Dokument-Tags",
     "description": "Lege die Schlüssel-Wert-Tags fest, die jedes Dokument dieser Organisation nutzen kann. Jeder Schlüssel erlaubt entweder Freitext oder eine feste Werteliste.",
     "key": "Schlüssel",
