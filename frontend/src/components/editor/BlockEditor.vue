@@ -41,6 +41,8 @@ import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
 import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
+import { looksLikeMarkdown } from '@/utils/markdownPaste'
+import { renderMarkdown } from '@/utils/markdown'
 import { useWiki } from '@/stores/wiki'
 import type { WikiBlock } from '@/types/wiki'
 
@@ -234,13 +236,31 @@ onMounted(() => {
         class: 'wiki-prose focus:outline-none',
       },
       handlePaste: (_view, event) => {
-        if (!canUploadImages.value) return false
-        const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
-          f.type.startsWith('image/'),
-        )
-        if (!file) return false
+        const data = event.clipboardData
+
+        // 1. image files → upload (needs a page id)
+        if (canUploadImages.value) {
+          const file = Array.from(data?.files ?? []).find((f) =>
+            f.type.startsWith('image/'),
+          )
+          if (file) {
+            event.preventDefault()
+            uploadAndInsertImage(file)
+            return true
+          }
+        }
+
+        // 2. markdown-as-plain-text → convert to formatted content.
+        // Only when the clipboard has no rich HTML of its own: real rich
+        // paste (web pages, Word, our own editor) already carries text/html,
+        // which TipTap handles natively. Raw markdown comes as text/plain.
+        if (!data) return false
+        const html = data.getData('text/html')
+        if (html && html.trim()) return false
+        const text = data.getData('text/plain')
+        if (!text || !looksLikeMarkdown(text)) return false
         event.preventDefault()
-        uploadAndInsertImage(file)
+        insertMarkdown(text)
         return true
       },
       handleDrop: (_view, event) => {
@@ -273,7 +293,19 @@ onBeforeUnmount(() => {
 const getBlocks = (): WikiBlock[] =>
   editor.value ? editorHtmlToBlocks(editor.value.getHTML()) : [...props.blocks]
 
-defineExpose({ flush, getBlocks })
+/**
+ * Convert a markdown string to sanitized HTML and insert it at the current
+ * cursor position. Used both by the smart paste handler and the manual
+ * "insert markdown" dialog.
+ */
+const insertMarkdown = (markdown: string) => {
+  if (!editor.value || !markdown.trim()) return
+  const html = renderMarkdown(markdown)
+  if (!html) return
+  editor.value.chain().focus().insertContent(html).run()
+}
+
+defineExpose({ flush, getBlocks, insertMarkdown })
 </script>
 
 <style>
