@@ -24,6 +24,8 @@
   },
   "config": {
     "title": "Chat-Agent",
+    "tabTitle": "Chat-Agent",
+    "tabDescription": "Passe den Chat-Agenten für die Organisation „{tenant}“ an. Die Einstellungen gelten für alle Mitglieder.",
     "settings": "Agent-Einstellungen",
     "settingsTitle": "System-Prompt anpassen",
     "systemPrompt": "System-Prompt",

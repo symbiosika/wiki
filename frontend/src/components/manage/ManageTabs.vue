@@ -27,6 +27,8 @@ const { t } = useI18n()
 const tabs = computed(() => [
   { label: t('UserTenants.tabTitle'), routeName: 'Tenants' },
   { label: t('UserTeams.tabTitle'), routeName: 'Teams' },
+  { label: t('Chat.config.tabTitle'), routeName: 'ChatAgent' },
+  { label: t('UserTenants.metadata.tabTitle'), routeName: 'DocumentTags' },
   {
     label: t('PostProcessingAgents.tabTitle'),
     routeName: 'PostProcessingAgents',
@@ -35,8 +37,13 @@ const tabs = computed(() => [
   { label: t('AiTests.tabTitle'), routeName: 'AiTests' },
 ])
 
-const isActive = (routeName: string) =>
-  String(route.name ?? '').startsWith(routeName.replace(/s$/, ''))
+// Match the tab's route family (e.g. "Tenants" also lights up on
+// "TenantDetails"). Names without a trailing plural — like "ChatAgent" — are
+// compared as-is, so unrelated routes can't accidentally activate a tab.
+const isActive = (routeName: string) => {
+  const prefix = routeName.replace(/s$/, '')
+  return String(route.name ?? '').startsWith(prefix)
+}
 
 const navigate = (routeName: string) => {
   router.push({ name: routeName, params: { tenantId: route.params.tenantId } })

@@ -6,7 +6,7 @@ import { fetcher } from '@/utils/fetcher'
  *
  * Currently a single custom system prompt that is appended to the assistant's
  * built-in instructions on the backend. It is editable both under Verwaltung
- * (organisation details) and via the quick-settings dialog in the chat panel;
+ * (the "Chat agent" tab) and via the quick-settings dialog in the chat panel;
  * both edit the same org-wide value, keyed by tenant.
  */
 export interface ChatAgentConfig {
