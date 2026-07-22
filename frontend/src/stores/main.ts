@@ -325,13 +325,44 @@ export const useApp = defineStore('app', () => {
     return team
   }
 
-  const updateTeamName = async (teamId: string, name: string) => {
+  const getTeam = async (teamId: string) => {
+    return await fetcher.get<Team>(
+      `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}`,
+    )
+  }
+
+  /**
+   * Update team settings. The backend PUT endpoint validates against the full
+   * team insert schema, so `name` and `tenantId` are always sent; the caller may
+   * additionally update `addNewUsersByDefault`. Only team admins may edit (the
+   * backend enforces this via the `isTeamAdmin` middleware).
+   */
+  const updateTeam = async (
+    teamId: string,
+    data: { name?: string; addNewUsersByDefault?: boolean },
+  ) => {
+    const current = state.value.teams.find((entry) => entry.id === teamId)
+    const name = data.name ?? current?.name
     await fetcher.put(
       `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}`,
-      { name, tenantId: state.value.selectedTenant },
+      {
+        name,
+        tenantId: state.value.selectedTenant,
+        ...(data.addNewUsersByDefault !== undefined && {
+          addNewUsersByDefault: data.addNewUsersByDefault,
+        }),
+      },
     )
-    const team = state.value.teams.find((entry) => entry.id === teamId)
-    if (team) team.name = name
+    if (current) {
+      if (name) current.name = name
+      if (data.addNewUsersByDefault !== undefined) {
+        current.addNewUsersByDefault = data.addNewUsersByDefault
+      }
+    }
+  }
+
+  const updateTeamName = async (teamId: string, name: string) => {
+    await updateTeam(teamId, { name })
   }
 
   const deleteTeam = async (teamId: string) => {
@@ -469,7 +500,9 @@ export const useApp = defineStore('app', () => {
     acceptInvitation,
     declineInvitation,
     getTeams,
+    getTeam,
     createTeam,
+    updateTeam,
     updateTeamName,
     deleteTeam,
     leaveTeam,

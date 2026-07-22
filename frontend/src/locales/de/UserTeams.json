@@ -29,6 +29,9 @@
   "invite": "Hinzufügen",
   "search": "Suchen",
   "inviteSuccess": "Mitglied hinzugefügt",
+  "settingsTitle": "Team-Einstellungen",
+  "addNewUsersByDefault": "Neue Nutzer automatisch zu diesem Team hinzufügen",
+  "addNewUsersByDefaultHint": "Wenn aktiviert, wird jeder Nutzer, der neu zur Organisation hinzukommt, automatisch als Mitglied zu diesem Team hinzugefügt.",
   "editName": "Namen bearbeiten",
   "editNamePlaceholder": "Neuer Team-Name",
   "updateName": "Namen speichern",
@@ -50,6 +53,7 @@
     "userNotFound": "Benutzer nicht gefunden (muss Mitglied der Organisation sein)",
     "inviteFailed": "Mitglied konnte nicht hinzugefügt werden",
     "updateNameFailed": "Name konnte nicht aktualisiert werden",
+    "updateSettingsFailed": "Einstellungen konnten nicht aktualisiert werden",
     "changeRoleFailed": "Rolle konnte nicht aktualisiert werden"
   }
 }
