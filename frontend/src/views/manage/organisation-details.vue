@@ -34,33 +34,63 @@
       </template>
     </ManageHeader>
 
-    <DataTable v-if="members.length > 0" :value="members">
-      <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
-      <Column field="role" :header="$t('UserTenants.memberRole')">
-        <template #body="{ data }">
-          {{ $t(`UserTenants.roles.${data.role}`, data.role) }}
-        </template>
-      </Column>
-      <Column header="" style="width: 240px">
-        <template #body="{ data }">
-          <div v-if="data.id !== app.state.user?.id" class="flex justify-end gap-2">
-            <SecondaryButton
-              :label="$t('UserTenants.changeRole')"
-              size="small"
-              @click="openChangeRoleDialog(data)"
-            />
-            <SecondaryButton
-              :label="$t('UserTenants.removeMember')"
-              size="small"
-              @click="openRemoveDialog(data)"
-            />
-          </div>
-        </template>
-      </Column>
-    </DataTable>
+    <!-- Desktop: tabbed navigation. Mobile: everything is stacked below. -->
+    <div
+      v-if="isDesktop"
+      class="mb-8 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
+    >
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="shrink-0 border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+        :class="
+          activeTab === tab.id
+            ? 'border-primary text-primary'
+            : 'border-transparent text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+        "
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Members -->
+    <section v-show="isVisible('members')" class="mb-10 md:mb-0">
+      <DataTable v-if="members.length > 0" :value="members">
+        <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
+        <Column field="role" :header="$t('UserTenants.memberRole')">
+          <template #body="{ data }">
+            {{ $t(`UserTenants.roles.${data.role}`, data.role) }}
+          </template>
+        </Column>
+        <Column header="" style="width: 240px">
+          <template #body="{ data }">
+            <div
+              v-if="data.id !== app.state.user?.id"
+              class="flex justify-end gap-2"
+            >
+              <SecondaryButton
+                :label="$t('UserTenants.changeRole')"
+                size="small"
+                @click="openChangeRoleDialog(data)"
+              />
+              <SecondaryButton
+                :label="$t('UserTenants.removeMember')"
+                size="small"
+                @click="openRemoveDialog(data)"
+              />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </section>
 
     <!-- Chat agent configuration -->
-    <section class="mt-8 border-t border-surface-200 pt-6 dark:border-surface-800">
+    <section
+      v-show="isVisible('chatAgent')"
+      class="mt-8 border-t border-surface-200 pt-6 md:mt-0 md:border-t-0 md:pt-0 dark:border-surface-800"
+    >
       <h2 class="text-base font-semibold text-surface-900 dark:text-surface-0">
         {{ $t('Chat.config.title') }}
       </h2>
@@ -84,7 +114,9 @@
           <span class="text-xs text-surface-400 dark:text-surface-500">
             {{ $t('Chat.config.systemPromptHint') }}
           </span>
-          <span class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500">
+          <span
+            class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500"
+          >
             {{
               $t('Chat.config.charCount', {
                 count: systemPrompt.length,
@@ -106,7 +138,10 @@
     </section>
 
     <!-- Document metadata (per-organisation tags) -->
-    <section class="mt-8 border-t border-surface-200 pt-6 dark:border-surface-800">
+    <section
+      v-show="isVisible('documentTags')"
+      class="mt-8 border-t border-surface-200 pt-6 md:mt-0 md:border-t-0 md:pt-0 dark:border-surface-800"
+    >
       <h2 class="text-base font-semibold text-surface-900 dark:text-surface-0">
         {{ $t('UserTenants.metadata.title') }}
       </h2>
@@ -121,7 +156,9 @@
           class="flex flex-col gap-2 rounded-lg border border-surface-200 p-3 sm:flex-row sm:items-start dark:border-surface-800"
         >
           <div class="flex flex-1 flex-col gap-1">
-            <label class="text-xs font-medium text-surface-500 dark:text-surface-400">
+            <label
+              class="text-xs font-medium text-surface-500 dark:text-surface-400"
+            >
               {{ $t('UserTenants.metadata.key') }}
             </label>
             <InputText
@@ -131,7 +168,9 @@
             />
           </div>
           <div class="flex flex-1 flex-col gap-1">
-            <label class="text-xs font-medium text-surface-500 dark:text-surface-400">
+            <label
+              class="text-xs font-medium text-surface-500 dark:text-surface-400"
+            >
               {{ $t('UserTenants.metadata.label') }}
             </label>
             <InputText
@@ -141,7 +180,9 @@
             />
           </div>
           <div class="flex flex-[2] flex-col gap-1">
-            <label class="text-xs font-medium text-surface-500 dark:text-surface-400">
+            <label
+              class="text-xs font-medium text-surface-500 dark:text-surface-400"
+            >
               {{ $t('UserTenants.metadata.values') }}
             </label>
             <InputText
@@ -213,8 +254,9 @@
         </div>
 
         <Message v-if="foundUser" severity="secondary">
-          {{ foundUser.firstname }} {{ foundUser.surname }}
-          ({{ foundUser.email }})
+          {{ foundUser.firstname }} {{ foundUser.surname }} ({{
+            foundUser.email
+          }})
         </Message>
 
         <Message v-if="userNotFound" severity="info">
@@ -353,6 +395,27 @@ const tenantId = computed(() => String(route.params.id))
 const tenantName = ref('')
 const members = ref<TenantMember[]>([])
 
+// ----- tabs (desktop) / stacked (mobile) -----------------------------------
+
+type TabId = 'members' | 'chatAgent' | 'documentTags'
+const activeTab = ref<TabId>('members')
+
+const tabs = computed<{ id: TabId; label: string }[]>(() => [
+  { id: 'members', label: t('UserTenants.tabs.members') },
+  { id: 'chatAgent', label: t('UserTenants.tabs.chatAgent') },
+  { id: 'documentTags', label: t('UserTenants.tabs.documentTags') },
+])
+
+// Tabs only kick in on md+; on mobile every section is shown stacked.
+const isDesktop = ref(false)
+let tabMediaQuery: MediaQueryList | null = null
+const syncIsDesktop = () => {
+  isDesktop.value = tabMediaQuery?.matches ?? false
+}
+
+/** A section is visible when stacked (mobile) or when its tab is active. */
+const isVisible = (tab: TabId) => !isDesktop.value || activeTab.value === tab
+
 const systemPrompt = ref('')
 const savedSystemPrompt = ref('')
 
@@ -385,15 +448,26 @@ const roleOptions = [
 ]
 
 onMounted(async () => {
+  tabMediaQuery = window.matchMedia('(min-width: 768px)')
+  syncIsDesktop()
+  tabMediaQuery.addEventListener('change', syncIsDesktop)
+
   await app.waitForInit()
   await loadTenantData()
+})
+
+onUnmounted(() => {
+  tabMediaQuery?.removeEventListener('change', syncIsDesktop)
 })
 
 const loadTenantData = async () => {
   try {
     const tenant = app.state.tenants.find((o) => o.id === tenantId.value)
     if (!tenant) {
-      router.push({ name: 'Tenants', params: { tenantId: route.params.tenantId } })
+      router.push({
+        name: 'Tenants',
+        params: { tenantId: route.params.tenantId },
+      })
       return
     }
     tenantName.value = tenant.name

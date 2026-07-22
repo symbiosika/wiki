@@ -45,6 +45,11 @@
     "admin": "Administrator",
     "owner": "Owner"
   },
+  "tabs": {
+    "members": "Members",
+    "chatAgent": "Chat agent",
+    "documentTags": "Document tags"
+  },
   "invitations": {
     "openInvitations": "Open invitations",
     "noInvitations": "No pending invitations",
