@@ -31,6 +31,7 @@ declare global {
   const flagsFromScope: typeof import('./utils/wikiTreeOptions').flagsFromScope
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
+  const formatDateTime: typeof import('./utils/date').formatDateTime
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
@@ -64,6 +65,7 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pageOptionsForScope: typeof import('./utils/wikiTreeOptions').pageOptionsForScope
+  const parseServerDate: typeof import('./utils/date').parseServerDate
   const parseUrlLine: typeof import('./utils/urlImportLines').parseUrlLine
   const parseUrlLines: typeof import('./utils/urlImportLines').parseUrlLines
   const prefersDark: typeof import('./utils/theme').prefersDark

@@ -44,7 +44,7 @@
             {{ m.meta.error }}
           </p>
           <p class="mt-0.5 text-xs text-surface-400 dark:text-surface-500">
-            {{ formatDate(m.createdAt) }}
+            {{ formatDateTime(m.createdAt) }}
           </p>
         </div>
 
@@ -111,7 +111,9 @@ onMounted(() => {
   store.load().catch(() => {})
 })
 
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 
 /** A completed wiki-import message can be opened straight to its page. */
 const canOpen = (m: UserMessage) =>

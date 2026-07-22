@@ -188,10 +188,10 @@
               </div>
               <p class="mt-0.5 text-xs text-surface-500 dark:text-surface-400">
                 {{ $t('Profile.passkeys.added') }}:
-                {{ formatDate(pk.createdAt) }}
+                {{ formatDateTime(pk.createdAt) }}
                 <template v-if="pk.lastUsedAt">
                   · {{ $t('Profile.passkeys.lastUsed') }}:
-                  {{ formatDate(pk.lastUsedAt) }}
+                  {{ formatDateTime(pk.lastUsedAt) }}
                 </template>
                 <template v-else>
                   · {{ $t('Profile.passkeys.neverUsed') }}
@@ -321,17 +321,17 @@
               {{ tok.scopes.length }}
               {{ $t('Profile.apiTokens.scopeCount') }} ·
               {{ $t('Profile.apiTokens.added') }}:
-              {{ formatDate(tok.createdAt) }}
+              {{ formatDateTime(tok.createdAt) }}
               <template v-if="tok.expiresAt">
                 · {{ $t('Profile.apiTokens.expires') }}:
-                {{ formatDate(tok.expiresAt) }}
+                {{ formatDateTime(tok.expiresAt) }}
               </template>
               <template v-else>
                 · {{ $t('Profile.apiTokens.neverExpires') }}
               </template>
               <template v-if="tok.lastUsed">
                 · {{ $t('Profile.apiTokens.lastUsed') }}:
-                {{ formatDate(tok.lastUsed) }}
+                {{ formatDateTime(tok.lastUsed) }}
               </template>
             </p>
             <p
@@ -805,7 +805,9 @@ const addDialog = ref(false)
 const newNickname = ref('')
 const registering = ref(false)
 
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 
 const passkeyLabel = (pk: Passkey) =>
   pk.nickname?.trim() || t('Profile.passkeys.unnamed')
@@ -1029,7 +1031,8 @@ const tenantName = (id: string) =>
   app.state.tenants.find((tnt) => tnt.id === id)?.name ?? id
 
 const isExpired = (tok: ApiToken) =>
-  !!tok.expiresAt && new Date(tok.expiresAt).getTime() < Date.now()
+  !!tok.expiresAt &&
+  (parseServerDate(tok.expiresAt)?.getTime() ?? Infinity) < Date.now()
 
 const openCreateToken = () => {
   tokenForm.value = emptyTokenForm()

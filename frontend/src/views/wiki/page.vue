@@ -885,9 +885,8 @@ const userLabel = (userId: string | null | undefined): string =>
 
 /** Full date + time in the active locale, or '—' when missing. */
 const formatDateTime = (value: string | null | undefined): string => {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
+  const date = parseServerDate(value)
+  if (!date) return '—'
   return date.toLocaleString(locale.value, {
     dateStyle: 'medium',
     timeStyle: 'short',
