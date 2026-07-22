@@ -3,7 +3,7 @@
     v-model:visible="visible"
     modal
     :header="$t('Wiki.import.title')"
-    class="w-[680px] max-w-[94vw]"
+    class="w-[720px] max-w-[95vw] md:w-[940px]"
     @hide="reset"
   >
     <div class="flex flex-col gap-4">
@@ -96,34 +96,38 @@
           v-if="entries.length"
           class="overflow-x-auto rounded-md border border-surface-200 dark:border-surface-700"
         >
-          <table class="w-full border-collapse text-sm">
+          <table class="w-full table-fixed border-collapse text-xs">
+            <colgroup>
+              <col class="w-[28%]" />
+              <col class="w-[36%]" />
+              <col class="w-[30%]" />
+              <col class="w-8" />
+            </colgroup>
             <thead>
               <tr
-                class="bg-surface-50 text-left text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
+                class="bg-surface-50 text-left text-[11px] uppercase tracking-wide text-surface-500 dark:bg-surface-800 dark:text-surface-400"
               >
-                <th class="px-3 py-2 font-medium">
+                <th class="px-2 py-1.5 font-medium">
                   {{ $t('Wiki.import.colFile') }}
                 </th>
-                <th class="px-3 py-2 font-medium">
+                <th class="px-2 py-1.5 font-medium">
                   {{ $t('Wiki.import.colTitle') }}
                 </th>
-                <th class="px-3 py-2 font-medium">
+                <th class="px-2 py-1.5 font-medium">
                   {{ $t('Wiki.import.colPath') }}
                 </th>
-                <th class="w-8 px-2 py-2"></th>
+                <th class="px-1 py-1.5"></th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="entry in entries"
                 :key="entry.uid"
-                class="border-t border-surface-200 align-top dark:border-surface-700"
+                class="border-t border-surface-200 dark:border-surface-700"
               >
-                <td class="px-3 py-2">
-                  <div class="flex items-start gap-1.5">
-                    <IconFile
-                      class="mt-0.5 h-4 w-4 shrink-0 text-surface-400"
-                    />
+                <td class="px-2 py-1.5">
+                  <div class="flex items-center gap-1.5">
+                    <IconFile class="h-4 w-4 shrink-0 text-surface-400" />
                     <div class="min-w-0">
                       <div
                         class="truncate text-surface-800 dark:text-surface-100"
@@ -132,30 +136,28 @@
                         {{ entry.file.name }}
                       </div>
                       <div
-                        class="text-xs text-surface-400 dark:text-surface-500"
+                        class="text-[11px] text-surface-400 dark:text-surface-500"
                       >
                         {{ formatSize(entry.file.size) }}
                       </div>
                     </div>
                   </div>
                 </td>
-                <td class="px-3 py-2">
+                <td class="px-2 py-1.5">
                   <InputText
                     v-model="entry.title"
-                    class="w-full"
-                    size="small"
+                    class="w-full !px-2 !py-1 !text-xs"
                     :placeholder="stripExtension(entry.file.name)"
                   />
                 </td>
-                <td class="px-3 py-2">
+                <td class="px-2 py-1.5">
                   <InputText
                     v-model="entry.path"
-                    class="w-full"
-                    size="small"
+                    class="w-full !px-2 !py-1 !text-xs"
                     :placeholder="$t('Wiki.import.pathPlaceholder')"
                   />
                 </td>
-                <td class="px-2 py-2 text-center">
+                <td class="px-1 py-1.5 text-center">
                   <button
                     type="button"
                     class="text-surface-400 hover:text-red-500"
