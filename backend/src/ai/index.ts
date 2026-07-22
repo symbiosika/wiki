@@ -12,7 +12,7 @@
  * ../lib/audio/transcription) — NOT here.
  */
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateObject } from "ai";
+import { generateObject, type LanguageModelUsage } from "ai";
 import { valibotSchema } from "@ai-sdk/valibot";
 import type { GenericSchema } from "valibot";
 
@@ -69,4 +69,29 @@ export const generateStructured = async <T>(params: {
     prompt: params.prompt,
   });
   return object as T;
+};
+
+/**
+ * Structured-object generation for evaluation / judge call sites.
+ *
+ * Unlike {@link generateStructured} this (a) honours a per-call model override
+ * via `modelId` (so a test suite can judge with a stronger model than the one
+ * under test) and (b) returns the token `usage` alongside the object (so a run
+ * can account for judge cost). Keep `generateStructured` for the plain
+ * default-model case; use this whenever the model or the usage matters.
+ */
+export const generateJudgeObject = async <T>(params: {
+  schema: GenericSchema<T>;
+  system: string;
+  prompt: string;
+  modelId?: string;
+}): Promise<{ object: T; usage: LanguageModelUsage }> => {
+  assertOpenRouterConfigured();
+  const { object, usage } = await generateObject({
+    model: getModel(params.modelId),
+    schema: valibotSchema(params.schema),
+    system: params.system,
+    prompt: params.prompt,
+  });
+  return { object: object as T, usage };
 };
