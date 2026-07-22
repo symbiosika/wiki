@@ -50,7 +50,10 @@
             <template v-else-if="m.error && !m.text">
               {{ $t('Assistant.error') }}
             </template>
-            <template v-else>{{ m.text }}</template>
+            <span v-else-if="m.role === 'user'" class="whitespace-pre-wrap">{{
+              m.text
+            }}</span>
+            <MarkdownRenderer v-else :content="m.text" />
           </div>
         </div>
       </div>
