@@ -70,6 +70,17 @@ export interface WikiPage {
   /** Set when `status` transitions to "verified": when and by whom. */
   verifiedAt: string | null
   verifiedBy: string | null
+  // --- AI page summary (the "docstring" of a page, see framework summaries.ts) ---
+  /**
+   * Short (1-2 sentence) AI-generated (or manual) description of the page.
+   * Null when no summary has been generated yet (e.g. no LLM configured, or
+   * the debounced sweeper has not run). Only surfaced read-only in the UI.
+   */
+  summary: string | null
+  /** How the summary is maintained: "auto" | "manual" | "off". */
+  summaryMode: 'auto' | 'manual' | 'off'
+  /** When the summary was last (re)generated. */
+  summaryUpdatedAt: string | null
   // --- per-organisation key-value metadata (see framework knowledge.ts) ---
   /**
    * Free key-value metadata whose allowed keys (and optionally a closed list of
