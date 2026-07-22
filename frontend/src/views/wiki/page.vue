@@ -21,26 +21,8 @@
     <template v-else-if="page">
       <!-- meta bar -->
       <div
-        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center justify-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
-        <span
-          class="rounded-full border border-surface-200 px-2 py-0.5 dark:border-surface-700"
-        >
-          {{ scopeLabel }}
-        </span>
-
-        <!-- info: clickable chip that opens a metadata popover -->
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': infoOpen }"
-          :title="$t('Wiki.info.hint')"
-          @click="toggleInfo"
-        >
-          <IconInfo class="h-3.5 w-3.5" />
-          <span>{{ $t('Wiki.info.button') }}</span>
-        </button>
-
         <!--
           summary: clickable chip that opens the AI page summary. Only rendered
           when a summary exists (which itself only happens when a global LLM is
@@ -131,13 +113,6 @@
         <span v-if="breadcrumb" class="min-w-0 max-w-full truncate">{{
           breadcrumb
         }}</span>
-        <span v-if="wiki.state.saveError" class="text-red-500">
-          {{ $t('Wiki.saveError') }}
-        </span>
-        <span v-else-if="wiki.state.saving">{{ $t('Wiki.saving') }}</span>
-        <span v-else-if="wiki.state.lastSavedAt && editable">{{
-          $t('Wiki.saved')
-        }}</span>
 
         <!-- edit lock / read-only status -->
         <span
@@ -185,7 +160,7 @@
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
           :class="{ 'border-primary text-primary': assistant.open }"
           :title="$t('Assistant.title')"
-          :disabled="!editable"
+          :disabled="lockedByOther"
           @click="toggleAssistant"
         >
           <IconRobot class="h-3.5 w-3.5" />
@@ -204,6 +179,29 @@
             exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
           }}</span>
         </button>
+
+        <!-- pinned to the right edge: info chip + save status -->
+        <div class="ml-auto flex items-center gap-2">
+          <!-- info: clickable chip that opens a metadata popover -->
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': infoOpen }"
+            :title="$t('Wiki.info.hint')"
+            @click="toggleInfo"
+          >
+            <IconInfo class="h-3.5 w-3.5" />
+            <span>{{ $t('Wiki.info.button') }}</span>
+          </button>
+
+          <span v-if="wiki.state.saveError" class="text-red-500">
+            {{ $t('Wiki.saveError') }}
+          </span>
+          <span v-else-if="wiki.state.saving">{{ $t('Wiki.saving') }}</span>
+          <span v-else-if="wiki.state.lastSavedAt && editable">{{
+            $t('Wiki.saved')
+          }}</span>
+        </div>
       </div>
 
       <!-- title -->
@@ -286,6 +284,15 @@
       <!-- document metadata, opened by the "Info" chip -->
       <Popover ref="infoPopoverRef" @hide="infoOpen = false">
         <dl class="w-64 space-y-3 text-xs">
+          <div class="flex flex-col gap-0.5">
+            <dt class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.scope') }}
+            </dt>
+            <dd class="text-surface-800 dark:text-surface-100">
+              {{ scopeLabel }}
+            </dd>
+          </div>
+
           <div class="flex flex-col gap-0.5">
             <dt class="font-medium text-surface-500 dark:text-surface-400">
               {{ $t('Wiki.info.created') }}
@@ -436,11 +443,22 @@ const exporting = ref(false)
 const reloadKey = ref(0)
 
 const toggleAssistant = () => {
-  // the assistant edits the document server-side, so keep it behind the lock
-  if (!editable.value) return
-  if (assistant.open) assistant.closePanel()
-  else assistant.openPanel()
+  if (assistant.open) {
+    assistant.closePanel()
+    return
+  }
+  // the assistant edits the document server-side, so it needs the edit lock;
+  // someone else holding it is the only hard blocker
+  if (lockedByOther.value) return
+  // in read-only mode, opening the assistant switches editing on as well
+  if (!editable.value) readOnly.setReadOnly(false)
+  assistant.openPanel()
 }
+
+// close the assistant if the page becomes locked by someone else while open
+watch(lockedByOther, (locked) => {
+  if (locked && assistant.open) assistant.closePanel()
+})
 
 // close the assistant if the page becomes read-only while it is open
 watch(editable, (canEdit) => {
