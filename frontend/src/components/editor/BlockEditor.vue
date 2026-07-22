@@ -33,6 +33,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { TableKit } from '@tiptap/extension-table'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage } from './wikiImage'
@@ -209,6 +210,11 @@ onMounted(() => {
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      // GFM tables (e.g. from PDF/markdown import). Without this the table
+      // node isn't in the schema and TipTap silently drops any <table> it is
+      // asked to load — losing the whole table (and its cell content) on the
+      // next save. See utils/wikiBlocks.ts for the markdown → HTML conversion.
+      TableKit.configure({ table: { resizable: true } }),
       WikiImage,
       WikiLink.configure({ onNavigate: openReference }),
       WikiLinkSuggestion.configure({ search: searchReferences }),
@@ -224,6 +230,7 @@ onMounted(() => {
           'taskList',
           'horizontalRule',
           'image',
+          'table',
         ],
       }),
       SlashCommands.configure({
@@ -408,6 +415,32 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 
 .wiki-editor .wiki-prose hr {
   @apply my-6 border-t border-surface-200 dark:border-surface-700;
+}
+
+/* tables (GFM / imported markdown) */
+.wiki-editor .wiki-prose .tableWrapper {
+  @apply my-3 overflow-x-auto;
+}
+.wiki-editor .wiki-prose table {
+  @apply w-full border-collapse text-sm;
+}
+.wiki-editor .wiki-prose th,
+.wiki-editor .wiki-prose td {
+  @apply border border-surface-200 px-3 py-1.5 text-left align-top dark:border-surface-700;
+}
+.wiki-editor .wiki-prose th {
+  @apply bg-surface-50 font-semibold text-surface-900 dark:bg-surface-800 dark:text-surface-0;
+}
+/* cell selection + column resize affordances (editable mode) */
+.wiki-editor .wiki-prose .selectedCell {
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+.wiki-editor .wiki-prose .column-resize-handle {
+  @apply absolute top-0 -right-[2px] bottom-0 w-1 bg-primary;
+  pointer-events: none;
+}
+.wiki-editor .wiki-prose.resize-cursor {
+  cursor: col-resize;
 }
 
 .wiki-editor .wiki-prose img {
