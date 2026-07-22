@@ -86,7 +86,7 @@
                 : 'bg-surface-500 hover:bg-surface-600'
             "
             :aria-label="isRecording ? $t('Protocol.stop') : $t('Protocol.record')"
-            @click="toggleRecording"
+            @click="onMicClick"
           >
             <IconStop v-if="isRecording" class="h-4 w-4" />
             <IconMic v-else class="h-4 w-4" />
@@ -130,12 +130,23 @@ const assistant = useDocumentAssistant()
 const input = ref('')
 const scrollRef = ref<HTMLElement | null>(null)
 
-const { isRecording, isConnecting, toggleRecording } = useRealtimeTranscription({
+// Once a recording has been sent, ignore any late transcription events so the
+// trailing final transcript can't refill the input we just cleared.
+const suppressTranscript = ref(false)
+
+const {
+  isRecording,
+  isConnecting,
+  stopRecording,
+  toggleRecording,
+} = useRealtimeTranscription({
   tenantId: () => props.tenantId,
   onTranscriptionUpdate: (text) => {
+    if (suppressTranscript.value) return
     input.value = text
   },
   onTranscriptionComplete: (text) => {
+    if (suppressTranscript.value) return
     input.value = text
   },
   onError: (message) => {
@@ -163,7 +174,19 @@ const scrollToBottom = () => {
 
 watch(() => assistant.messages.length, scrollToBottom)
 
+const onMicClick = () => {
+  // Starting a fresh recording: allow transcription to flow into the input again.
+  if (!isRecording.value) suppressTranscript.value = false
+  toggleRecording()
+}
+
 const send = async () => {
+  // If the user is still dictating, pressing send stops the recording and
+  // submits whatever has been transcribed so far.
+  if (isRecording.value || isConnecting.value) {
+    suppressTranscript.value = true
+    stopRecording()
+  }
   const text = input.value.trim()
   if (!text || assistant.busy) return
   input.value = ''
