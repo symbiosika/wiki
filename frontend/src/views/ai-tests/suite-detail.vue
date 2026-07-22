@@ -24,12 +24,32 @@
     </ManageHeader>
 
     <div v-if="suite" class="flex flex-col gap-8">
-      <!-- settings ------------------------------------------------------- -->
+      <!-- settings (collapsible) ----------------------------------------- -->
       <section class="flex flex-col gap-4">
-        <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
-          {{ $t('AiTests.settings') }}
-        </h2>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <button
+          type="button"
+          class="flex items-center gap-2 text-left"
+          @click="settingsOpen = !settingsOpen"
+        >
+          <IconChevron
+            class="h-4 w-4 text-surface-400 transition-transform"
+            :class="settingsOpen ? 'rotate-180' : ''"
+          />
+          <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
+            {{ $t('AiTests.settings') }}
+          </h2>
+          <span
+            v-if="!settingsOpen"
+            class="truncate text-xs text-surface-400 dark:text-surface-500"
+          >
+            · {{ settings.name
+            }}<template v-if="settings.judgeModelId">
+              · {{ settings.judgeModelId }}</template
+            >
+          </span>
+        </button>
+
+        <div v-show="settingsOpen" class="grid gap-4 sm:grid-cols-2">
           <div class="flex flex-col gap-1">
             <label class="text-sm text-surface-700 dark:text-surface-300">
               {{ $t('AiTests.name') }}
@@ -66,7 +86,7 @@
             />
           </div>
         </div>
-        <div>
+        <div v-show="settingsOpen">
           <Button
             :label="$t('Common.save')"
             size="small"
@@ -84,29 +104,35 @@
           >
             {{ $t('AiTests.questions') }} ({{ questions.length }})
           </h2>
-          <div class="flex gap-2">
-            <SecondaryButton
-              :label="$t('AiTests.bulkAdd')"
-              size="small"
-              @click="bulkDialog = true"
-            />
-            <SecondaryButton
-              :label="$t('AiTests.addQuestion')"
-              size="small"
-              @click="addRow"
-            />
-            <Button
-              :label="$t('AiTests.saveQuestions')"
-              size="small"
-              :disabled="!questionsChanged || savingQuestions"
-              @click="saveQuestions"
-            />
-          </div>
+          <span class="text-xs" :class="saveStatusClass">
+            {{ saveStatusLabel }}
+          </span>
         </div>
 
-        <p class="text-xs text-surface-400 dark:text-surface-500">
-          {{ $t('AiTests.keyboardHint') }}
-        </p>
+        <!-- toolbar directly above the list (icon-only) -->
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            class="rounded-md p-1.5 text-surface-500 hover:bg-surface-100 hover:text-surface-800 dark:text-surface-300 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+            :title="$t('AiTests.addQuestion')"
+            :aria-label="$t('AiTests.addQuestion')"
+            @click="addRow"
+          >
+            <IconPlus class="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            class="rounded-md p-1.5 text-surface-500 hover:bg-surface-100 hover:text-surface-800 dark:text-surface-300 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+            :title="$t('AiTests.bulkAdd')"
+            :aria-label="$t('AiTests.bulkAdd')"
+            @click="bulkDialog = true"
+          >
+            <IconBulkAdd class="h-5 w-5" />
+          </button>
+          <span class="ml-2 text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('AiTests.keyboardHint') }}
+          </span>
+        </div>
 
         <div
           v-if="questions.length === 0"
@@ -368,6 +394,9 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import IconPlay from '~icons/mdi/play'
 import IconTrash from '~icons/mdi/trash-can-outline'
+import IconPlus from '~icons/mdi/plus'
+import IconBulkAdd from '~icons/mdi/playlist-plus'
+import IconChevron from '~icons/mdi/chevron-down'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import { useAiTests } from '@/stores/aiTests'
 import { FetcherError } from '@/utils/fetcher'
@@ -391,6 +420,7 @@ const suiteId = computed(() => String(route.params.suiteId))
 
 const suite = ref<AiTestSuite | null>(null)
 const runs = ref<AiTestRun[]>([])
+const settingsOpen = ref(true)
 
 interface EditableQuestion {
   key: string
@@ -522,6 +552,7 @@ const saveSettings = async () => {
     })
     suite.value = updated
     originalSettings.value = JSON.stringify(settings.value)
+    settingsOpen.value = false // collapse once saved ("fertig")
     await store.loadSuites(tenantId.value)
   } catch (error) {
     showError(error, t('AiTests.saveError'))
@@ -590,32 +621,82 @@ const splitLines = (text: string) =>
     .map((line) => line.trim())
     .filter(Boolean)
 
+const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+/**
+ * A save is only safe (and meaningful) when every row has a question: empty
+ * rows are in-progress. Autosave pauses until then, which also avoids the
+ * id-carrying-row-emptied → server-delete surprise (question is required).
+ */
+const canAutosave = computed(
+  () =>
+    questions.value.length > 0 &&
+    questions.value.every((q) => q.question.trim().length > 0),
+)
+
 const saveQuestions = async () => {
+  if (savingQuestions.value) return
+  const rows = questions.value.filter((q) => q.question.trim().length > 0)
   savingQuestions.value = true
+  saveState.value = 'saving'
   try {
     const saved = await store.setQuestions(
       tenantId.value,
       suiteId.value,
-      questions.value
-        .filter((q) => q.question.trim().length > 0)
-        .map((q) => ({
-          id: q.id,
-          question: q.question.trim(),
-          type: q.type,
-          active: q.active,
-          expectedFacts: splitLines(q.expectedFactsText),
-          expectedPageIds: splitLines(q.expectedPageIdsText),
-        })),
+      rows.map((q) => ({
+        id: q.id,
+        question: q.question.trim(),
+        type: q.type,
+        active: q.active,
+        expectedFacts: splitLines(q.expectedFactsText),
+        expectedPageIds: splitLines(q.expectedPageIdsText),
+      })),
     )
-    questions.value = saved.map(toEditable)
+    // Reconcile server-assigned ids back onto the local rows (same order) WITHOUT
+    // replacing the array, so the caret / focus and any in-progress empty row
+    // survive an autosave.
+    rows.forEach((row, k) => {
+      if (saved[k]) row.id = saved[k]!.id
+    })
     originalQuestions.value = snapshotQuestions()
-    clampSelection()
+    saveState.value = 'saved'
   } catch (error) {
+    saveState.value = 'error'
     showError(error, t('AiTests.saveError'))
   } finally {
     savingQuestions.value = false
   }
 }
+
+// Debounced autosave: persist shortly after the user stops editing, but only
+// when the catalog is in a saveable state (no empty rows).
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  questions,
+  () => {
+    if (!questionsChanged.value || !canAutosave.value) return
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => void saveQuestions(), 800)
+  },
+  { deep: true },
+)
+
+const saveStatusLabel = computed(() => {
+  if (savingQuestions.value) return t('AiTests.saving')
+  if (questionsChanged.value)
+    return canAutosave.value
+      ? t('AiTests.unsaved')
+      : t('AiTests.unsavedEmpty')
+  if (saveState.value === 'saved') return t('AiTests.saved')
+  return ''
+})
+const saveStatusClass = computed(() =>
+  saveState.value === 'error'
+    ? 'text-red-500'
+    : questionsChanged.value
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-surface-400 dark:text-surface-500',
+)
 
 // ----- bulk add -------------------------------------------------------------
 
