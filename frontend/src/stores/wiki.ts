@@ -7,6 +7,7 @@ import type {
   WikiKnowledgeConfig,
   WikiOutgoingLink,
   WikiPage,
+  WikiParserCapabilities,
   WikiRelatedPage,
   WikiScope,
   WikiSearchMode,
@@ -47,6 +48,16 @@ export interface WikiImportOptions {
    * ingest job finishes. Defaults to true so imports surface in the inbox.
    */
   notifyOnCompletion?: boolean
+  /**
+   * Parser pass-through options (extra services). Only meaningful for file
+   * imports whose type the configured parsing service supports; unsupported
+   * flags are ignored by the backend. Discover the available ones via
+   * {@link useWiki().fetchParserCapabilities}.
+   */
+  extractImages?: boolean
+  parseImagesInDoc?: boolean
+  ocr?: boolean
+  detectTables?: boolean
 }
 
 /** A knowledge-ingest job returned by the import endpoints. */
@@ -310,12 +321,31 @@ export const useWiki = defineStore('wiki', () => {
     if (options.postProcessorNames && options.postProcessorNames.length > 0) {
       form.append('usePostProcessors', options.postProcessorNames.join(','))
     }
+    // Parser pass-through options — only appended when enabled (default off).
+    if (options.extractImages) form.append('extractImages', 'true')
+    if (options.parseImagesInDoc) form.append('parseImagesInDoc', 'true')
+    if (options.ocr) form.append('ocr', 'true')
+    if (options.detectTables) form.append('detectTables', 'true')
 
     // Returns the created ingest job; the tree is refreshed once the job
     // finishes (see the notifications store), not here.
     return await fetcher.postFormData<IngestJob>(
       `${api(tenantId)}/knowledge/texts/import`,
       form,
+    )
+  }
+
+  /**
+   * Fetch the capabilities (accepted modalities + per-modality feature flags)
+   * of the configured parsing service, so the import UI can offer a checkbox
+   * for each pass-through option the service actually supports. Returns an
+   * empty modality list when nothing is advertised.
+   */
+  const fetchParserCapabilities = async (
+    tenantId: string,
+  ): Promise<WikiParserCapabilities> => {
+    return await fetcher.get<WikiParserCapabilities>(
+      `${api(tenantId)}/knowledge/parser/capabilities`,
     )
   }
 
@@ -672,6 +702,7 @@ export const useWiki = defineStore('wiki', () => {
     findChildPageByTitle,
     importFile,
     importUrl,
+    fetchParserCapabilities,
     uploadImage,
     saveTitle,
     savePageMeta,

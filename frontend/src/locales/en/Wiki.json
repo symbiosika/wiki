@@ -44,6 +44,14 @@
     "partialError": "{count} file(s) could not be imported.",
     "underSelected": "Under selected page",
     "splitIntoBlocks": "Split into sections at headings",
+    "parserOptionsLabel": "Additional processing",
+    "parserOptionsHint": "Extra services supported by the configured parsing service. Your selection is remembered.",
+    "flags": {
+      "extractImages": "Extract images",
+      "ocr": "OCR (recognise text in scans/images)",
+      "parseImagesInDoc": "Analyse images inside the document",
+      "detectTables": "Detect tables"
+    },
     "postProcessingLabel": "AI post-processing",
     "postProcessingNone": "None",
     "postProcessingHint": "Optionally let an AI agent clean up and restructure the document before it is saved.",

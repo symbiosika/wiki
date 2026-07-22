@@ -120,6 +120,38 @@ export interface WikiKnowledgeConfig {
   attributes: KnowledgeAttributeDefinition[]
 }
 
+/**
+ * Per-modality "extra service" flags the configured parsing service advertises
+ * via its capabilities. Any flag defaults to `false` when absent. Mirrors the
+ * framework `ServiceModality.features` shape (camelCase).
+ */
+export interface WikiParserFeatures {
+  extractImages?: boolean
+  extractFields?: boolean
+  async?: boolean
+  parseImagesInDoc?: boolean
+  ocr?: boolean
+  detectTables?: boolean
+}
+
+/** One document type the configured parsing service accepts. */
+export interface WikiParserModality {
+  modality: string
+  mimeTypes: string[]
+  extensions: string[]
+  features?: WikiParserFeatures
+}
+
+/**
+ * Capabilities of the configured parsing service (modalities + feature flags),
+ * as returned by `GET /knowledge/parser/capabilities`. An empty `modalities`
+ * list means the configured parser advertises no pass-through options.
+ */
+export interface WikiParserCapabilities {
+  service: string
+  modalities: WikiParserModality[]
+}
+
 /** A content block as stored by the backend */
 export interface WikiBlock {
   id?: string

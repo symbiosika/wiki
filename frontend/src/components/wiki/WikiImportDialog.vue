@@ -289,6 +289,27 @@
         {{ $t('Wiki.import.splitIntoBlocks') }}
       </label>
 
+      <!-- parser pass-through options: only what the configured service supports -->
+      <div
+        v-if="mode === 'file' && availableFlags.length"
+        class="flex flex-col gap-1.5"
+      >
+        <label class="text-sm text-surface-700 dark:text-surface-300">
+          {{ $t('Wiki.import.parserOptionsLabel') }}
+        </label>
+        <label
+          v-for="flag in availableFlags"
+          :key="flag.key"
+          class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
+        >
+          <Checkbox v-model="parserFlags[flag.key]" binary />
+          {{ $t(flag.labelKey) }}
+        </label>
+        <span class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Wiki.import.parserOptionsHint') }}
+        </span>
+      </div>
+
       <!-- background-job hint: imports no longer block, they run as a job -->
       <p
         class="flex items-start gap-2 rounded-md bg-surface-100 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
@@ -335,7 +356,7 @@ import IconCurrent from '~icons/mdi/file-tree-outline'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
-import type { WikiScope } from '@/types/wiki'
+import type { WikiScope, WikiParserFeatures } from '@/types/wiki'
 
 const props = defineProps<{ tenantId: string }>()
 const visible = defineModel<boolean>('visible', { required: true })
@@ -361,6 +382,23 @@ const SUPPORTED_EXTENSIONS = [
   'docx',
 ]
 
+/**
+ * Well-known parser "extra service" flags we surface as import checkboxes,
+ * in display order. `key` matches the capabilities `features` map and the
+ * import form field the backend reads; `labelKey` is its i18n label.
+ */
+const PARSER_FLAGS = [
+  { key: 'extractImages', labelKey: 'Wiki.import.flags.extractImages' },
+  { key: 'ocr', labelKey: 'Wiki.import.flags.ocr' },
+  { key: 'parseImagesInDoc', labelKey: 'Wiki.import.flags.parseImagesInDoc' },
+  { key: 'detectTables', labelKey: 'Wiki.import.flags.detectTables' },
+] as const satisfies readonly { key: keyof WikiParserFeatures; labelKey: string }[]
+
+type ParserFlagKey = (typeof PARSER_FLAGS)[number]['key']
+
+/** localStorage key under which the last checkbox selection is remembered. */
+const LS_PARSER_FLAGS = 'wiki.import.parserFlags'
+
 /** Per-file state while the import jobs are being enqueued. */
 type ImportStatus = 'idle' | 'queued' | 'uploading' | 'done' | 'error'
 
@@ -383,6 +421,65 @@ const url = ref('')
 const title = ref('')
 const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
+
+// Parser pass-through options ("extra services" like OCR / table detection).
+// Which ones are offered depends on the configured parsing service; the chosen
+// selection is remembered across imports in localStorage.
+const loadCachedFlags = (): Record<string, boolean> => {
+  try {
+    const raw = localStorage.getItem(LS_PARSER_FLAGS)
+    if (raw) return JSON.parse(raw) as Record<string, boolean>
+  } catch {
+    // ignore malformed cache
+  }
+  return {}
+}
+const parserFlags = ref<Record<string, boolean>>(loadCachedFlags())
+/** Flag keys the configured parsing service actually advertises. */
+const availableFlagKeys = ref<ParserFlagKey[]>([])
+const availableFlags = computed(() =>
+  PARSER_FLAGS.filter((f) => availableFlagKeys.value.includes(f.key)),
+)
+
+// Persist the selection so the next import defaults to the same choices.
+watch(
+  parserFlags,
+  (value) => {
+    try {
+      localStorage.setItem(LS_PARSER_FLAGS, JSON.stringify(value))
+    } catch {
+      // ignore quota / unavailable storage
+    }
+  },
+  { deep: true },
+)
+
+/** Discover which pass-through options the configured parser supports. */
+const loadCapabilities = async () => {
+  try {
+    const caps = await wiki.fetchParserCapabilities(props.tenantId)
+    const keys = new Set<ParserFlagKey>()
+    for (const modality of caps.modalities) {
+      for (const flag of PARSER_FLAGS) {
+        if (modality.features?.[flag.key]) keys.add(flag.key)
+      }
+    }
+    availableFlagKeys.value = [...keys]
+  } catch {
+    // discovery is best-effort — no capabilities means no extra checkboxes
+    availableFlagKeys.value = []
+  }
+}
+
+/** The enabled flags that are also advertised — the set we send on submit. */
+const selectedParserFlags = (): Partial<Record<ParserFlagKey, boolean>> => {
+  const out: Partial<Record<ParserFlagKey, boolean>> = {}
+  for (const key of availableFlagKeys.value) {
+    if (parserFlags.value[key]) out[key] = true
+  }
+  return out
+}
+
 const submitting = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const folderInputRef = ref<HTMLInputElement | null>(null)
@@ -732,6 +829,7 @@ const submitFiles = async () => {
         notifyOnCompletion: true,
         title: entry.title.trim() || undefined,
         parentId,
+        ...selectedParserFlags(),
       })
       entry.status = 'done'
     } catch (error) {
@@ -792,6 +890,7 @@ watch(visible, (open) => {
     reset()
     if (currentPage.value) scopeKind.value = 'current'
     agentsStore.loadAgents(props.tenantId).catch(() => {})
+    loadCapabilities()
   }
 })
 </script>
