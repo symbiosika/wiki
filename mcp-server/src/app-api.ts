@@ -11,15 +11,25 @@
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import { ISSUER, API_BASE_PATH, FALLBACK_TENANT_ID } from "./config.ts";
 
-/** MCP tool result (text + optional structured content). */
+/** Content blocks a tool can return (text, or binary images as base64). */
+export type ToolContent =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
+/** MCP tool result (content blocks + optional structured content). */
 export type ToolResult = {
   isError?: boolean;
-  content: { type: "text"; text: string }[];
+  content: ToolContent[];
   structuredContent?: Record<string, unknown>;
 };
 
+/** Text-only tool result (what `ok`/`fail` produce). */
+export type TextToolResult = ToolResult & {
+  content: { type: "text"; text: string }[];
+};
+
 /** Success result. Arrays are wrapped in `{ items }` (MCP requires an object). */
-export function ok(data: unknown): ToolResult {
+export function ok(data: unknown): TextToolResult {
   const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
   const structured =
     data && typeof data === "object"
@@ -34,7 +44,7 @@ export function ok(data: unknown): ToolResult {
 }
 
 /** Error result (readable for the LLM client). */
-export function fail(message: string): ToolResult {
+export function fail(message: string): TextToolResult {
   return { isError: true, content: [{ type: "text", text: message }] };
 }
 

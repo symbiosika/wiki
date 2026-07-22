@@ -22,6 +22,8 @@ export type ToolDef = {
   description: string;
   /** zod object schema of the input (omit = no arguments). */
   inputSchema?: ZodTypeAny;
+  /** Extra tool metadata (e.g. MCP Apps `ui` linkage). */
+  _meta?: Record<string, unknown>;
 };
 
 export function defineTool(
@@ -33,6 +35,7 @@ export function defineTool(
     title: def.title,
     description: def.description,
   };
+  if (def._meta) config._meta = def._meta;
 
   if (def.inputSchema) {
     config.inputSchema = def.inputSchema;
