@@ -13,6 +13,7 @@
         "@tiptap/extension-bubble-menu": "^3.27.3",
         "@tiptap/extension-drag-handle-vue-3": "^3.27.3",
         "@tiptap/extension-image": "^3.27.3",
+        "@tiptap/extension-table": "3.27.3",
         "@tiptap/extension-task-item": "^3.27.3",
         "@tiptap/extension-task-list": "^3.27.3",
         "@tiptap/extension-unique-id": "^3.27.3",
@@ -412,6 +413,8 @@
     "@tiptap/extension-paragraph": ["@tiptap/extension-paragraph@3.27.3", "", { "peerDependencies": { "@tiptap/core": "3.27.3" } }, "sha512-G5XPCN7lm0nULYPelJC2eUbKbt1q97j67e/HSWxwMYEXhceec5eNAtVfpDCRyXNO9osyBi2kXqLv/IQtxbch9A=="],
 
     "@tiptap/extension-strike": ["@tiptap/extension-strike@3.27.3", "", { "peerDependencies": { "@tiptap/core": "3.27.3" } }, "sha512-dp6Rs3I4zLVJPvAw2Q9yrNuYKcX5LTONH3/oyULvGsrqq5DKz7pqscfwhwnDSzrgm/3aCz6B9r1BVHlYI/DXlA=="],
+
+    "@tiptap/extension-table": ["@tiptap/extension-table@3.27.3", "", { "peerDependencies": { "@tiptap/core": "3.27.3", "@tiptap/pm": "3.27.3" } }, "sha512-P7iQ0SkkDWZwnXzQDOVFLXktXlX67VQ3s2YxoJYKTHlc8rPZ4UCaSogFq0G2APyBlizlY3LbMNrDeZAVFOD8wQ=="],
 
     "@tiptap/extension-task-item": ["@tiptap/extension-task-item@3.27.3", "", { "peerDependencies": { "@tiptap/extension-list": "3.27.3" } }, "sha512-CajIPpHTsuE1l+bM3xKgpZ/3PTvRuFb+ZEyC+yxI/cY2pZd4EJ7iXHT5Fl3ITwdDq8/syVev1BBZ/QDZTOA3rw=="],
 

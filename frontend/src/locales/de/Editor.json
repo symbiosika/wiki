@@ -23,6 +23,8 @@
     "codeDescription": "Code-Schnipsel in Monospace",
     "divider": "Trennlinie",
     "dividerDescription": "Horizontale Linie",
+    "table": "Tabelle",
+    "tableDescription": "Tabelle mit 3×3 Zellen einfügen",
     "image": "Bild",
     "imageDescription": "Ein Bild hochladen und einfügen",
     "reference": "Seitenreferenz",
