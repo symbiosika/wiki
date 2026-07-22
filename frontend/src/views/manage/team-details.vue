@@ -33,6 +33,30 @@
       </template>
     </ManageHeader>
 
+    <!-- Team settings -->
+    <div
+      class="mb-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h3 class="mb-3 text-sm font-medium">
+        {{ $t('UserTeams.settingsTitle') }}
+      </h3>
+      <label
+        class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
+        :class="{ 'cursor-not-allowed opacity-60': !isCurrentUserAdmin }"
+      >
+        <Checkbox
+          v-model="addNewUsersByDefault"
+          binary
+          :disabled="!isCurrentUserAdmin || savingSettings"
+          @change="confirmUpdateAddNewUsersByDefault"
+        />
+        {{ $t('UserTeams.addNewUsersByDefault') }}
+      </label>
+      <p class="mt-1 text-xs text-surface-400 dark:text-surface-500">
+        {{ $t('UserTeams.addNewUsersByDefaultHint') }}
+      </p>
+    </div>
+
     <DataTable v-if="members.length > 0" :value="members">
       <Column field="userEmail" :header="$t('UserTeams.memberEmail')" />
       <Column field="role" :header="$t('UserTeams.memberRole')">
@@ -85,8 +109,9 @@
         </div>
 
         <Message v-if="foundUser" severity="secondary">
-          {{ foundUser.firstname }} {{ foundUser.surname }}
-          ({{ foundUser.email }})
+          {{ foundUser.firstname }} {{ foundUser.surname }} ({{
+            foundUser.email
+          }})
         </Message>
 
         <div v-if="foundUser">
@@ -210,6 +235,16 @@ const teamId = computed(() => String(route.params.teamId))
 const teamName = ref('')
 const members = ref<TeamMember[]>([])
 
+const addNewUsersByDefault = ref(false)
+const savingSettings = ref(false)
+
+// Only team admins may change team settings (the backend enforces this too).
+const isCurrentUserAdmin = computed(() =>
+  members.value.some(
+    (member) => member.userId === app.state.user?.id && member.role === 'admin',
+  ),
+)
+
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
 const foundUser = ref<FoundUser | null>(null)
@@ -237,11 +272,16 @@ const loadTeamData = async () => {
   try {
     const team = app.state.teams.find((entry) => entry.id === teamId.value)
     if (!team) {
-      router.push({ name: 'Teams', params: { tenantId: route.params.tenantId } })
+      router.push({
+        name: 'Teams',
+        params: { tenantId: route.params.tenantId },
+      })
       return
     }
     teamName.value = team.name
     members.value = (await app.getTeamMembers(teamId.value)) || []
+    const details = await app.getTeam(teamId.value)
+    addNewUsersByDefault.value = details?.addNewUsersByDefault ?? false
   } catch {
     toast.add({
       severity: 'error',
@@ -375,7 +415,11 @@ const searchUser = async () => {
 const confirmInvite = async () => {
   if (!foundUser.value || !selectedRole.value) return
   try {
-    await app.addTeamMember(teamId.value, foundUser.value.id, selectedRole.value)
+    await app.addTeamMember(
+      teamId.value,
+      foundUser.value.id,
+      selectedRole.value,
+    )
     await loadTeamData()
     inviteDialog.value = false
     toast.add({
@@ -391,6 +435,35 @@ const confirmInvite = async () => {
       detail: t('UserTeams.errors.inviteFailed'),
       life: 3000,
     })
+  }
+}
+
+// ----- settings ---------------------------------------------------------------
+
+const confirmUpdateAddNewUsersByDefault = async () => {
+  savingSettings.value = true
+  try {
+    await app.updateTeam(teamId.value, {
+      name: teamName.value,
+      addNewUsersByDefault: addNewUsersByDefault.value,
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTeams.updateSuccess'),
+      life: 3000,
+    })
+  } catch {
+    // revert the optimistic toggle on failure
+    addNewUsersByDefault.value = !addNewUsersByDefault.value
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTeams.errors.updateSettingsFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingSettings.value = false
   }
 }
 

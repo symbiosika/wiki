@@ -29,6 +29,9 @@
   "invite": "Add",
   "search": "Search",
   "inviteSuccess": "Member added",
+  "settingsTitle": "Team settings",
+  "addNewUsersByDefault": "Automatically add new users to this team",
+  "addNewUsersByDefaultHint": "When enabled, every user who newly joins the organisation is automatically added to this team as a member.",
   "editName": "Edit name",
   "editNamePlaceholder": "New team name",
   "updateName": "Save name",
@@ -50,6 +53,7 @@
     "userNotFound": "User not found (must be a member of the organisation)",
     "inviteFailed": "Failed to add member",
     "updateNameFailed": "Failed to update name",
+    "updateSettingsFailed": "Failed to update settings",
     "changeRoleFailed": "Failed to update role"
   }
 }

@@ -3,6 +3,11 @@
 export interface Team {
   id: string
   name: string
+  /**
+   * When true, every user that newly joins the tenant is automatically
+   * added to this team as a "member". Only editable by team admins.
+   */
+  addNewUsersByDefault?: boolean
 }
 
 export interface TeamMember {
