@@ -33,9 +33,12 @@ treat "outdated" and pages past validUntil with care.
 
 Showing pages & images: when the user wants to SEE a page (or it contains
 images/diagrams), call view_page — hosts that support MCP Apps render it as a
-formatted view with images. Pages embed images as
-\`/files/db/knowledge/<uuid>.<ext>\` paths; use get_page_image (pageId + that
-reference) to actually look at one — it returns a real image block.
+formatted view with images; pass anchor (from get_page_outline) to show just
+one section. Pages embed images as \`/files/db/knowledge/<uuid>.<ext>\` paths;
+use get_page_image (pageId + that reference) to actually look at one — it
+returns a real image block. To show images to the USER, prefer view_image
+(one image, large + zoomable) or view_page_images (gallery of all images of
+a page).
 
 Context economy: read only what you need. For long pages use get_page_outline
 + read_page_section instead of the whole page; bound get_page_subtree with

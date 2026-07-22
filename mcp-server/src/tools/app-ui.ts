@@ -1,18 +1,23 @@
 /**
  * MCP Apps (interactive UI) support + image access.
  *
- *   - `view_page`      : like `get_page`, but linked to an HTML view
- *                        (`_meta.ui.resourceUri`) that capable hosts
- *                        (claude.ai & co) render in a sandboxed iframe —
- *                        formatted page, images included, [[wikilinks]]
- *                        navigable in place.
- *   - `get_page_image` : returns one image embedded in a page as a real MCP
- *                        image content block (base64). Used by the app to
- *                        load images (the iframe has no wiki token and its
- *                        CSP blocks direct loading), and callable by the
- *                        model so Claude can literally look at a diagram.
- *   - the UI resource  : `ui://symbiosika-wiki/page-view.html`, a single
- *                        self-contained HTML file (see ../ui/build.ts).
+ *   - `view_page`        : like `get_page`, but linked to an HTML view
+ *                          (`_meta.ui.resourceUri`) that capable hosts
+ *                          (claude.ai & co) render in a sandboxed iframe —
+ *                          formatted page, images included, [[wikilinks]]
+ *                          navigable in place. Optional `anchor` renders
+ *                          just one section.
+ *   - `get_page_image`   : returns one image embedded in a page as a real
+ *                          MCP image content block (base64). Used by the
+ *                          apps to load images (the iframe has no wiki token
+ *                          and its CSP blocks direct loading), and callable
+ *                          by the model so Claude can look at a diagram.
+ *   - `view_image`       : shows ONE page image to the user, large and
+ *                          zoomable (fullscreen where the host allows it).
+ *   - `view_page_images` : shows all images of a page as a gallery.
+ *   - the UI resources   : `ui://symbiosika-wiki/page-view.html` and
+ *                          `ui://symbiosika-wiki/image-view.html`, single
+ *                          self-contained HTML files (see ../ui/build.ts).
  *
  * Wire format per the MCP Apps spec (SEP-1865): resource mime type
  * `text/html;profile=mcp-app`; tool ↔ view linkage via `_meta.ui.resourceUri`
@@ -21,20 +26,26 @@
 
 import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
-import { annotateEmbeddedImages } from "./_shapes.ts";
-import { callApi, fail, tenantPath, type ToolResult } from "../app-api.ts";
+import {
+  annotateEmbeddedImages,
+  extractEmbeddedImageRefs,
+} from "./_shapes.ts";
+import { callApi, fail, ok, tenantPath, type ToolResult } from "../app-api.ts";
 import { ISSUER } from "../config.ts";
-import { buildPageViewHtml } from "../ui/build.ts";
+import { buildAppHtml } from "../ui/build.ts";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 
 export const PAGE_VIEW_RESOURCE_URI = "ui://symbiosika-wiki/page-view.html";
+export const IMAGE_VIEW_RESOURCE_URI = "ui://symbiosika-wiki/image-view.html";
 const RESOURCE_MIME_TYPE = "text/html;profile=mcp-app";
 
-/** `_meta` that links a tool to the page-view app (modern + legacy key). */
-const PAGE_VIEW_TOOL_META = {
-  ui: { resourceUri: PAGE_VIEW_RESOURCE_URI },
-  "ui/resourceUri": PAGE_VIEW_RESOURCE_URI,
-};
+/** `_meta` that links a tool to its app (modern + legacy key). */
+const toolMetaFor = (resourceUri: string) => ({
+  ui: { resourceUri },
+  "ui/resourceUri": resourceUri,
+});
+const PAGE_VIEW_TOOL_META = toolMetaFor(PAGE_VIEW_RESOURCE_URI);
+const IMAGE_VIEW_TOOL_META = toolMetaFor(IMAGE_VIEW_RESOURCE_URI);
 
 /**
  * `_meta.ui` of the resource itself. The view is fully self-contained
@@ -42,7 +53,7 @@ const PAGE_VIEW_TOOL_META = {
  * CSP allowlists are explicitly empty — the host's most restrictive sandbox
  * is exactly what we want, stated rather than defaulted.
  */
-const PAGE_VIEW_RESOURCE_META = {
+const APP_RESOURCE_META = {
   ui: {
     csp: { connectDomains: [], resourceDomains: [] },
     prefersBorder: true,
@@ -114,28 +125,51 @@ async function fetchPageImage(
   };
 }
 
-export function registerAppUiTools(mcp: any): void {
-  // The HTML view, served as an MCP resource. Built lazily on first read.
+/** Register one app HTML view as an MCP resource (built lazily on read). */
+function registerAppResource(
+  mcp: any,
+  name: "page-view" | "image-view",
+  uri: string,
+  title: string,
+  description: string,
+): void {
   mcp.registerResource(
-    "wiki-page-view",
-    PAGE_VIEW_RESOURCE_URI,
+    `wiki-${name}`,
+    uri,
     {
-      title: "Wiki page view",
-      description:
-        "Interactive rendering of a wiki page (used by the view_page tool).",
+      title,
+      description,
       mimeType: RESOURCE_MIME_TYPE,
-      _meta: PAGE_VIEW_RESOURCE_META,
+      _meta: APP_RESOURCE_META,
     },
     async () => ({
       contents: [
         {
-          uri: PAGE_VIEW_RESOURCE_URI,
+          uri,
           mimeType: RESOURCE_MIME_TYPE,
-          text: await buildPageViewHtml(),
-          _meta: PAGE_VIEW_RESOURCE_META,
+          text: await buildAppHtml(name),
+          _meta: APP_RESOURCE_META,
         },
       ],
     }),
+  );
+}
+
+export function registerAppUiTools(mcp: any): void {
+  registerAppResource(
+    mcp,
+    "page-view",
+    PAGE_VIEW_RESOURCE_URI,
+    "Wiki page view",
+    "Interactive rendering of a wiki page (used by the view_page tool).",
+  );
+  registerAppResource(
+    mcp,
+    "image-view",
+    IMAGE_VIEW_RESOURCE_URI,
+    "Wiki image view",
+    "Single image / gallery view of wiki page images (used by the " +
+      "view_image and view_page_images tools).",
   );
 
   defineTool(
@@ -146,20 +180,131 @@ export function registerAppUiTools(mcp: any): void {
       description:
         "Returns a page like `get_page` (`{ id, title, content }`) AND shows " +
         "it to the user as a formatted view — headings, tables and images " +
-        "rendered, [[wikilinks]] clickable. Prefer this over `get_page` " +
-        "whenever the user asks to SEE a page (or its images/diagrams); use " +
-        "`get_page` when the content is only needed as context.",
+        "rendered, [[wikilinks]] clickable. Pass `anchor` (a heading slug " +
+        "from `get_page_outline`) to show just that section instead of the " +
+        "whole page. Prefer this over `get_page` whenever the user asks to " +
+        "SEE a page or a section (or its images/diagrams); use `get_page` " +
+        "when the content is only needed as context.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
+        anchor: z
+          .string()
+          .optional()
+          .describe(
+            "Optional heading anchor (from `get_page_outline`): render only " +
+              "this section (subsections included) instead of the whole page.",
+          ),
       }),
       _meta: PAGE_VIEW_TOOL_META,
     },
     async (args, authInfo) =>
-      callApi(
+      args.anchor
+        ? callApi(
+            authInfo,
+            tenantPath(authInfo, `/knowledge/texts/${args.pageId}/section`),
+            {
+              query: { anchor: args.anchor },
+              // section returns { id, anchor, heading, level, content } —
+              // map it to the { id, title, content } shape the view renders.
+              transform: (data) => {
+                const section = (data ?? {}) as Record<string, unknown>;
+                return annotateEmbeddedImages({
+                  id: section.id,
+                  title: section.heading,
+                  anchor: section.anchor,
+                  content: section.content,
+                });
+              },
+            },
+          )
+        : callApi(
+            authInfo,
+            tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+            { transform: annotateEmbeddedImages },
+          ),
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "view_image",
+      title: "Show one page image to the user (large view)",
+      description:
+        "Shows a single image embedded in a page to the user as a large, " +
+        "zoomable view (click = fullscreen where the host supports it). " +
+        "Pass the image reference exactly as it appears in the page content " +
+        "(`/files/db/knowledge/<uuid>.<ext>` or the bare filename), plus an " +
+        "optional caption. Use `get_page_image` instead when YOU need to " +
+        "look at the image; use this when the USER should see it nicely.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The id of the page embedding the image."),
+        image: z
+          .string()
+          .describe(
+            "The image reference from the page content: the " +
+              "`/files/db/knowledge/<uuid>.<ext>` path or the bare filename.",
+          ),
+        caption: z
+          .string()
+          .optional()
+          .describe("Optional caption shown under the image."),
+      }),
+      _meta: IMAGE_VIEW_TOOL_META,
+    },
+    async (args, authInfo) => {
+      const filename = parseImageRef(args.image);
+      if (!filename) {
+        return fail(
+          "Invalid image reference: pass the image filename " +
+            "(`<uuid>.<ext>`) or the full `/files/db/knowledge/…` path from " +
+            "the page content.",
+        );
+      }
+      // sanity check server-side (page visible + file referenced) so the
+      // model gets a real error instead of a silently empty view.
+      const probe = await fetchPageImage(authInfo, args.pageId, filename);
+      if (probe.isError) return probe;
+      return ok({
+        pageId: args.pageId,
+        images: [filename],
+        ...(args.caption ? { caption: args.caption } : {}),
+      });
+    },
+  );
+
+  defineTool(
+    mcp,
+    {
+      name: "view_page_images",
+      title: "Show all images of a page (gallery)",
+      description:
+        "Shows every image embedded in a page to the user as a gallery " +
+        "(click = enlarge/fullscreen). Returns the list of image references " +
+        "found. Errors if the page embeds no images.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The page id."),
+      }),
+      _meta: IMAGE_VIEW_TOOL_META,
+    },
+    async (args, authInfo) => {
+      const page = await callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
-        { transform: annotateEmbeddedImages },
-      ),
+      );
+      if (page.isError) return page;
+      const data = (page.structuredContent ?? {}) as Record<string, unknown>;
+      const refs = extractEmbeddedImageRefs(
+        typeof data.content === "string" ? data.content : "",
+      );
+      if (refs.length === 0) {
+        return fail("This page embeds no images.");
+      }
+      return ok({
+        pageId: data.id ?? args.pageId,
+        title: data.title,
+        images: refs,
+      });
+    },
   );
 
   defineTool(

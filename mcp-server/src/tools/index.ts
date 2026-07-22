@@ -9,8 +9,9 @@
  *                  subtree, links, backlinks, related, history + single version
  *   - write      : create, update/move/curate facets, append, edit content,
  *                  delete
- *   - app UI     : view_page (rendered page view via MCP Apps) and
- *                  get_page_image (images as real image content blocks)
+ *   - app UI     : view_page (rendered page/section view via MCP Apps),
+ *                  view_image / view_page_images (large image + gallery)
+ *                  and get_page_image (images as real image content blocks)
  *
  * Together these let a chat app use the wiki as its "brain": discover what
  * exists, read exactly as much as it needs (context economy), and maintain

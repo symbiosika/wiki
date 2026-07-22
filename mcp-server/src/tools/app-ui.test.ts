@@ -1,6 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import { McpServer } from "@modelcontextprotocol/server";
-import { parseImageRef, PAGE_VIEW_RESOURCE_URI } from "./app-ui.ts";
+import {
+  parseImageRef,
+  PAGE_VIEW_RESOURCE_URI,
+  IMAGE_VIEW_RESOURCE_URI,
+} from "./app-ui.ts";
 import { registerAllTools } from "./index.ts";
 
 const UUID = "0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d";
@@ -47,6 +51,30 @@ describe("MCP Apps registration", () => {
     expect(tool).toBeDefined();
     expect(tool._meta?.ui).toBeUndefined();
   });
+
+  test("view_image and view_page_images link to the image view", () => {
+    for (const name of ["view_image", "view_page_images"]) {
+      const tool = internals._registeredTools[name];
+      expect(tool).toBeDefined();
+      expect(tool._meta?.ui?.resourceUri).toBe(IMAGE_VIEW_RESOURCE_URI);
+      expect(tool._meta?.["ui/resourceUri"]).toBe(IMAGE_VIEW_RESOURCE_URI);
+    }
+  });
+
+  test("the image-view resource serves self-contained HTML", async () => {
+    const resource = internals._registeredResources[IMAGE_VIEW_RESOURCE_URI];
+    expect(resource).toBeDefined();
+    expect(resource.metadata.mimeType).toBe("text/html;profile=mcp-app");
+
+    const result = await resource.readCallback(
+      new URL(IMAGE_VIEW_RESOURCE_URI),
+      {} as any,
+    );
+    const html = result.contents[0]!.text as string;
+    expect(html).toContain("callServerTool");
+    expect(html).toContain("requestDisplayMode");
+    expect(html).not.toContain('src="http');
+  }, 60_000);
 
   test("the page-view resource serves self-contained HTML with the app mime type", async () => {
     const resource = internals._registeredResources[PAGE_VIEW_RESOURCE_URI];
