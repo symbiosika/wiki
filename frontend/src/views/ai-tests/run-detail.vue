@@ -26,7 +26,7 @@
               {{ $t(`AiTests.runStatus.${run.status}`) }}
             </span>
             <span class="text-xs text-surface-400 dark:text-surface-500">
-              {{ formatDate(run.startedAt) }}
+              {{ formatDateTime(run.startedAt) }}
             </span>
           </div>
           <div class="flex flex-wrap gap-1.5">
@@ -290,6 +290,10 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 const toast = useToast()
 const store = useAiTests()
 
@@ -330,7 +334,6 @@ const byTypeEntries = computed(() =>
   Object.entries(run.value?.aggregates?.byType ?? {}),
 )
 
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
 const pct = (n?: number) => (n == null ? '—' : `${Math.round(n * 100)}%`)
 const score = (n?: number) => (n == null ? '—' : n.toFixed(2))
 

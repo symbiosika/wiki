@@ -57,7 +57,7 @@
       <Column :header="$t('PostProcessingAgents.updatedAt')">
         <template #body="{ data }">
           <span class="text-xs text-surface-500 dark:text-surface-400">
-            {{ formatDate(data.updatedAt) }}
+            {{ formatDateTime(data.updatedAt) }}
           </span>
         </template>
       </Column>
@@ -280,6 +280,10 @@ import type {
 
 const route = useRoute()
 const { t } = useI18n()
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 const toast = useToast()
 const confirm = useConfirm()
 const store = usePostProcessingAgents()
@@ -293,8 +297,6 @@ watch(
   },
   { immediate: true },
 )
-
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
 // ----- create / edit --------------------------------------------------------
 

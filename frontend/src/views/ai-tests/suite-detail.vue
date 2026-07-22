@@ -305,7 +305,7 @@
           <Column :header="$t('AiTests.started')">
             <template #body="{ data }">
               <span class="text-xs text-surface-600 dark:text-surface-300">
-                {{ formatDate(data.startedAt) }}
+                {{ formatDateTime(data.startedAt) }}
               </span>
             </template>
           </Column>
@@ -411,6 +411,10 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 const toast = useToast()
 const confirm = useConfirm()
 const store = useAiTests()
@@ -507,7 +511,6 @@ const questionsChanged = computed(
   () => snapshotQuestions() !== originalQuestions.value,
 )
 
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
 const pct = (n?: number) => (n == null ? '—' : `${Math.round(n * 100)}%`)
 const score = (n?: number) => (n == null ? '—' : n.toFixed(2))
 

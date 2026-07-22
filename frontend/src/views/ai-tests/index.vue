@@ -49,7 +49,7 @@
               :class="runStatusDot(data.lastRunStatus)"
             />
             <span class="text-surface-600 dark:text-surface-300">
-              {{ formatDate(data.lastRunAt) }}
+              {{ formatDateTime(data.lastRunAt) }}
             </span>
           </span>
           <span v-else class="text-xs text-surface-400 dark:text-surface-500">
@@ -130,6 +130,10 @@ import type { AiTestRunStatus } from '@/types/aiTests'
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 const toast = useToast()
 const store = useAiTests()
 
@@ -142,8 +146,6 @@ watch(
   },
   { immediate: true },
 )
-
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
 const runStatusDot = (status: AiTestRunStatus | null) => {
   switch (status) {
