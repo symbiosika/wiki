@@ -49,6 +49,10 @@
     "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
     "pageOf": "{current} von {total}"
   },
+  "copyMarkdown": {
+    "hint": "Als Markdown kopieren (für KI-Agenten & Co.)",
+    "error": "Kopieren fehlgeschlagen. Bitte erneut versuchen."
+  },
   "info": {
     "button": "Info",
     "hint": "Dokumentdetails anzeigen",

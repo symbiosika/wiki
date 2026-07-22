@@ -33,6 +33,7 @@ declare module 'vue' {
     InvitationsList: typeof import('./components/manage/InvitationsList.vue')['default']
     ManageHeader: typeof import('./components/manage/ManageHeader.vue')['default']
     ManageTabs: typeof import('./components/manage/ManageTabs.vue')['default']
+    MarkdownPasteDialog: typeof import('./components/wiki/MarkdownPasteDialog.vue')['default']
     MarkdownRenderer: typeof import('./components/MarkdownRenderer.vue')['default']
     Menu: typeof import('./volt/Menu.vue')['default']
     Message: typeof import('./volt/Message.vue')['default']

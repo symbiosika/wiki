@@ -15,6 +15,7 @@ declare global {
   const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
+  const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const computed: typeof import('vue').computed
@@ -43,6 +44,7 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
   const onActivated: typeof import('vue').onActivated
