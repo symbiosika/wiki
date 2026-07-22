@@ -2,80 +2,130 @@
 name: company-wiki
 description: >
   Firmenwissen & internes Wiki (Firmen-Wiki-MCP-Connector). Use whenever the user asks
-  about the COMPANY or anything internal that would live in the wiki — e.g. "how do
-  we do X", onboarding, processes, guidelines, policies, product/spec/architecture
-  docs, handbook, team knowledge, decisions, who owns what, "where is the doc for…".
-  Also use to write/update wiki content: capture notes, document a decision, draft a
-  new page, keep a handbook current. German triggers: „Firma", „intern", „Wiki",
-  „Handbuch", „Onboarding", „Prozess", „Richtlinie", „Doku", „wie machen wir…", „wo
-  steht…", „dokumentiere…", „leg eine Seite an". If a question is about the company,
-  reach for the wiki BEFORE answering from general knowledge or the web.
+  about the COMPANY or anything internal that would live in the wiki — vom Firmenwissen
+  (Prozesse, Onboarding, Richtlinien, Entscheidungen, Personen, Handbuch) bis zum
+  Produktwissen (Specs, Architektur, Anleitungen, Datenblätter, Schaltpläne). E.g. "how
+  do we do X", onboarding, guidelines, policies, product/spec/architecture docs, wer
+  betreut was, "where is the doc for…". Also use to write/update wiki content: capture
+  notes, document a decision, draft a new page, keep a handbook current. German triggers:
+  „Firma", „intern", „Wiki", „Handbuch", „Onboarding", „Prozess", „Richtlinie", „Doku",
+  „Produkt", „Anleitung", „Datenblatt", „Schaltplan", „wie machen wir…", „wo steht…",
+  „dokumentiere…", „leg eine Seite an". If a question is about the company or its
+  products, reach for the wiki BEFORE answering from general knowledge or the web.
 ---
 
 # Firmen-Wiki — das Firmengehirn
 
-Das Wiki ist die **Quelle der Wahrheit für internes Firmenwissen**. Es ist als
-MCP-Server angebunden und liefert Tools, um Wissen zu **finden, zu lesen und
-zu pflegen** — immer mit den Rechten des angemeldeten Nutzers (persönliche / Team- /
-Organisationsseiten). Fehlt eine Berechtigung, kommt ein `403` zurück.
+Das Firmen-Wiki ist die **Quelle der Wahrheit für internes Wissen** — von
+allgemeinem **Firmenwissen** (Prozesse, Handbuch, Onboarding, Policies,
+Entscheidungen, Personen) bis zu spezifischem **Produktwissen** (Specs,
+Architektur, Anleitungen, Datenblätter, Schaltpläne). Es ist als MCP-Server
+angebunden und liefert Tools, um Wissen zu **finden, zu recherchieren, zu lesen,
+zu zeigen und zu pflegen** — immer mit den Rechten des angemeldeten Nutzers
+(persönliche / Team- / Organisationsseiten). Fehlt eine Berechtigung, kommt ein
+`403` zurück (das heißt „nicht erlaubt", nicht „existiert nicht").
 
 ## Goldene Regel
 
-Bei **firmenspezifischen** Fragen (Prozesse, Produkte, Entscheidungen, Personen,
-Policies, Zahlen, „wie machen wir das hier") gilt:
+Bei **firmen- und produktspezifischen** Fragen (Prozesse, Produkte,
+Entscheidungen, Personen, Policies, Zahlen, „wie machen wir das hier") gilt:
 
 1. **Erst das Wiki fragen, dann antworten.** Nicht aus dem Allgemeinwissen raten.
 2. **Nur belegen, was im Wiki steht.** Jede firmenspezifische Aussage mit der
-   Quellseite belegen (Titel + `pageId`), damit sie nachprüfbar ist.
+   Quellseite belegen (Titel + `pageId`, und den `path`/Breadcrumb, wenn
+   vorhanden), damit sie nachprüfbar ist.
 3. **Ehrlich sein, wenn nichts gefunden wird.** Kein Erfinden. Stattdessen sagen,
    dass es (noch) nicht im Wiki steht, und **anbieten, es anzulegen**.
 4. **Allgemeinwissen auszeichnen.** Wenn du bewusst Wissen von außerhalb des Wikis
    ergänzt, kennzeichne es klar als solches.
 
-## Ablauf: Briefen → Finden → Lesen → Antworten
+## Ablauf: Briefen → Recherchieren → Lesen → Zeigen → Antworten
 
 ### 1. Briefen (einmal pro Sitzung)
 `get_wiki_overview` aufrufen: liefert Kennzahlen, die Top-Level-Bereiche **mit
 Kurzbeschreibungen (Summaries) und Facetten**, die letzten Änderungen — und, wenn
 gepflegt, die **Agent-Anweisungsseite der Organisation**. Deren Inhalt ist
 verbindlicher Arbeitskontext: **befolge diese Anweisungen.** `whoami` bestätigt bei
-Bedarf Nutzer und Organisation; `get_wiki_tree` zeigt die volle Baumstruktur.
+Bedarf Nutzer und Organisation; `get_wiki_tree` zeigt die volle Baumstruktur als
+Landkarte.
 
-### 2. Finden
-- **Standard: `search_wiki`** — hybride Suche (Volltext + semantisch) ist der
-  Default und fällt automatisch auf Volltext zurück; `mode` nur setzen, wenn du
-  bewusst abweichen willst.
-- Treffer bringen **Summary, `pageType`, `status`, `updatedAt`** mit — entscheide
-  damit, welche 2–3 Seiten du wirklich liest, statt alles zu öffnen.
-- **Eingrenzen** statt raten: `parentId` (nur ein Teilbaum, z. B. „im Handbuch"),
-  `pageType`/`status` (Facetten), `teamId`.
+### 2. Recherchieren — die Kern-Kompetenz
+
+Diese Tools machen dich beim Suchen & Recherchieren wirklich stark. **Nutze sie
+aktiv**, statt bei einem Treffer stehenzubleiben:
+
+- **`search_wiki` ist der Motor.** Hybride Suche (Volltext + semantisch,
+  rank-fused) ist der Default und fällt automatisch auf Volltext zurück — `mode`
+  nur setzen, wenn du bewusst abweichen willst. Ergebnisse sind
+  **vertrauens-gewichtet** (verified geboostet, outdated abgewertet, superseded
+  unter ihren Nachfolger gefaltet).
+- **Treffer sind reich an Triage-Signalen:** jeder Hit bringt `snippet`, `summary`,
+  `pageType`, `status`, `updatedAt`, **`path`** (Breadcrumb im Baum, z. B.
+  „Handbuch/HR/Urlaub") und **`chunkOrder`** mit. Entscheide damit, welche 2–3
+  Seiten du wirklich liest, statt alles zu öffnen.
+- **Mehrere kurze, gezielte Suchen schlagen eine lange.** Variiere die Begriffe,
+  probiere **deutsch UND englisch** (das Wiki ist gemischtsprachig), zerlege
+  zusammengesetzte Fragen in Teilsuchen.
+- **Eingrenzen statt raten:** `parentId` (nur ein Teilbaum, z. B. „im Handbuch"
+  oder „unter Produkt X"), `pageType`/`status` (Facetten), `teamId`, `limit`.
+- **Verlorenen Kontext nachladen: `get_page_chunk_context`.** Ein Suchtreffer
+  liefert nur einen Snippet — mit `pageId` + `chunkOrder` des Treffers holst du
+  den Chunk **plus die Nachbar-Chunks davor/danach** in Lesereihenfolge zurück
+  (`before`/`after`, je Default 2). Ideal, um aus einem Treffer die volle Aussage
+  zu rekonstruieren, ohne die ganze Seite zu laden — inkl. `sourcePage` (welche
+  PDF-Seite) und `path`.
+- **Dem Wissensgraphen folgen** statt nur zu suchen:
+  - `get_related_pages` — semantisch verwandte Seiten (Embedding-Ähnlichkeit).
+  - `get_page_backlinks` — was verweist auf diese Seite (wer nutzt/zitiert sie).
+  - `get_page_links` — worauf verweist diese Seite (weiterführende Quellen).
 - **Titel bekannt?** `resolve_page` löst einen exakten Titel (Wikilink-Semantik)
-  ohne Suche direkt zur Seite auf.
+  ohne Suchrunde direkt zur Seite auf.
 - **„Was hat sich getan?"** → `list_recent_changes` (filterbar mit `since`,
-  `parentId`-Teilbaum, Facetten, `teamId`).
-- Mehrere kurze, gezielte Suchen schlagen eine lange. Deutsche **und** englische
-  Begriffe probieren (das Wiki ist gemischtsprachig).
+  `parentId`-Teilbaum, Facetten, `teamId`) — auch gut, um zu prüfen, ob X noch
+  aktuell ist.
+- **Flach durchblättern:** `list_pages` als gepagter Index, wenn du stöbern willst.
 
 ### 3. Lesen — nur so viel wie nötig (Kontext-Ökonomie)
-- Einzelne Seite: `get_page` (liefert bewusst nur `id`, `title`, `content`).
+- Einzelne Seite: `get_page` (liefert bewusst nur `id`, `title`, `content` als
+  Markdown).
 - **Mehrere Treffer: `get_pages`** — ein Call statt N; unsichtbare ids werden
   still weggelassen.
 - **Lange Seiten:** erst `get_page_outline` (Überschriften-Gerüst), dann gezielt
   `read_page_section` (Anchor) oder `read_page_content` (Zeilenbereich) — nicht
   die ganze Seite laden.
-- **Ganzer Abschnitt:** `get_page_subtree` — **immer begrenzen** mit `maxDepth`
-  und/oder `maxChars`. Gekürzte Knoten sind markiert (`contentTruncated`,
-  `childrenOmitted`); die Struktur bleibt vollständig, fehlendes gezielt nachladen.
+- **Ganzer Abschnitt/Teilbaum:** `get_page_subtree` — **immer begrenzen** mit
+  `maxDepth` und/oder `maxChars`. Gekürzte Knoten sind markiert
+  (`contentTruncated`, `childrenOmitted`); die Struktur bleibt vollständig,
+  Fehlendes gezielt nachladen.
 - **Metadaten sind ein eigener, expliziter Call:** `get_page_metadata` (Scope,
   Facetten, Autorschaft, Größe) — nur holen, wenn wirklich relevant.
-- **Kontext prüfen:** `get_page_links` (worauf verweist die Seite),
-  `get_page_backlinks` (was verweist hierher), `get_related_pages` (semantisch
-  verwandt), `get_page_history` + `get_page_version` (Verlauf, alte Stände).
+- **Verlauf:** `get_page_history` (kompakt) + `get_page_version` (alter Stand in
+  voller Länge).
 
-### 4. Antworten
+### 4. Bilder ansehen & zeigen
+
+Viele Produkt- und Anleitungsseiten leben von **Bildern**: Datenblätter,
+Schaltpläne, Diagramme, Screenshots, Schritt-für-Schritt-Fotos. Seiten betten
+Bilder als `/files/db/knowledge/<uuid>.<ext>`-Pfade ein.
+
+- **Wenn DU das Bild brauchst** (um es zu verstehen und die Antwort darauf zu
+  stützen): `get_page_image` (pageId + genau die Bildreferenz aus dem Inhalt) —
+  liefert einen echten Image-Block zum Ansehen.
+- **Wenn der NUTZER das Bild sehen soll — biete es aktiv an und nutze es, wann
+  immer es die Antwort greifbarer macht:** bei Anleitungen, Datenblättern,
+  Schaltplänen, Diagrammen oder wo „ein Bild sagt mehr als tausend Worte".
+  - `view_image` — ein einzelnes Bild groß & zoombar (Klick = Vollbild, wo der
+    Host es unterstützt); optionale `caption`.
+  - `view_page_images` — Galerie **aller** Bilder einer Seite.
+  - `view_page` — die **ganze Seite** formatiert gerendert (Überschriften,
+    Tabellen, Bilder, klickbare [[Wikilinks]]); mit `anchor` (aus
+    `get_page_outline`) nur einen Abschnitt zeigen. Bevorzuge das gegenüber
+    `get_page`, wann immer der Nutzer die Seite **sehen** will.
+
+### 5. Antworten
 - Antwort **aus dem Wiki-Inhalt** formulieren, nicht paraphrasiertes Vorwissen.
-- **Belegen:** je Aussage die Quellseite nennen — Format `[[Seitentitel]]` (+ `pageId`
-  bzw. Link, wenn der Client ihn rendert).
+- **Belegen:** je Aussage die Quellseite nennen — Format `[[Seitentitel]]` (+
+  `pageId` bzw. `path`/Breadcrumb, damit der Nutzer sieht, wo die Antwort lebt).
 - **Vertrauenssignale ernst nehmen:** `status: "verified"` bevorzugen; bei
   `"outdated"` oder überschrittenem `validUntil` den Vorbehalt nennen; verweist
   `supersedesId` auf einen Nachfolger, die neuere Seite nutzen.
@@ -128,7 +178,10 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
 | Briefing zum Sitzungsstart | `get_wiki_overview` |
 | Wer bin ich / welche Organisation | `whoami` |
 | Landkarte des Wissens | `get_wiki_tree` |
-| Inhalt finden (hybrid, Facetten-Filter) | `search_wiki` |
+| **Inhalt finden (hybrid, Facetten, `path`+`chunkOrder`)** | `search_wiki` |
+| **Kontext um einen Treffer nachladen** | `get_page_chunk_context` |
+| **Verwandte Seiten (semantisch)** | `get_related_pages` |
+| **Was verweist hierher / worauf verweist die Seite** | `get_page_backlinks` / `get_page_links` |
 | Titel → Seite (ohne Suche) | `resolve_page` |
 | Was hat sich geändert | `list_recent_changes` |
 | Flacher Index / durchblättern | `list_pages` |
@@ -140,11 +193,12 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
 | Zeilenbereich lesen | `read_page_content` |
 | Teilbaum laden (begrenzt!) | `get_page_subtree` (`maxDepth`/`maxChars`) |
 | Metadaten (explizit) | `get_page_metadata` |
-| Ausgehende Links | `get_page_links` |
-| Wer verweist hierher | `get_page_backlinks` |
-| Verwandte Seiten | `get_related_pages` |
 | Änderungsverlauf (kompakt) | `get_page_history` |
 | Alte Version in voller Länge | `get_page_version` |
+| **Bild ansehen (für dich)** | `get_page_image` |
+| **Ein Bild dem Nutzer zeigen (groß/zoombar)** | `view_image` |
+| **Alle Bilder einer Seite zeigen (Galerie)** | `view_page_images` |
+| **Ganze Seite formatiert zeigen** | `view_page` (`anchor` für Abschnitt) |
 | Seite anlegen | `create_page` |
 | Umbenennen/Verschieben/Facetten | `update_page` |
 | Ans Ende anhängen (robust) | `append_to_page` |
@@ -154,7 +208,11 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
 ## Kurz-Heuristik
 
 > **Sitzungsstart → `get_wiki_overview` (Agent-Anweisungen befolgen).
-> Firmenfrage → `search_wiki` → gezielt lesen (`get_pages`, Outline/Section) →
-> mit `[[Quelle]]` antworten, `status`/`validUntil` beachten.
-> Nichts gefunden → sagen + anbieten anzulegen. Neues Wissen → `append_to_page`
-> oder `create_page` anbieten. Löschen/firmenweit veröffentlichen → vorher fragen.**
+> Firmen-/Produktfrage → `search_wiki` (mehrere gezielte Suchen, de+en) →
+> Kontext mit `get_page_chunk_context` / dem Link-Graph (`get_related_pages`,
+> Backlinks) vertiefen → gezielt lesen (`get_pages`, Outline/Section) →
+> Bilder bei Anleitungen/Datenblättern/Schaltplänen mit `view_image` /
+> `view_page` zeigen → mit `[[Quelle]]` + `path` antworten, `status`/`validUntil`
+> beachten. Nichts gefunden → sagen + anbieten anzulegen. Neues Wissen →
+> `append_to_page` oder `create_page` anbieten. Löschen/firmenweit
+> veröffentlichen → vorher fragen.**
