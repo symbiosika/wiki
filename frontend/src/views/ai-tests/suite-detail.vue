@@ -76,9 +76,9 @@
         </div>
       </section>
 
-      <!-- questions ------------------------------------------------------ -->
+      <!-- questions (master–detail) --------------------------------------- -->
       <section class="flex flex-col gap-3">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2
             class="text-sm font-semibold text-surface-900 dark:text-surface-0"
           >
@@ -95,8 +95,18 @@
               size="small"
               @click="addRow"
             />
+            <Button
+              :label="$t('AiTests.saveQuestions')"
+              size="small"
+              :disabled="!questionsChanged || savingQuestions"
+              @click="saveQuestions"
+            />
           </div>
         </div>
+
+        <p class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('AiTests.keyboardHint') }}
+        </p>
 
         <div
           v-if="questions.length === 0"
@@ -106,85 +116,141 @@
         </div>
 
         <div
-          v-for="(q, i) in questions"
-          :key="q.key"
-          class="flex flex-col gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+          v-else
+          class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]"
         >
-          <div class="flex items-start gap-2">
+          <!-- master list -->
+          <ul
+            class="flex max-h-[28rem] flex-col gap-1 overflow-y-auto rounded-lg border border-surface-200 p-1 dark:border-surface-700"
+          >
+            <li v-for="(q, i) in questions" :key="q.key">
+              <button
+                type="button"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors"
+                :class="
+                  i === selectedIndex
+                    ? 'bg-surface-100 dark:bg-surface-800'
+                    : 'hover:bg-surface-50 dark:hover:bg-surface-800/50'
+                "
+                @click="selectIndex(i)"
+              >
+                <span
+                  class="h-2 w-2 shrink-0 rounded-full"
+                  :class="
+                    q.active
+                      ? 'bg-emerald-500'
+                      : 'bg-surface-300 dark:bg-surface-600'
+                  "
+                  :title="q.active ? $t('AiTests.active') : ''"
+                />
+                <span
+                  class="flex-1 truncate"
+                  :class="
+                    q.question.trim()
+                      ? 'text-surface-800 dark:text-surface-100'
+                      : 'italic text-surface-400 dark:text-surface-500'
+                  "
+                >
+                  {{ q.question.trim() || $t('AiTests.emptyQuestion') }}
+                </span>
+                <span
+                  class="shrink-0 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-700 dark:text-surface-300"
+                >
+                  {{ $t(`AiTests.typeShort.${q.type}`) }}
+                </span>
+              </button>
+            </li>
+          </ul>
+
+          <!-- detail editor -->
+          <div
+            v-if="selected"
+            ref="panelRef"
+            class="flex flex-col gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class="text-xs font-medium text-surface-500 dark:text-surface-400"
+              >
+                {{
+                  $t('AiTests.questionN', {
+                    n: selectedIndex + 1,
+                    total: questions.length,
+                  })
+                }}
+              </span>
+              <div class="flex items-center gap-1">
+                <SecondaryButton
+                  :label="$t('AiTests.previous')"
+                  size="small"
+                  :disabled="selectedIndex <= 0"
+                  @click="selectPrev"
+                />
+                <SecondaryButton
+                  :label="$t('AiTests.next')"
+                  size="small"
+                  :disabled="selectedIndex >= questions.length - 1"
+                  @click="selectNext"
+                />
+                <button
+                  type="button"
+                  class="ml-1 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
+                  :title="$t('AiTests.removeQuestion')"
+                  @click="removeRow(selectedIndex)"
+                >
+                  <IconTrash class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
             <Textarea
-              v-model="q.question"
+              v-model="selected.question"
               class="w-full"
-              rows="2"
+              rows="3"
               :placeholder="$t('AiTests.questionPlaceholder')"
             />
-            <button
-              type="button"
-              class="shrink-0 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
-              :title="$t('AiTests.removeQuestion')"
-              @click="removeRow(i)"
-            >
-              <IconTrash class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="flex flex-wrap items-center gap-3">
-            <Select
-              v-model="q.type"
-              :options="typeOptions"
-              option-label="label"
-              option-value="value"
-              class="w-48"
-            />
-            <label
-              class="flex items-center gap-2 text-xs text-surface-600 dark:text-surface-300"
-            >
-              <Checkbox v-model="q.active" binary />
-              {{ $t('AiTests.active') }}
-            </label>
-            <button
-              type="button"
-              class="text-xs text-primary hover:underline"
-              @click="q.showRefs = !q.showRefs"
-            >
-              {{
-                q.showRefs
-                  ? $t('AiTests.hideReferenceData')
-                  : $t('AiTests.showReferenceData')
-              }}
-            </button>
-          </div>
-          <div v-if="q.showRefs" class="grid gap-3 sm:grid-cols-2">
-            <div class="flex flex-col gap-1">
-              <label class="text-xs text-surface-500 dark:text-surface-400">
-                {{ $t('AiTests.expectedFacts') }}
-              </label>
-              <Textarea
-                v-model="q.expectedFactsText"
-                class="w-full"
-                rows="3"
-                :placeholder="$t('AiTests.expectedFactsPlaceholder')"
-              />
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="text-xs text-surface-500 dark:text-surface-400">
-                {{ $t('AiTests.expectedPages') }}
-              </label>
-              <Textarea
-                v-model="q.expectedPageIdsText"
-                class="w-full"
-                rows="3"
-                :placeholder="$t('AiTests.expectedPagesPlaceholder')"
-              />
-            </div>
-          </div>
-        </div>
 
-        <div v-if="questions.length > 0">
-          <Button
-            :label="$t('AiTests.saveQuestions')"
-            size="small"
-            :disabled="!questionsChanged || savingQuestions"
-            @click="saveQuestions"
-          />
+            <div class="flex flex-wrap items-center gap-3">
+              <Select
+                v-model="selected.type"
+                :options="typeOptions"
+                option-label="label"
+                option-value="value"
+                class="w-48"
+              />
+              <label
+                class="flex items-center gap-2 text-xs text-surface-600 dark:text-surface-300"
+              >
+                <Checkbox v-model="selected.active" binary />
+                {{ $t('AiTests.active') }}
+              </label>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs text-surface-500 dark:text-surface-400">
+                  {{ $t('AiTests.expectedFacts') }}
+                </label>
+                <Textarea
+                  v-model="selected.expectedFactsText"
+                  class="w-full"
+                  rows="3"
+                  :placeholder="$t('AiTests.expectedFactsPlaceholder')"
+                />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs text-surface-500 dark:text-surface-400">
+                  {{ $t('AiTests.expectedPages') }}
+                </label>
+                <Textarea
+                  v-model="selected.expectedPageIdsText"
+                  class="w-full"
+                  rows="3"
+                  :placeholder="$t('AiTests.expectedPagesPlaceholder')"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -339,6 +405,9 @@ interface EditableQuestion {
 
 const questions = ref<EditableQuestion[]>([])
 const originalQuestions = ref('')
+/** index of the question shown in the detail panel (-1 = none) */
+const selectedIndex = ref(-1)
+const panelRef = ref<HTMLElement | null>(null)
 const settings = ref({
   name: '',
   description: '',
@@ -386,6 +455,7 @@ const reload = async () => {
   runs.value = detail.runs
   questions.value = detail.questions.map(toEditable)
   originalQuestions.value = snapshotQuestions()
+  selectedIndex.value = questions.value.length > 0 ? 0 : -1
   settings.value = {
     name: detail.suite.name,
     description: detail.suite.description ?? '',
@@ -463,6 +533,38 @@ const saveSettings = async () => {
 // ----- questions ------------------------------------------------------------
 
 const savingQuestions = ref(false)
+
+/** the question currently shown in the detail panel */
+const selected = computed(() => questions.value[selectedIndex.value] ?? null)
+
+/** move keyboard focus into the panel's question field after a selection */
+const focusQuestion = () => {
+  nextTick(() => {
+    panelRef.value?.querySelector('textarea')?.focus()
+  })
+}
+
+const selectIndex = (i: number) => {
+  selectedIndex.value = i
+  focusQuestion()
+}
+const selectPrev = () => {
+  if (selectedIndex.value > 0) selectIndex(selectedIndex.value - 1)
+}
+const selectNext = () => {
+  if (selectedIndex.value < questions.value.length - 1)
+    selectIndex(selectedIndex.value + 1)
+}
+/** keep the selected index within bounds after the list length changes */
+const clampSelection = () => {
+  if (selectedIndex.value > questions.value.length - 1) {
+    selectedIndex.value = questions.value.length - 1
+  }
+  if (selectedIndex.value < 0 && questions.value.length > 0) {
+    selectedIndex.value = 0
+  }
+}
+
 const addRow = () => {
   questions.value.push({
     key: nextKey(),
@@ -473,9 +575,13 @@ const addRow = () => {
     expectedPageIdsText: '',
     showRefs: false,
   })
+  selectIndex(questions.value.length - 1)
 }
 const removeRow = (index: number) => {
   questions.value.splice(index, 1)
+  if (selectedIndex.value >= questions.value.length) {
+    selectedIndex.value = questions.value.length - 1
+  }
 }
 
 const splitLines = (text: string) =>
@@ -503,6 +609,7 @@ const saveQuestions = async () => {
     )
     questions.value = saved.map(toEditable)
     originalQuestions.value = snapshotQuestions()
+    clampSelection()
   } catch (error) {
     showError(error, t('AiTests.saveError'))
   } finally {
@@ -527,6 +634,7 @@ const confirmBulk = async () => {
     )
     questions.value = saved.map(toEditable)
     originalQuestions.value = snapshotQuestions()
+    clampSelection()
     bulkText.value = ''
     bulkDialog.value = false
   } catch (error) {
@@ -587,4 +695,26 @@ const confirmDelete = () => {
     },
   })
 }
+
+// ----- keyboard navigation (pure keyboard operation) ------------------------
+// Alt+↓/↑ = next/previous question, Alt+N = new, Ctrl/Cmd+S = save. Alt avoids
+// clashing with the caret movement inside the focused question textarea.
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.altKey && e.key === 'ArrowDown') {
+    e.preventDefault()
+    selectNext()
+  } else if (e.altKey && e.key === 'ArrowUp') {
+    e.preventDefault()
+    selectPrev()
+  } else if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+    e.preventDefault()
+    addRow()
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault()
+    if (questionsChanged.value && !savingQuestions.value) saveQuestions()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>

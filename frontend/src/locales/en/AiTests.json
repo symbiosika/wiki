@@ -25,6 +25,11 @@
   "noQuestions": "No questions yet. Add them individually or as a list.",
   "questionPlaceholder": "Customer question …",
   "active": "Active",
+  "emptyQuestion": "(empty question)",
+  "questionN": "Question {n} of {total}",
+  "previous": "Previous",
+  "next": "Next",
+  "keyboardHint": "Keyboard: Alt+↑/↓ to move · Alt+N new question · Ctrl/Cmd+S to save",
   "showReferenceData": "Show reference data",
   "hideReferenceData": "Hide reference data",
   "expectedFacts": "Must-have facts (one per line)",
@@ -80,6 +85,12 @@
     "synthesis": "Synthesis",
     "not-in-wiki": "Not in wiki",
     "ambiguous": "Ambiguous"
+  },
+  "typeShort": {
+    "answerable": "answ.",
+    "synthesis": "synth.",
+    "not-in-wiki": "no wiki",
+    "ambiguous": "ambig."
   },
   "claimVerdict": {
     "supported": "supported",

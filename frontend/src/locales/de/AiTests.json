@@ -25,6 +25,11 @@
   "noQuestions": "Noch keine Fragen. Füge einzeln oder als Liste hinzu.",
   "questionPlaceholder": "Kundenfrage …",
   "active": "Aktiv",
+  "emptyQuestion": "(leere Frage)",
+  "questionN": "Frage {n} von {total}",
+  "previous": "Vorige",
+  "next": "Nächste",
+  "keyboardHint": "Tastatur: Alt+↑/↓ blättern · Alt+N neue Frage · Strg/Cmd+S speichern",
   "showReferenceData": "Referenzdaten anzeigen",
   "hideReferenceData": "Referenzdaten ausblenden",
   "expectedFacts": "Soll-Fakten (eine pro Zeile)",
@@ -80,6 +85,12 @@
     "synthesis": "Synthese",
     "not-in-wiki": "Nicht im Wiki",
     "ambiguous": "Mehrdeutig"
+  },
+  "typeShort": {
+    "answerable": "beantw.",
+    "synthesis": "synth.",
+    "not-in-wiki": "n. Wiki",
+    "ambiguous": "mehrd."
   },
   "claimVerdict": {
     "supported": "gedeckt",
