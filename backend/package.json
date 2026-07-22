@@ -20,7 +20,7 @@
   "dependencies": {
     "@ai-sdk/mistral": "^3.0.5",
     "@ai-sdk/openai-compatible": "^2",
-    "@ai-sdk/valibot": "^2.0.10",
+    "@ai-sdk/valibot": "2.0.41",
     "@aws-sdk/client-s3": "^3.958.0",
     "@aws-sdk/s3-request-presigner": "^3.958.0",
     "@hono/standard-validator": "^0.1.5",
@@ -31,7 +31,7 @@
     "@simplewebauthn/server": "^13.0.0",
     "@simplewebauthn/types": "^12.0.0",
     "@valibot/to-json-schema": "^1.5.0",
-    "ai": "^6.0.48",
+    "ai": "6.0.230",
     "cron": "4.3.3",
     "csv": "6.4.1",
     "drizzle-orm": "0.44.6",

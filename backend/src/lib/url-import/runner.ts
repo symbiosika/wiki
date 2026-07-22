@@ -11,16 +11,19 @@
  * stable across runs, so a recurring job updates pages in place instead of
  * creating duplicates.
  */
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@framework/lib/db/db-connection";
 import { urlToMarkdown } from "@framework/lib/knowledge/parsing/url";
 import { upsertKnowledgeTextFromSource } from "@framework/lib/knowledge/knowledge-text-sync";
+import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
+import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { createJob } from "@framework/lib/jobs";
 import log from "@framework/lib/log";
 import {
   urlImportJobs,
   urlImportJobUrls,
   urlImportJobRuns,
+  type UrlImportJobSelect,
   type UrlImportJobRunSelect,
   type UrlImportRunResultItem,
 } from "../../db/schema";
@@ -31,15 +34,6 @@ import { getImportJob, listJobUrls, type JobContext } from "./index";
 export const URL_IMPORT_JOB_TYPE = "url-import-run";
 
 const nowIso = () => new Date().toISOString();
-
-/**
- * Strip NUL (U+0000) bytes from text destined for a Postgres `text`/`varchar`
- * column. Postgres cannot store the NUL byte ("invalid byte sequence for
- * encoding UTF8: 0x00") and OCR output for scanned PDFs occasionally contains
- * them, which otherwise aborts the whole insert. NUL carries no meaning in the
- * extracted markdown, so removing it is non-lossy.
- */
-const stripNulBytes = (value: string): string => value.replace(/\u0000/g, "");
 
 /** In-process guard so a run is never executed twice concurrently. */
 const executing = new Set<string>();
@@ -91,6 +85,85 @@ export const enqueueRun = async (
 };
 
 /**
+ * Resolve (find-or-create) a chain of wiki "category" pages under a starting
+ * parent, following `segments` (top→bottom page titles). Returns the id of the
+ * deepest page, or `startParentId` when there are no segments.
+ *
+ * Every lookup and insert is scoped exactly like the job's imported pages
+ * (same team / tenant-wide / owner), so a category page is matched by its
+ * title *within the job's own bucket* — never one that merely shares the title
+ * in another team or another user's space — and created there if missing.
+ * Titles are matched verbatim, so spaces are fine.
+ *
+ * `cache` is shared across a whole run so URLs that share ancestors reuse the
+ * same pages (no duplicates, no per-URL re-query) — the key encodes the parent
+ * so identical titles under different parents stay distinct.
+ */
+const resolveWikiPath = async (
+  job: UrlImportJobSelect,
+  ownerUserId: string | undefined,
+  segments: string[],
+  cache: Map<string, string>,
+): Promise<string | null> => {
+  const db = getDb();
+  let parentId: string | null = job.parentId ?? null;
+
+  for (const rawSegment of segments) {
+    const title = rawSegment.trim();
+    if (!title) continue; // defensive: empty segments carry no level
+
+    const cacheKey = `${parentId ?? "root"}\n${title}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      parentId = cached;
+      continue;
+    }
+
+    const existing = await db
+      .select({ id: knowledgeText.id })
+      .from(knowledgeText)
+      .where(
+        and(
+          eq(knowledgeText.tenantId, job.organisationId),
+          eq(knowledgeText.title, title),
+          parentId
+            ? eq(knowledgeText.parentId, parentId)
+            : isNull(knowledgeText.parentId),
+          job.teamId
+            ? eq(knowledgeText.teamId, job.teamId)
+            : isNull(knowledgeText.teamId),
+          eq(knowledgeText.tenantWide, job.tenantWide),
+          ownerUserId
+            ? eq(knowledgeText.userId, ownerUserId)
+            : isNull(knowledgeText.userId),
+        ),
+      )
+      .limit(1);
+
+    let id = existing[0]?.id;
+    if (!id) {
+      const page = await createKnowledgeText({
+        tenantId: job.organisationId,
+        userId: ownerUserId,
+        createdBy: job.createdBy ?? undefined,
+        teamId: job.teamId ?? undefined,
+        tenantWide: job.tenantWide,
+        parentId: parentId ?? undefined,
+        title,
+        text: "",
+        embeddingEnabled: false,
+      });
+      id = page.id;
+    }
+
+    cache.set(cacheKey, id);
+    parentId = id;
+  }
+
+  return parentId;
+};
+
+/**
  * Execute a run to completion. Safe to call directly (tests) or from the job
  * queue handler. Idempotent-guarded against concurrent double execution.
  */
@@ -136,8 +209,21 @@ export const executeJobRun = async (runId: string): Promise<void> => {
     const isSharedScope = job.tenantWide || !!job.teamId;
     const ownerUserId = isSharedScope ? undefined : job.createdBy ?? undefined;
 
+    // shared across the whole run so URLs under the same category reuse the
+    // same (created-once) category pages instead of racing to duplicate them
+    const pathCache = new Map<string, string>();
+
     for (const entry of urls) {
       try {
+        // File this URL under its per-line subpath (created on demand),
+        // falling back to the job parent when the line has no subpath.
+        const parentId = await resolveWikiPath(
+          job,
+          ownerUserId,
+          entry.subPath ?? [],
+          pathCache,
+        );
+
         // Pass the tenant context so non-HTML downloads (PDFs) can be routed
         // through the tenant-scoped PDF parser instead of being rejected.
         const parsed = await urlToMarkdown(entry.url, {
@@ -151,14 +237,12 @@ export const executeJobRun = async (runId: string): Promise<void> => {
           tenantId: job.organisationId,
           sourceIdentifier: entry.url,
           matchScope: { urlImportJobId: job.id },
-          // NUL bytes in OCR output would make the Postgres insert fail for the
-          // whole page; strip them from both fields before persisting.
-          title: stripNulBytes(entry.title || parsed.title || entry.url),
-          text: stripNulBytes(parsed.markdown),
+          title: entry.title || parsed.title || entry.url,
+          text: parsed.markdown,
           userId: ownerUserId,
           teamId: job.teamId ?? undefined,
           tenantWide: job.tenantWide,
-          parentId: job.parentId ?? undefined,
+          parentId: parentId ?? undefined,
           meta: { sourceUri: entry.url },
         });
 

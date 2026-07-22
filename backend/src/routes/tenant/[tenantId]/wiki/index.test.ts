@@ -179,6 +179,97 @@ describe("Wiki Routes", () => {
     expect(teamSection?.pages.map((n) => n.title)).toEqual(["Team Notes"]);
   });
 
+  test("Move re-parents and re-orders pages within a section", async () => {
+    await deleteWikiTestPages();
+
+    // three organisation-wide root pages
+    const a = await createKnowledgeText({
+      tenantId: TEST_ORGANISATION_1.id,
+      userId: TEST_ORG1_USER_1.id,
+      tenantWide: true,
+      title: "A",
+    });
+    const b = await createKnowledgeText({
+      tenantId: TEST_ORGANISATION_1.id,
+      userId: TEST_ORG1_USER_1.id,
+      tenantWide: true,
+      title: "B",
+    });
+    const cPage = await createKnowledgeText({
+      tenantId: TEST_ORGANISATION_1.id,
+      userId: TEST_ORG1_USER_1.id,
+      tenantWide: true,
+      title: "C",
+    });
+
+    // reorder roots to C, A, B
+    const reorder = await testFetcher.post(
+      app,
+      `/tenant/${TEST_ORGANISATION_1.id}/wiki/${cPage.id}/move`,
+      user1Token,
+      { parentId: null, orderedIds: [cPage.id, a.id, b.id] }
+    );
+    expect(reorder.status).toBe(200);
+    expect(reorder.jsonResponse?.success).toBe(true);
+
+    let tree: WikiTree = (
+      await testFetcher.get(
+        app,
+        `/tenant/${TEST_ORGANISATION_1.id}/wiki/tree`,
+        user1Token
+      )
+    ).jsonResponse?.data;
+    expect(tree.organisation.map((n) => n.title)).toEqual(["C", "A", "B"]);
+
+    // nest B under A
+    const nest = await testFetcher.post(
+      app,
+      `/tenant/${TEST_ORGANISATION_1.id}/wiki/${b.id}/move`,
+      user1Token,
+      { parentId: a.id, orderedIds: [b.id] }
+    );
+    expect(nest.status).toBe(200);
+
+    tree = (
+      await testFetcher.get(
+        app,
+        `/tenant/${TEST_ORGANISATION_1.id}/wiki/tree`,
+        user1Token
+      )
+    ).jsonResponse?.data;
+    expect(tree.organisation.map((n) => n.title)).toEqual(["C", "A"]);
+    const aNode = tree.organisation.find((n) => n.title === "A");
+    expect(aNode?.children.map((n) => n.title)).toEqual(["B"]);
+  });
+
+  test("Move rejects creating a cycle (page into its own descendant)", async () => {
+    await deleteWikiTestPages();
+
+    const root = await createKnowledgeText({
+      tenantId: TEST_ORGANISATION_1.id,
+      userId: TEST_ORG1_USER_1.id,
+      tenantWide: true,
+      title: "Root",
+    });
+    const child = await createKnowledgeText({
+      tenantId: TEST_ORGANISATION_1.id,
+      userId: TEST_ORG1_USER_1.id,
+      parentId: root.id,
+      tenantWide: true,
+      title: "Child",
+    });
+
+    // moving Root under its own Child must fail
+    const response = await testFetcher.post(
+      app,
+      `/tenant/${TEST_ORGANISATION_1.id}/wiki/${root.id}/move`,
+      user1Token,
+      { parentId: child.id, orderedIds: [root.id] }
+    );
+    expect(response.status).toBe(400);
+    expect(response.jsonResponse?.success).toBe(false);
+  });
+
   test("Pages with an invisible parent appear as section roots", async () => {
     // A tenant-wide page whose parent is a private page of user1:
     // user2 cannot see the parent, so the child must appear as a root

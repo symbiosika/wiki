@@ -61,6 +61,25 @@
       "fetchFailed": "Einladungen konnten nicht geladen werden"
     }
   },
+  "metadata": {
+    "title": "Dokument-Tags",
+    "description": "Lege die Schlüssel-Wert-Tags fest, die jedes Dokument dieser Organisation nutzen kann. Jeder Schlüssel erlaubt entweder Freitext oder eine feste Werteliste.",
+    "key": "Schlüssel",
+    "keyPlaceholder": "z. B. hersteller",
+    "label": "Bezeichnung",
+    "labelPlaceholder": "Anzeige für Nutzer (optional)",
+    "values": "Erlaubte Werte",
+    "valuesPlaceholder": "z.B. Variante A, Variante B",
+    "valuesHint": "Kommagetrennt. Leer lassen, um Freitext zu erlauben.",
+    "addAttribute": "Tag hinzufügen",
+    "remove": "Tag entfernen",
+    "empty": "Noch keine Tags definiert.",
+    "save": "Tags speichern",
+    "saved": "Tags gespeichert",
+    "duplicateKey": "Jeder Tag-Schlüssel muss eindeutig sein.",
+    "loadError": "Dokument-Tags konnten nicht geladen werden",
+    "saveError": "Dokument-Tags konnten nicht gespeichert werden"
+  },
   "errors": {
     "setupFailed": "Organisation konnte nicht angelegt werden",
     "leaveFailed": "Organisation konnte nicht verlassen werden",

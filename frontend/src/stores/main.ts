@@ -8,6 +8,7 @@ import type {
   TenantInvitation,
   TenantMember,
 } from '@/types/usermanagement'
+import type { WikiSearchMode } from '@/types/wiki'
 
 // Types
 interface User {
@@ -35,7 +36,15 @@ interface AppState {
   teams: Team[]
   tenantInvitations: TenantInvitation[]
   isMobile: boolean
+  /** the user's preferred sidebar search mode (server-persisted) */
+  searchMode: WikiSearchMode
 }
+
+/** key under which the search-mode preference lives in `user_settings` */
+const SEARCH_MODE_SETTING_KEY = 'wiki.searchMode'
+const SEARCH_MODES: WikiSearchMode[] = ['hybrid', 'fulltext', 'semantic']
+/** smart hybrid search is the default when the user has no stored choice */
+const DEFAULT_SEARCH_MODE: WikiSearchMode = 'hybrid'
 
 // Helper function for sending events to parent window (if in iframe)
 function sendEventToParent(event: { type: string; data?: any }) {
@@ -60,6 +69,7 @@ export const useApp = defineStore('app', () => {
     tenantInvitations: [],
     isMobile: false,
     isDarkMode: false,
+    searchMode: DEFAULT_SEARCH_MODE,
   })
 
   const checkDarkMode = () => {
@@ -113,6 +123,47 @@ export const useApp = defineStore('app', () => {
     await fetcher.postFormData('/api/v1/user/profile-image', formData)
     // refresh so `profileImageName` (and thus the avatar) reflects the upload
     await getMyUser()
+  }
+
+  // ----- search preference ---------------------------------------------------
+
+  /**
+   * Load the user's preferred search mode from `user_settings`. Best-effort:
+   * the GET returns 404 when nothing is stored yet, in which case we keep the
+   * default. Any failure leaves the (already sensible) default in place.
+   */
+  const loadSearchMode = async () => {
+    try {
+      const setting = await fetcher.get<{ key: string; value?: string }>(
+        `/api/v1/user/settings/${SEARCH_MODE_SETTING_KEY}`,
+      )
+      if (
+        setting.value &&
+        SEARCH_MODES.includes(setting.value as WikiSearchMode)
+      ) {
+        state.value.searchMode = setting.value as WikiSearchMode
+      }
+    } catch {
+      // no preference stored yet (404) → keep the default
+    }
+  }
+
+  /**
+   * Persist the preferred search mode. Applied optimistically so the UI reacts
+   * instantly; rolls back and rethrows if the server rejects the change.
+   */
+  const setSearchMode = async (mode: WikiSearchMode) => {
+    const previous = state.value.searchMode
+    state.value.searchMode = mode
+    try {
+      await fetcher.post(`/api/v1/user/settings/${SEARCH_MODE_SETTING_KEY}`, {
+        value: mode,
+        description: 'Preferred wiki search mode',
+      })
+    } catch (error) {
+      state.value.searchMode = previous
+      throw error
+    }
   }
 
   const getTenants = async () => {
@@ -338,6 +389,8 @@ export const useApp = defineStore('app', () => {
     try {
       await getMyUser()
       await getTenants()
+      // load the search preference alongside the user (best-effort, never throws)
+      await loadSearchMode()
 
       // check if there is at least one tenant
       if (state.value.tenants.length === 0) {
@@ -396,6 +449,8 @@ export const useApp = defineStore('app', () => {
     getMyUser,
     updateMyProfile,
     uploadProfileImage,
+    loadSearchMode,
+    setSearchMode,
     waitForInit,
     setSelectedTenant,
     getTenants,

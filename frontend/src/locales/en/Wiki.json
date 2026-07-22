@@ -9,6 +9,7 @@
   "deletePage": "Delete page",
   "deletePageConfirm": "Delete \"{title}\" and all of its sub pages?",
   "deletePageHeader": "Delete page",
+  "moveError": "Could not move the page",
   "search": "Search…",
   "searchNoResults": "No pages found",
   "emptyState": {
@@ -36,6 +37,9 @@
     "processingHint": "This can take a moment for PDFs and large web pages.",
     "processingHintAi": "AI post-processing can take several minutes for large documents.",
     "submit": "Import",
+    "jobHint": "The import runs in the background. You'll be notified in your inbox when it's ready.",
+    "started": "Import started",
+    "startedDetail": "You'll be notified in your inbox when it's done.",
     "error": "Import failed. Please try again."
   },
   "export": {
@@ -44,6 +48,14 @@
     "exporting": "Preparing PDF…",
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
+  },
+  "info": {
+    "button": "Info",
+    "hint": "Show document details",
+    "created": "Created",
+    "updated": "Last edited",
+    "verified": "Verified",
+    "by": "by {name}"
   },
   "references": {
     "backlinks": "Linked from",
@@ -54,6 +66,8 @@
   },
   "readonly": {
     "readOnly": "Read only",
+    "readOnlyMode": "Read-only mode",
+    "editMode": "Edit mode",
     "editing": "Editing",
     "locked": "Locked",
     "lockedBy": "Being edited by {name}",
@@ -73,6 +87,38 @@
     "team": "Team",
     "organisation": "Organisation"
   },
+  "pageType": {
+    "empty": "Classify",
+    "hint": "Choose the page classification",
+    "values": {
+      "FAQ": "FAQ",
+      "manual": "Manual",
+      "text": "Text",
+      "policy": "Policy",
+      "note": "Note"
+    }
+  },
+  "status": {
+    "empty": "Status",
+    "hint": "Set the page status",
+    "values": {
+      "draft": "Draft",
+      "verified": "Verified",
+      "outdated": "Outdated"
+    }
+  },
+  "facets": {
+    "clear": "Clear"
+  },
+  "attributes": {
+    "button": "Tags",
+    "hint": "Edit document tags",
+    "title": "Document tags",
+    "none": "—",
+    "valuePlaceholder": "Enter a value",
+    "save": "Save",
+    "saveError": "Could not save the tags. Please try again."
+  },
   "logout": "Log out",
   "tenant": "Organisation",
   "manage": "Manage",
@@ -81,5 +127,7 @@
   "goHome": "Go to home",
   "switchTenant": "Switch organisation",
   "collapseSidebar": "Hide sidebar",
-  "expandSidebar": "Show sidebar"
+  "expandSidebar": "Show sidebar",
+  "expandActions": "Show more actions",
+  "collapseActions": "Hide more actions"
 }

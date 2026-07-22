@@ -16,10 +16,10 @@
         :class="m.role === 'user' ? 'justify-end' : 'justify-start'"
       >
         <div
-          class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap sm:max-w-[75%]"
+          class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm sm:max-w-[75%]"
           :class="
             m.role === 'user'
-              ? 'rounded-br-md bg-primary text-primary-contrast'
+              ? 'rounded-br-md bg-primary text-primary-contrast whitespace-pre-wrap'
               : 'rounded-bl-md bg-surface-100 text-surface-800 dark:bg-surface-800 dark:text-surface-100'
           "
         >
@@ -27,7 +27,10 @@
             v-for="(part, partIndex) in m.parts"
             :key="`${m.id}-${part.type}-${partIndex}`"
           >
-            <span v-if="part.type === 'text'">{{ part.text }}</span>
+            <template v-if="part.type === 'text'">
+              <span v-if="m.role === 'user'">{{ part.text }}</span>
+              <MarkdownRenderer v-else :content="part.text" />
+            </template>
           </template>
         </div>
       </div>

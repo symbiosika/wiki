@@ -9,6 +9,7 @@
   "deletePage": "Seite löschen",
   "deletePageConfirm": "\"{title}\" und alle Unterseiten löschen?",
   "deletePageHeader": "Seite löschen",
+  "moveError": "Seite konnte nicht verschoben werden",
   "search": "Suchen…",
   "searchNoResults": "Keine Seiten gefunden",
   "emptyState": {
@@ -36,6 +37,9 @@
     "processingHint": "Bei PDFs und großen Webseiten kann das einen Moment dauern.",
     "processingHintAi": "Die KI-Nachbearbeitung kann bei großen Dokumenten mehrere Minuten dauern.",
     "submit": "Importieren",
+    "jobHint": "Der Import läuft im Hintergrund. Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
+    "started": "Import gestartet",
+    "startedDetail": "Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
     "error": "Import fehlgeschlagen. Bitte erneut versuchen."
   },
   "export": {
@@ -44,6 +48,14 @@
     "exporting": "PDF wird erstellt…",
     "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
     "pageOf": "{current} von {total}"
+  },
+  "info": {
+    "button": "Info",
+    "hint": "Dokumentdetails anzeigen",
+    "created": "Erstellt",
+    "updated": "Zuletzt bearbeitet",
+    "verified": "Geprüft",
+    "by": "von {name}"
   },
   "references": {
     "backlinks": "Verlinkt von",
@@ -54,6 +66,8 @@
   },
   "readonly": {
     "readOnly": "Nur lesen",
+    "readOnlyMode": "Nur-Lesen-Modus",
+    "editMode": "Bearbeitungsmodus",
     "editing": "Bearbeiten",
     "locked": "Gesperrt",
     "lockedBy": "Wird gerade von {name} bearbeitet",
@@ -73,6 +87,38 @@
     "team": "Team",
     "organisation": "Organisation"
   },
+  "pageType": {
+    "empty": "Klassifizieren",
+    "hint": "Klassifizierung der Seite wählen",
+    "values": {
+      "FAQ": "FAQ",
+      "manual": "Handbuch",
+      "text": "Text",
+      "policy": "Richtlinie",
+      "note": "Notiz"
+    }
+  },
+  "status": {
+    "empty": "Status",
+    "hint": "Status der Seite setzen",
+    "values": {
+      "draft": "Entwurf",
+      "verified": "Geprüft",
+      "outdated": "Veraltet"
+    }
+  },
+  "facets": {
+    "clear": "Zurücksetzen"
+  },
+  "attributes": {
+    "button": "Tags",
+    "hint": "Dokument-Tags bearbeiten",
+    "title": "Dokument-Tags",
+    "none": "—",
+    "valuePlaceholder": "Wert eingeben",
+    "save": "Speichern",
+    "saveError": "Tags konnten nicht gespeichert werden. Bitte erneut versuchen."
+  },
   "logout": "Abmelden",
   "tenant": "Organisation",
   "manage": "Verwaltung",
@@ -81,5 +127,7 @@
   "goHome": "Zur Startseite",
   "switchTenant": "Organisation wechseln",
   "collapseSidebar": "Seitenleiste ausblenden",
-  "expandSidebar": "Seitenleiste einblenden"
+  "expandSidebar": "Seitenleiste einblenden",
+  "expandActions": "Weitere Aktionen einblenden",
+  "collapseActions": "Weitere Aktionen ausblenden"
 }

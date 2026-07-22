@@ -1,0 +1,107 @@
+# Production compose file for the Symbiosika Wiki.
+#
+# Runs the pre-built app image from the registry together with a Postgres
+# (pgvector) database. The MCP server is included but commented out — enable it
+# if you deploy the "brain" integration.
+#
+# Usage:
+#   1. Copy .env.prod.example to .env and fill in the values (secrets, DB, SMTP).
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# Images are built and pushed by .github/workflows/build.yml to
+# symbiosika.azurecr.io. Override the tag via IMAGE_TAG (default: latest).
+#
+# NOTE ON LOGS: the app writes its log files to `logs/` relative to its working
+# directory, which is /usr/src/app in the image (see Dockerfile WORKDIR). The
+# `app_logs` volume below persists that directory so logs survive container
+# restarts/redeploys. The main app.log is only written when WRITE_DEBUG_FILES=true.
+name: ${PROJECT_NAME:-wiki}
+
+services:
+  app:
+    image: ${REGISTRY:-symbiosika.azurecr.io}/wiki:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      # --- Logging ---
+      # Enables writing app.log (with rotation, 10 files x 1MB) to the logs/ dir.
+      WRITE_DEBUG_FILES: ${WRITE_DEBUG_FILES:-true}
+      CRON_LOG: ${CRON_LOG:-true}
+
+      # --- URL / CORS ---
+      BASE_URL: ${BASE_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+
+      # --- Database ---
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_CONNECTION_POOL_SIZE: ${POSTGRES_CONNECTION_POOL_SIZE:-10}
+
+      # --- Encryption / JWT ---
+      SECRETS_AES_KEY: ${SECRETS_AES_KEY}
+      SECRETS_AES_IV: ${SECRETS_AES_IV}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+
+      # --- Email (SMTP) ---
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_DEFAULT_SENDER: ${SMTP_DEFAULT_SENDER}
+
+      # --- AI / Transcription (see README) ---
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-mistralai/mistral-large}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    volumes:
+      # >>> This is what persists the log files <<<
+      # - app_logs:/usr/src/app/logs
+      # Alternatively bind-mount to a host directory:
+      # - ./logs/app:/usr/src/app/logs
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Standalone MCP server (see mcp-server/README.md).
+  # Behind the "mcp" profile, so it only starts when explicitly requested:
+  #   docker compose -f docker-compose.prod.yml --profile mcp up -d
+  mcp:
+    image: ${REGISTRY:-symbiosika.azurecr.io}/wiki-mcp:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    profiles:
+      - mcp
+    ports:
+      - "${MCP_PORT:-8787}:8787"
+    environment:
+      MCP_PORT: ${MCP_PORT:-8787}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
+      OAUTH_ISSUER: ${OAUTH_ISSUER}
+      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
+      WIKI_TENANT_ID: ${WIKI_TENANT_ID}
+
+volumes:
+  app_logs:
+    driver: local
+  pg_data:
+    driver: local

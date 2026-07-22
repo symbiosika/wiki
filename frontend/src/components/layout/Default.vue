@@ -63,6 +63,9 @@
       v-model:visible="wiki.state.importDialogOpen"
       :tenant-id="tenantId"
     />
+
+    <!-- mounted once; opened from the "Chat with AI" button above the search -->
+    <WikiAiChat v-if="showSidebar" />
   </div>
 </template>
 
@@ -70,11 +73,13 @@
 import IconPanelLeft from '~icons/mdi/dock-left'
 import ProtocolDialog from '@/components/protocol/ProtocolDialog.vue'
 import WikiImportDialog from '@/components/wiki/WikiImportDialog.vue'
+import WikiAiChat from '@/components/wiki/WikiAiChat.vue'
 
 const route = useRoute()
 const protocol = useProtocol()
 const wiki = useWiki()
 const layout = useLayout()
+const notifications = useNotificationsStore()
 
 // the sidebar needs a tenant context; plain routes (redirect, 404) go without
 const showSidebar = computed(() => Boolean(route.params.tenantId))
@@ -86,4 +91,9 @@ watch(
   () => route.fullPath,
   () => layout.closeSidebar(),
 )
+
+// Poll the user notification queue while the app is open, so job completions
+// (e.g. finished imports) surface in the inbox and the sidebar chip.
+onMounted(() => notifications.startPolling())
+onUnmounted(() => notifications.stopPolling())
 </script>

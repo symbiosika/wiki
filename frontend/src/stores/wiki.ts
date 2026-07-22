@@ -4,14 +4,17 @@ import { blocksAreEqual } from '@/utils/wikiBlocks'
 import type {
   WikiBacklink,
   WikiBlock,
+  WikiKnowledgeConfig,
   WikiOutgoingLink,
   WikiPage,
   WikiRelatedPage,
   WikiScope,
+  WikiSearchMode,
   WikiSearchResult,
   WikiTree,
   WikiTreeNode,
 } from '@/types/wiki'
+import type { Job, KnowledgeIngestResult } from '@/types/notifications'
 
 interface WikiState {
   tree: WikiTree
@@ -24,6 +27,8 @@ interface WikiState {
   saveError: string | null
   /** UI: whether the "import page" dialog is open (mounted once in the layout) */
   importDialogOpen: boolean
+  /** tenant facet vocabularies (page types / statuses); null until loaded */
+  config: WikiKnowledgeConfig | null
 }
 
 /** Options shared by the file and URL import endpoints. */
@@ -37,7 +42,15 @@ export interface WikiImportOptions {
    * post-processing agents these are `agent:<uuid>` names.
    */
   postProcessorNames?: string[]
+  /**
+   * Push a success/error message into the user's notification queue when the
+   * ingest job finishes. Defaults to true so imports surface in the inbox.
+   */
+  notifyOnCompletion?: boolean
 }
+
+/** A knowledge-ingest job returned by the import endpoints. */
+export type IngestJob = Job<KnowledgeIngestResult>
 
 /** Result of an image upload for a wiki page. */
 export interface WikiImageUpload {
@@ -85,10 +98,45 @@ export const useWiki = defineStore('wiki', () => {
     lastSavedAt: null,
     saveError: null,
     importDialogOpen: false,
+    config: null,
   })
 
   const openImportDialog = () => {
     state.value.importDialogOpen = true
+  }
+
+  // ----- config (facet vocabularies) --------------------------------------
+
+  /**
+   * Load the tenant's knowledge config (page-type / status vocabularies) once.
+   * Cached for the session — the vocabularies rarely change and every page
+   * uses the same lists, so we avoid re-fetching on each page switch.
+   */
+  const loadConfig = async (tenantId: string) => {
+    if (state.value.config) return
+    try {
+      state.value.config = await fetcher.get<WikiKnowledgeConfig>(
+        `${api(tenantId)}/knowledge/texts/config`,
+      )
+    } catch {
+      // fall back to empty vocabularies — the facet selectors simply stay empty
+      state.value.config = {
+        autoSummaries: true,
+        pageTypes: [],
+        statuses: [],
+        attributes: [],
+      }
+    }
+  }
+
+  /**
+   * Force-refresh the cached tenant knowledge config. Used after an admin edits
+   * the per-organisation metadata definitions so the open document picks up the
+   * new attribute keys without a full reload.
+   */
+  const reloadConfig = async (tenantId: string) => {
+    state.value.config = null
+    await loadConfig(tenantId)
   }
 
   // ----- tree -------------------------------------------------------------
@@ -175,13 +223,20 @@ export const useWiki = defineStore('wiki', () => {
     return page
   }
 
-  /** Import an uploaded file (markdown, html, txt, PDF, …) as a new page. */
+  /**
+   * Import an uploaded file (markdown, html, txt, PDF, …) as a new page.
+   *
+   * Ingestion now runs on the framework job queue: the endpoint enqueues a
+   * `knowledge:ingest` job and returns it immediately (the page does not exist
+   * yet). Completion is surfaced via the user notification queue (opt-in
+   * `notifyOnCompletion`) rather than by waiting for the finished page.
+   */
   const importFile = async (
     tenantId: string,
     scope: WikiScope,
     file: File,
     options: WikiImportOptions = {},
-  ): Promise<WikiPage> => {
+  ): Promise<IngestJob> => {
     const { teamId, tenantWide } = scopeFields(scope)
     const form = new FormData()
     form.append('file', file)
@@ -190,28 +245,35 @@ export const useWiki = defineStore('wiki', () => {
     if (teamId) form.append('teamId', teamId)
     if (tenantWide) form.append('tenantWide', 'true')
     form.append('splitIntoBlocks', String(options.splitIntoBlocks ?? true))
+    form.append(
+      'notifyOnCompletion',
+      String(options.notifyOnCompletion ?? true),
+    )
     // the framework file route parses usePostProcessors as a comma-separated list
     if (options.postProcessorNames && options.postProcessorNames.length > 0) {
       form.append('usePostProcessors', options.postProcessorNames.join(','))
     }
 
-    const response = await fetcher.postFormData<{ knowledgeText: WikiPage }>(
+    // Returns the created ingest job; the tree is refreshed once the job
+    // finishes (see the notifications store), not here.
+    return await fetcher.postFormData<IngestJob>(
       `${api(tenantId)}/knowledge/texts/import`,
       form,
     )
-    await loadTree(tenantId)
-    return response.knowledgeText
   }
 
-  /** Import a web page (Readability + Turndown) as a new page. */
+  /**
+   * Import a web page (Readability + Turndown) as a new page. Like
+   * {@link importFile}, this enqueues a `knowledge:ingest` job and returns it.
+   */
   const importUrl = async (
     tenantId: string,
     scope: WikiScope,
     url: string,
     options: WikiImportOptions = {},
-  ): Promise<WikiPage> => {
+  ): Promise<IngestJob> => {
     const { teamId, tenantWide } = scopeFields(scope)
-    const response = await fetcher.post<{ knowledgeText: WikiPage }>(
+    return await fetcher.post<IngestJob>(
       `${api(tenantId)}/knowledge/texts/import-url`,
       {
         url,
@@ -220,6 +282,7 @@ export const useWiki = defineStore('wiki', () => {
         teamId,
         tenantWide,
         splitIntoBlocks: options.splitIntoBlocks ?? true,
+        notifyOnCompletion: options.notifyOnCompletion ?? true,
         // the framework URL route parses usePostProcessors as a string array
         usePostProcessors:
           options.postProcessorNames && options.postProcessorNames.length > 0
@@ -227,8 +290,6 @@ export const useWiki = defineStore('wiki', () => {
             : undefined,
       },
     )
-    await loadTree(tenantId)
-    return response.knowledgeText
   }
 
   /** Upload an image for a page; returns its auth-protected path + markdown. */
@@ -262,6 +323,89 @@ export const useWiki = defineStore('wiki', () => {
     } catch (error) {
       state.value.saveError =
         error instanceof Error ? error.message : 'Failed to save title'
+      throw error
+    } finally {
+      state.value.saving = false
+    }
+  }
+
+  /**
+   * Update a page's controlled facets (classification / status). The backend
+   * validates the values against the tenant vocabulary. When the status moves
+   * to (or away from) "verified" we also stamp verifiedAt/verifiedBy so the
+   * trust signal carries who confirmed it and when.
+   */
+  const savePageMeta = async (
+    tenantId: string,
+    pageId: string,
+    patch: { pageType?: string | null; status?: string | null },
+    verifiedByUserId?: string,
+  ) => {
+    const body: Record<string, unknown> = { tenantId, ...patch }
+    if ('status' in patch) {
+      if (patch.status === 'verified') {
+        body.verifiedAt = new Date().toISOString()
+        body.verifiedBy = verifiedByUserId ?? null
+      } else {
+        // leaving the verified state clears the verification stamp
+        body.verifiedAt = null
+        body.verifiedBy = null
+      }
+    }
+
+    state.value.saving = true
+    state.value.saveError = null
+    try {
+      const updated = await fetcher.put<WikiPage>(
+        `${api(tenantId)}/knowledge/texts/${pageId}`,
+        body,
+      )
+      if (state.value.page?.id === pageId) {
+        if ('pageType' in patch) state.value.page.pageType = updated.pageType
+        if ('status' in patch) {
+          state.value.page.status = updated.status
+          state.value.page.verifiedAt = updated.verifiedAt
+          state.value.page.verifiedBy = updated.verifiedBy
+        }
+      }
+      state.value.lastSavedAt = new Date().toISOString()
+    } catch (error) {
+      state.value.saveError =
+        error instanceof Error ? error.message : 'Failed to save page metadata'
+      throw error
+    } finally {
+      state.value.saving = false
+    }
+  }
+
+  /**
+   * Replace a page's per-organisation key-value metadata. The backend validates
+   * the keys/values against the tenant knowledge config (unknown keys or values
+   * outside a key's closed list are rejected). Empty-string values are dropped
+   * so clearing a field removes the key entirely.
+   */
+  const saveAttributes = async (
+    tenantId: string,
+    pageId: string,
+    attributes: Record<string, string>,
+  ) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(attributes).filter(([, value]) => value !== ''),
+    )
+    state.value.saving = true
+    state.value.saveError = null
+    try {
+      const updated = await fetcher.put<WikiPage>(
+        `${api(tenantId)}/knowledge/texts/${pageId}`,
+        { tenantId, attributes: cleaned },
+      )
+      if (state.value.page?.id === pageId) {
+        state.value.page.attributes = updated.attributes ?? {}
+      }
+      state.value.lastSavedAt = new Date().toISOString()
+    } catch (error) {
+      state.value.saveError =
+        error instanceof Error ? error.message : 'Failed to save attributes'
       throw error
     } finally {
       state.value.saving = false
@@ -302,15 +446,129 @@ export const useWiki = defineStore('wiki', () => {
     await loadTree(tenantId)
   }
 
+  // ----- move (drag & drop reordering / re-parenting) ---------------------
+
+  /** The section a node lives in; moves are only allowed within one section. */
+  const scopeKey = (node: WikiTreeNode): string =>
+    node.teamId ? `team:${node.teamId}` : node.tenantWide ? 'org' : 'personal'
+
+  /** Locate a node in the reactive tree: its containing array, parent and index. */
+  interface TreeLocation {
+    siblings: WikiTreeNode[]
+    parent: WikiTreeNode | null
+    index: number
+  }
+  const locate = (id: string): TreeLocation | null => {
+    const search = (
+      siblings: WikiTreeNode[],
+      parent: WikiTreeNode | null,
+    ): TreeLocation | null => {
+      for (let i = 0; i < siblings.length; i++) {
+        const node = siblings[i]!
+        if (node.id === id) return { siblings, parent, index: i }
+        const hit = search(node.children, node)
+        if (hit) return hit
+      }
+      return null
+    }
+    const { personal, teams, organisation } = state.value.tree
+    return (
+      search(personal, null) ??
+      search(organisation, null) ??
+      teams.reduce<TreeLocation | null>(
+        (acc, team) => acc ?? search(team.pages, null),
+        null,
+      )
+    )
+  }
+
+  /** True when `ancestorId` is `node` itself or one of its descendants. */
+  const containsNode = (node: WikiTreeNode, id: string): boolean => {
+    if (node.id === id) return true
+    return node.children.some((child) => containsNode(child, id))
+  }
+
+  /**
+   * Move a page within its sidebar section via drag & drop.
+   *
+   * `mode` describes the drop relative to `targetId`:
+   *   - `before` / `after` — become a sibling before/after the target
+   *   - `inside`           — become the target's (last) child
+   *
+   * The tree is updated optimistically and the new order persisted; on failure
+   * we reload from the server to resync. Returns false when the move is invalid
+   * (dropping onto itself, into its own subtree, or across sections).
+   */
+  const movePage = async (
+    tenantId: string,
+    dragId: string,
+    targetId: string,
+    mode: 'before' | 'inside' | 'after',
+  ): Promise<boolean> => {
+    if (dragId === targetId) return false
+
+    const dragLoc = locate(dragId)
+    const targetLoc = locate(targetId)
+    if (!dragLoc || !targetLoc) return false
+
+    const dragNode = dragLoc.siblings[dragLoc.index]!
+    const targetNode = targetLoc.siblings[targetLoc.index]!
+
+    // no cross-section moves, and never drop a page into its own subtree
+    if (scopeKey(dragNode) !== scopeKey(targetNode)) return false
+    if (containsNode(dragNode, targetId)) return false
+
+    // resolve the destination sibling array, new parent and insert index
+    let destSiblings: WikiTreeNode[]
+    let newParentId: string | null
+    let insertIndex: number
+    if (mode === 'inside') {
+      destSiblings = targetNode.children
+      newParentId = targetNode.id
+      insertIndex = destSiblings.length
+    } else {
+      destSiblings = targetLoc.siblings
+      newParentId = targetNode.parentId
+      insertIndex = targetLoc.index + (mode === 'after' ? 1 : 0)
+    }
+
+    const originalParentId = dragNode.parentId
+
+    // --- optimistic tree update ---
+    dragLoc.siblings.splice(dragLoc.index, 1)
+    // removing an earlier item from the same array shifts the insert point
+    if (dragLoc.siblings === destSiblings && dragLoc.index < insertIndex) {
+      insertIndex--
+    }
+    destSiblings.splice(insertIndex, 0, dragNode)
+    dragNode.parentId = newParentId
+
+    const orderedIds = destSiblings.map((n) => n.id)
+
+    try {
+      await fetcher.post(`${api(tenantId)}/wiki/${dragId}/move`, {
+        parentId: newParentId,
+        orderedIds,
+      })
+      return true
+    } catch (error) {
+      // resync from the server so the UI never drifts from persisted state
+      dragNode.parentId = originalParentId
+      await loadTree(tenantId)
+      throw error
+    }
+  }
+
   // ----- search -------------------------------------------------------------
 
   const search = async (
     tenantId: string,
     query: string,
+    mode: WikiSearchMode = 'hybrid',
   ): Promise<WikiSearchResult[]> => {
     if (!query.trim()) return []
     return await fetcher.get<WikiSearchResult[]>(
-      `${api(tenantId)}/knowledge/texts/search?q=${encodeURIComponent(query)}&mode=fulltext`,
+      `${api(tenantId)}/knowledge/texts/search?q=${encodeURIComponent(query)}&mode=${mode}`,
     )
   }
 
@@ -346,6 +604,8 @@ export const useWiki = defineStore('wiki', () => {
   return {
     state,
     openImportDialog,
+    loadConfig,
+    reloadConfig,
     loadTree,
     findTreeNode,
     loadPage,
@@ -355,8 +615,11 @@ export const useWiki = defineStore('wiki', () => {
     importUrl,
     uploadImage,
     saveTitle,
+    savePageMeta,
+    saveAttributes,
     saveBlocks,
     deletePage,
+    movePage,
     search,
     getLinks,
     getBacklinks,

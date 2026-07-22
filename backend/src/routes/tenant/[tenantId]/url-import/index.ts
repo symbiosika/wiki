@@ -73,6 +73,8 @@ const urlsBody = v.object({
     v.object({
       url: v.pipe(v.string(), v.url()),
       title: v.optional(v.nullable(v.string())),
+      /** optional wiki subpath (category page titles, top→bottom) */
+      subPath: v.optional(v.nullable(v.array(v.string()))),
     }),
   ),
 });

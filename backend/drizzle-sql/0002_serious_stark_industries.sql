@@ -1,0 +1,1 @@
+ALTER TABLE "app_url_import_job_urls" ADD COLUMN "sub_path" jsonb DEFAULT '[]'::jsonb NOT NULL;

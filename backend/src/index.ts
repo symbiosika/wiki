@@ -9,11 +9,14 @@ import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-pro
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
 import { websocket } from "./lib/ws/bun-ws";
+import * as emailTemplates from "./lib/email-templates";
 
 const server = defineServer({
   port: 3000,
   jwtExpiresAfter: 60 * 60 * 24 * 30, // 30 days
-  appName: "Symbiosika Wiki",
+  // Display name of the app (used in emails, OAuth metadata, …). Override
+  // with the APP_NAME env var, e.g. APP_NAME=Wiki for shorter email names.
+  appName: process.env.APP_NAME ?? "Symbiosika Wiki",
   basePath: "/api/v1",
   loginUrl: "/login.html",
   magicLoginVerifyUrl: "/magic-login-verify.html",
@@ -47,6 +50,19 @@ const server = defineServer({
   },
   customDbSchema: {
     ...appDbSchema,
+  },
+  // Clean, minimal transactional emails (see ./lib/email-templates). These
+  // override the framework defaults: centred logo, one heading, one button,
+  // no coloured background. Kept bilingual (German first, English below).
+  emailTemplates: {
+    magicLink: emailTemplates.magicLink,
+    emailLoginCode: emailTemplates.emailLoginCode,
+    verifyEmail: emailTemplates.verifyEmail,
+    resetPassword: emailTemplates.resetPassword,
+    resetPasswordWelcome: emailTemplates.resetPasswordWelcome,
+    inviteToOrganization: emailTemplates.inviteToOrganization,
+    inviteToOrganizationWhenUserExists:
+      emailTemplates.inviteToOrganizationWhenUserExists,
   },
   // Resolve tenant-managed post-processing agents named `agent:<uuid>` on
   // import. A single resolver keeps them out of the global registry (no

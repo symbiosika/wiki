@@ -48,8 +48,7 @@ const router = createRouter({
         {
           path: 'tenant/:tenantId/manage/post-processing-agents',
           name: 'PostProcessingAgents',
-          component: () =>
-            import('../views/manage/post-processing-agents.vue'),
+          component: () => import('../views/manage/post-processing-agents.vue'),
         },
         {
           path: 'tenant/:tenantId/manage/oauth-apps',
@@ -65,6 +64,11 @@ const router = createRouter({
           path: 'tenant/:tenantId/profile',
           name: 'Profile',
           component: () => import('../views/profile.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/notifications',
+          name: 'Notifications',
+          component: () => import('../views/notifications/index.vue'),
         },
         {
           path: 'tenant/:tenantId/jobs',

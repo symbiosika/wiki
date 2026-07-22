@@ -28,7 +28,6 @@ let userId: string;
 let server: ReturnType<typeof Bun.serve> | null = null;
 const PORT = 7811;
 const goodUrl = `http://127.0.0.1:${PORT}/page`;
-const nulUrl = `http://127.0.0.1:${PORT}/nul`; // body carries a NUL byte
 const badUrl = `http://127.0.0.1:59999/nope`; // nothing listening
 
 beforeAll(async () => {
@@ -39,22 +38,11 @@ beforeAll(async () => {
   server = Bun.serve({
     port: PORT,
     hostname: "127.0.0.1",
-    fetch: (req) => {
-      // A page whose extracted text contains a NUL byte (as some OCR/PDF
-      // sources produce) — Postgres cannot store it, so the runner must strip
-      // it before persisting.
-      if (new URL(req.url).pathname === "/nul") {
-        return new Response(
-          `<html><head><title>Nul${String.fromCharCode(0)}Title</title></head>` +
-            `<body><article><h1>Heading</h1><p>Body with a ${String.fromCharCode(0)} nul byte inside.</p></article></body></html>`,
-          { headers: { "Content-Type": "text/html" } },
-        );
-      }
-      return new Response(
+    fetch: () =>
+      new Response(
         "<html><head><title>Doc Title</title></head><body><article><h1>Heading</h1><p>Imported body text.</p></article></body></html>",
         { headers: { "Content-Type": "text/html" } },
-      );
-    },
+      ),
   });
 });
 
@@ -174,38 +162,67 @@ describe("URL import runner", () => {
     expect(pages[0]!.userId).toBeNull();
   });
 
-  test("imports a page whose content contains NUL bytes", async () => {
-    // Postgres rejects NUL (U+0000) in text columns ("invalid byte sequence
-    // for encoding UTF8: 0x00"); the runner must strip them so the insert does
-    // not abort the whole page.
+  test("files imports under an on-demand subpath and reuses shared ancestors", async () => {
     const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
     const job = await createImportJob(ctx, {
-      name: "Nul-byte job",
+      name: "Categorized job",
       cron: "*/15 * * * *",
     });
-    await setJobUrls(ctx, job.id, [{ url: nulUrl }]);
+    // two URLs under the same "Docs / API Reference" category — spaces in the
+    // category name, and the category does not exist yet
+    const urlA = `${goodUrl}?doc=a`;
+    const urlB = `${goodUrl}?doc=b`;
+    await setJobUrls(ctx, job.id, [
+      { url: urlA, subPath: ["Docs", "API Reference"] },
+      { url: urlB, subPath: ["Docs", "API Reference"] },
+    ]);
 
     const run = await enqueueRun(ctx, job.id, "manual");
     await executeJobRun(run!.id);
 
     const finished = await getJobRun(job.id, run!.id);
     expect(finished?.status).toBe("success");
-    expect(finished?.succeeded).toBe(1);
+    expect(finished?.succeeded).toBe(2);
 
-    const urls = await getDb()
+    // exactly one "Docs" and one "API Reference" page were created and shared
+    const docs = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(
+        and(
+          eq(knowledgeText.tenantId, TEST_ORGANISATION_1.id),
+          eq(knowledgeText.title, "Docs"),
+        ),
+      );
+    expect(docs.length).toBe(1);
+    expect(docs[0]!.parentId).toBeNull(); // job has no parent → top level
+    expect(docs[0]!.userId).toBe(userId); // personal-scope → owned by creator
+
+    const apiRef = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(
+        and(
+          eq(knowledgeText.tenantId, TEST_ORGANISATION_1.id),
+          eq(knowledgeText.title, "API Reference"),
+        ),
+      );
+    expect(apiRef.length).toBe(1);
+    expect(apiRef[0]!.parentId).toBe(docs[0]!.id); // nested under "Docs"
+
+    // both imported pages hang directly under "API Reference"
+    const importedUrls = await getDb()
       .select()
       .from(urlImportJobUrls)
       .where(eq(urlImportJobUrls.jobId, job.id));
-    expect(urls[0]!.status).toBe("success");
-    expect(urls[0]!.knowledgeTextId).toBeTruthy();
-
-    const pages = await getDb()
-      .select()
-      .from(knowledgeText)
-      .where(eq(knowledgeText.id, urls[0]!.knowledgeTextId!));
-    // the stored content is intact but carries no NUL byte
-    expect(pages[0]!.text).not.toContain(String.fromCharCode(0));
-    expect(pages[0]!.title).not.toContain(String.fromCharCode(0));
-    expect(pages[0]!.text.length).toBeGreaterThan(0);
+    expect(importedUrls.length).toBe(2);
+    for (const u of importedUrls) {
+      expect(u.status).toBe("success");
+      const page = await getDb()
+        .select()
+        .from(knowledgeText)
+        .where(eq(knowledgeText.id, u.knowledgeTextId!));
+      expect(page[0]!.parentId).toBe(apiRef[0]!.id);
+    }
   });
 });

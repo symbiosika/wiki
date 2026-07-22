@@ -1,8 +1,49 @@
 {
   "title": "AI Chat",
-  "subtitle": "Chat with Mistral Large",
+  "subtitle": "Chat with the AI",
+  "chatWithAi": "Chat with AI",
+  "wikiSubtitle": "Ask the wiki knowledge base",
   "noMessages": "Start a conversation...",
+  "emptyTitle": "Ask the AI about your wiki",
+  "emptyHint": "Ask a question — the AI searches the wiki and answers with sources.",
   "inputPlaceholder": "Type your message...",
   "send": "Send",
-  "openChat": "Open Chat"
+  "stop": "Stop",
+  "close": "Close",
+  "clear": "Clear conversation",
+  "openChat": "Open Chat",
+  "error": "Something went wrong. Please try again.",
+  "toolInput": "Input",
+  "toolOutput": "Result",
+  "toolError": "Error",
+  "mode": {
+    "read": "Read-only",
+    "edit": "Editing",
+    "readTitle": "Read-only mode — switch to editing",
+    "editTitle": "Editing allowed — switch back to read-only"
+  },
+  "config": {
+    "title": "Chat agent",
+    "settings": "Agent settings",
+    "settingsTitle": "Adjust system prompt",
+    "systemPrompt": "System prompt",
+    "systemPromptHint": "Extra instructions for this organisation's chat agent. Appended to the assistant's base instructions and applied for all members.",
+    "placeholder": "e.g. Always answer formally and point users to the guidelines page …",
+    "empty": "No custom system prompt set. The assistant uses its base instructions only.",
+    "charCount": "{count} / {max} characters",
+    "save": "Save",
+    "saved": "System prompt saved.",
+    "loadError": "Failed to load the system prompt.",
+    "saveError": "Failed to save the system prompt."
+  },
+  "tools": {
+    "search_wiki": "Search the wiki",
+    "list_wiki_pages": "List pages",
+    "read_wiki_page": "Read page",
+    "get_related_wiki_pages": "Find related pages",
+    "create_wiki_page": "Create page",
+    "edit_wiki_page_content": "Edit page content",
+    "update_wiki_page": "Update page",
+    "delete_wiki_page": "Delete page"
+  }
 }

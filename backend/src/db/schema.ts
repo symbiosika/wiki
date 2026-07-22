@@ -88,6 +88,16 @@ export const urlImportJobUrls = pgBaseTable(
     url: text("url").notNull(),
     /** optional title override (otherwise the parsed page title is used) */
     title: text("title"),
+    /**
+     * Optional wiki subpath the imported page is filed under, relative to the
+     * job's parent page. Each string is one level's page title (top→bottom);
+     * `[]` means the page lands directly under the job parent. The category
+     * pages are created on demand during a run (see runner.ts).
+     */
+    subPath: jsonb("sub_path")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     sortOrder: integer("sort_order").notNull().default(0),
     status: text("status").notNull().default("pending"),
     lastError: text("last_error"),

@@ -45,6 +45,18 @@
         <CronField v-model="settings.cron" />
         <div class="flex flex-col gap-1">
           <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Jobs.urlImport.scope') }}
+          </label>
+          <Select
+            v-model="settings.scope"
+            :options="scopeOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
             {{ $t('Jobs.urlImport.parentPage') }}
           </label>
           <Select
@@ -128,6 +140,14 @@
                 class="truncate text-xs text-surface-400 dark:text-surface-500"
               >
                 {{ u.url }}
+              </div>
+              <div
+                v-if="u.subPath && u.subPath.length"
+                class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-500 dark:text-surface-400"
+                :title="u.subPath.join(' / ')"
+              >
+                <IconFolder class="shrink-0" />
+                <span class="truncate">{{ u.subPath.join(' / ') }}</span>
               </div>
               <div
                 v-if="u.status === 'error' && u.lastError"
@@ -283,12 +303,23 @@
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import IconPlay from '~icons/mdi/play'
+import IconFolder from '~icons/mdi/folder-outline'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import CronField from '@/components/jobs/CronField.vue'
 import { useUrlImportJobs } from '@/stores/urlImportJobs'
 import { useWiki } from '@/stores/wiki'
-import { pageOptionsForScope, scopeFromFlags } from '@/utils/wikiTreeOptions'
+import {
+  pageOptionsForScope,
+  scopeFromFlags,
+  flagsFromScope,
+  buildScopeOptions,
+} from '@/utils/wikiTreeOptions'
 import { FetcherError } from '@/utils/fetcher'
+import {
+  parseUrlLines,
+  urlLinesToText,
+  type ParsedUrlLine,
+} from '@/utils/urlImportLines'
 import type {
   UrlImportJob,
   UrlImportJobUrl,
@@ -303,6 +334,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const store = useUrlImportJobs()
 const wiki = useWiki()
+const app = useApp()
 
 const tenantId = computed(() => String(route.params.tenantId))
 const jobId = computed(() => String(route.params.jobId))
@@ -317,15 +349,22 @@ const settings = ref<{
   name: string
   cron: string
   enabled: boolean
+  scope: string
   parentId: string | null
-}>({ name: '', cron: '', enabled: true, parentId: null })
+}>({ name: '', cron: '', enabled: true, scope: 'organisation', parentId: null })
 const urlText = ref('')
 
-// parent-page options within the job's own scope (team / organisation / personal)
+const scopeOptions = computed(() =>
+  buildScopeOptions(app.state.teams, {
+    organisation: t('Wiki.scope.organisation'),
+    personal: t('Wiki.scope.personal'),
+    team: t('Wiki.scope.team'),
+  }),
+)
+
+// parent-page options within the currently selected scope
 const parentOptions = computed(() =>
-  job.value
-    ? pageOptionsForScope(wiki.state.tree, scopeFromFlags(job.value))
-    : [],
+  pageOptionsForScope(wiki.state.tree, settings.value.scope),
 )
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
@@ -350,25 +389,14 @@ const runStatusDot = (status: UrlImportRunStatus) => {
   }
 }
 
-/** Serialize a URL row to a "url" or "url | title" editor line. */
+/** Serialize the saved URL rows into editor lines. */
 const urlsToText = (list: UrlImportJobUrl[]) =>
-  list.map((u) => (u.title ? `${u.url} | ${u.title}` : u.url)).join('\n')
+  urlLinesToText(
+    list.map((u) => ({ url: u.url, title: u.title, subPath: u.subPath })),
+  )
 
-/** Parse editor lines back into {url, title} entries. */
-const parseUrlText = (text: string): { url: string; title?: string | null }[] =>
-  text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const sep = line.indexOf('|')
-      if (sep === -1) return { url: line }
-      return {
-        url: line.slice(0, sep).trim(),
-        title: line.slice(sep + 1).trim() || null,
-      }
-    })
-    .filter((entry) => entry.url.length > 0)
+/** Parse editor lines back into structured {url, title, subPath} entries. */
+const parseUrlText = (text: string): ParsedUrlLine[] => parseUrlLines(text)
 
 const settingsChanged = computed(
   () =>
@@ -376,6 +404,7 @@ const settingsChanged = computed(
     (settings.value.name.trim() !== job.value.name ||
       settings.value.cron.trim() !== job.value.cron ||
       settings.value.enabled !== job.value.enabled ||
+      settings.value.scope !== scopeFromFlags(job.value) ||
       (settings.value.parentId ?? null) !== job.value.parentId),
 )
 
@@ -389,21 +418,38 @@ const applyDetail = (detail: {
   job.value = detail.job
   urls.value = detail.urls
   runs.value = detail.runs
+  // guard the scope watcher so loading a job doesn't wipe its saved parent page
+  applyingDetail = true
   settings.value = {
     name: detail.job.name,
     cron: detail.job.cron,
     enabled: detail.job.enabled,
+    scope: scopeFromFlags(detail.job),
     parentId: detail.job.parentId,
   }
   urlText.value = urlsToText(detail.urls)
+  nextTick(() => {
+    applyingDetail = false
+  })
 }
+
+// the chosen parent must live in the chosen scope — reset it when the user
+// switches scope, but not while a freshly loaded job is being applied
+let applyingDetail = false
+watch(
+  () => settings.value.scope,
+  () => {
+    if (!applyingDetail) settings.value.parentId = null
+  },
+)
 
 const reload = async () => {
   loading.value = true
   loadError.value = false
   try {
-    // the wiki tree feeds the parent-page picker
+    // the wiki tree feeds the parent-page picker; teams feed the scope picker
     wiki.loadTree(tenantId.value).catch(() => {})
+    app.getTeams().catch(() => {})
     applyDetail(await store.getJob(tenantId.value, jobId.value))
   } catch {
     loadError.value = true
@@ -429,10 +475,13 @@ const savingSettings = ref(false)
 const saveSettings = async () => {
   savingSettings.value = true
   try {
+    const { teamId, tenantWide } = flagsFromScope(settings.value.scope)
     await store.updateJob(tenantId.value, jobId.value, {
       name: settings.value.name.trim(),
       cron: settings.value.cron.trim(),
       enabled: settings.value.enabled,
+      teamId,
+      tenantWide,
       parentId: settings.value.parentId ?? null,
     })
     await reload()

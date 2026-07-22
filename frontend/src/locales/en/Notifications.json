@@ -1,0 +1,14 @@
+{
+  "menu": "Inbox",
+  "title": "Inbox",
+  "subtitle": "Finished imports and background jobs land here. Check them off when you're done.",
+  "empty": "You're all caught up — nothing to check off.",
+  "confirmAll": "Mark all as read",
+  "markRead": "Mark as read",
+  "open": "Open page",
+  "openError": "Could not open the imported page.",
+  "ingest": {
+    "success": "Import finished",
+    "failed": "Import failed"
+  }
+}
