@@ -310,10 +310,16 @@ export const useWiki = defineStore('wiki', () => {
     state.value.saving = true
     state.value.saveError = null
     try {
-      await fetcher.put(`${api(tenantId)}/knowledge/texts/${pageId}`, {
-        tenantId,
-        title,
-      })
+      // Title edits are debounced per keystroke; coalesceHistory=true tells the
+      // backend to collapse these rapid autosaves into a single revision
+      // instead of writing one per save.
+      await fetcher.put(
+        `${api(tenantId)}/knowledge/texts/${pageId}?coalesceHistory=true`,
+        {
+          tenantId,
+          title,
+        },
+      )
       if (state.value.page?.id === pageId) {
         state.value.page.title = title
       }
