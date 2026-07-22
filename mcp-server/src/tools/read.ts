@@ -12,6 +12,7 @@ import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
 import { callApi, tenantPath } from "../app-api.ts";
 import {
+  annotateEmbeddedImages,
   pageMetadata,
   pageVersion,
   slimBatchRows,
@@ -38,6 +39,7 @@ export function registerReadTools(mcp: any): void {
       callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        { transform: annotateEmbeddedImages },
       ),
   );
 
