@@ -167,6 +167,18 @@
           <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
         </button>
         <button
+          v-if="editable"
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :title="$t('Editor.markdown.buttonHint')"
+          @click="markdownDialogOpen = true"
+        >
+          <IconLanguageMarkdown class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{
+            $t('Editor.markdown.button')
+          }}</span>
+        </button>
+        <button
           type="button"
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
           :title="$t('Wiki.export.title')"
@@ -253,6 +265,12 @@
         :tenant-id="tenantId"
         :entry-id="page.id"
         @applied="onAssistantApplied"
+      />
+
+      <!-- manual "insert markdown" dialog, opened by the Markdown chip -->
+      <MarkdownPasteDialog
+        v-model:visible="markdownDialogOpen"
+        @insert="onInsertMarkdown"
       />
 
       <!-- facet choosers, opened by the chips in the meta bar -->
@@ -401,7 +419,9 @@ import IconCheckCircle from '~icons/mdi/check-circle-outline'
 import IconAlertCircle from '~icons/mdi/alert-circle-outline'
 import IconDraft from '~icons/mdi/file-document-edit-outline'
 import { useToast } from 'primevue/usetoast'
+import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
+import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
@@ -437,6 +457,7 @@ const titleRef = ref<HTMLTextAreaElement | null>(null)
 const editorRef = ref<{
   flush: () => void
   getBlocks: () => WikiBlock[]
+  insertMarkdown: (markdown: string) => void
 } | null>(null)
 const exporting = ref(false)
 // bumped to remount the editor after the assistant edits the page server-side
@@ -464,6 +485,17 @@ watch(lockedByOther, (locked) => {
 watch(editable, (canEdit) => {
   if (!canEdit && assistant.open) assistant.closePanel()
 })
+
+// ----- markdown paste --------------------------------------------------------
+
+// Pasting raw markdown into the editor is auto-detected (see BlockEditor's
+// handlePaste). This dialog is the explicit fallback: paste markdown, preview
+// it, and insert it as formatted content at the cursor.
+const markdownDialogOpen = ref(false)
+
+const onInsertMarkdown = (markdown: string) => {
+  editorRef.value?.insertMarkdown(markdown)
+}
 
 // ----- PDF export -----------------------------------------------------------
 

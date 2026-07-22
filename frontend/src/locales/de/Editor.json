@@ -44,5 +44,14 @@
     "alignCenter": "Zentriert",
     "alignRight": "Rechtsbündig"
   },
-  "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen."
+  "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
+  "markdown": {
+    "button": "Markdown",
+    "buttonHint": "Markdown einfügen (eingefügtes Markdown wird auch automatisch erkannt)",
+    "title": "Markdown einfügen",
+    "hint": "Markdown hier einfügen – es wird in formatierten Inhalt umgewandelt und an der Cursorposition eingefügt.",
+    "placeholder": "# Überschrift\n\n- Listenpunkt\n- Noch ein Punkt\n\n**Fett** und `Code`…",
+    "preview": "Vorschau",
+    "insert": "Einfügen"
+  }
 }

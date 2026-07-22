@@ -44,5 +44,14 @@
     "alignCenter": "Center",
     "alignRight": "Align right"
   },
-  "imageUploadError": "Image upload failed. Please try again."
+  "imageUploadError": "Image upload failed. Please try again.",
+  "markdown": {
+    "button": "Markdown",
+    "buttonHint": "Insert Markdown (pasting Markdown is also auto-detected)",
+    "title": "Insert Markdown",
+    "hint": "Paste Markdown here — it will be converted to formatted content and inserted at the cursor.",
+    "placeholder": "# Heading\n\n- List item\n- Another item\n\n**Bold** and `code`…",
+    "preview": "Preview",
+    "insert": "Insert"
+  }
 }
