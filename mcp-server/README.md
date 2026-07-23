@@ -14,6 +14,10 @@ authorization server. This server validates incoming bearer tokens at the AS
 check). Calls to the app API then run **in the name of the user** — with exactly
 that user's permissions.
 
+Hosts that **cannot** run the interactive OAuth2 flow (ElevenLabs, n8n, Zapier,
+…) authenticate instead with a long-lived **API token** sent as a static header
+— see [Connecting a non-interactive client](#connecting-a-non-interactive-client-elevenlabs-n8n-).
+
 Everything sits on top of the framework's agent-friendly `knowledge/texts` API
 (pages with a `parentId` hierarchy, block content, hybrid search, wikilinks,
 version history and file-like read/edit endpoints).
@@ -131,6 +135,51 @@ To connect a chat client, the tenant admin registers an OAuth client (with the
 `knowledge:read` / `knowledge:write` scopes and the client's redirect URI) via
 `POST /api/v1/tenant/:tenantId/oauth/clients`. Discovery, login/consent and the
 token exchange then run automatically against the authorization server.
+
+---
+
+## Connecting a non-interactive client (ElevenLabs, n8n, …)
+
+Interactive hosts like claude.ai discover the authorization server from the
+`401` and run the full OAuth2 authorization-code flow (login + consent in a
+browser) on their own. Many automation hosts — **ElevenLabs Agents**, n8n,
+Zapier — cannot do that: they only support a **static credential** (a Bearer /
+custom header). Give them a framework **API token** instead. It is long-lived,
+scoped and revocable, and this server accepts it alongside OAuth tokens (it is
+validated at the app and forwarded as `X-API-KEY`).
+
+**1. Create an API token** (once, as the user the agent should act as). Any
+valid session works to mint it:
+
+```bash
+# Find your organisation (tenant) id:
+curl -s https://wiki.symbiosika.de/api/v1/user/tenants \
+  -H "Authorization: Bearer <your-session-jwt>"
+
+# Mint a read-only token (add "knowledge:write" for authoring):
+curl -s -X POST https://wiki.symbiosika.de/api/v1/user/api-tokens \
+  -H "Authorization: Bearer <your-session-jwt>" \
+  -H "content-type: application/json" \
+  -d '{"name":"elevenlabs","tenantId":"<tenant-id>","scopes":["knowledge:read"]}'
+# → { "token": "…" }   ← shown only once, store it as a secret
+```
+
+You can also create and revoke tokens from the wiki UI (user settings →
+API tokens). Revoke anytime with
+`DELETE /api/v1/user/api-tokens/:id`.
+
+**2. Configure the host.** In ElevenLabs: *Add Custom MCP Server* →
+
+- **Server URL**: `https://wiki-mcp.symbiosika.de/mcp`
+- **Transport**: Streamable HTTP
+- **Authentication**: Bearer / custom header — send
+
+  ```
+  Authorization: Bearer <the-api-token>
+  ```
+
+Store the token as a **workspace secret**, never inline. That's it — the agent
+now reads (and, with `knowledge:write`, edits) the wiki as that user.
 
 ---
 
