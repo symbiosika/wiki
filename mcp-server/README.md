@@ -145,8 +145,9 @@ Interactive hosts like claude.ai discover the authorization server from the
 browser) on their own. Many automation hosts — **ElevenLabs Agents**, n8n,
 Zapier — cannot do that: they only support a **static credential** (a Bearer /
 custom header). Give them a framework **API token** instead. It is long-lived,
-scoped and revocable, and this server accepts it alongside OAuth tokens (it is
-validated at the app and forwarded as `X-API-KEY`).
+scoped and revocable. An API token is **not** an OAuth bearer, so it has its own
+header: send it as **`X-API-KEY`**. (For hosts that only expose a single "Bearer
+token" field, `Authorization: Bearer <api-token>` is accepted too.)
 
 **1. Create an API token** (once, as the user the agent should act as). Any
 valid session works to mint it:
@@ -172,11 +173,14 @@ API tokens). Revoke anytime with
 
 - **Server URL**: `https://wiki-mcp.symbiosika.de/mcp`
 - **Transport**: Streamable HTTP
-- **Authentication**: Bearer / custom header — send
+- **Authentication**: custom header —
 
   ```
-  Authorization: Bearer <the-api-token>
+  X-API-KEY: <the-api-token>
   ```
+
+  (or `Authorization: Bearer <the-api-token>` if the host only offers a Bearer
+  field.)
 
 Store the token as a **workspace secret**, never inline. That's it — the agent
 now reads (and, with `knowledge:write`, edits) the wiki as that user.

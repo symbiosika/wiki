@@ -49,21 +49,32 @@ const deny = (reason: string): null => {
 };
 
 /**
- * Validate the bearer token from the Authorization header. On success returns
- * an `AuthInfo` (token, clientId, scopes, sub, tenant), otherwise `null`.
+ * Validate the incoming credential. On success returns an `AuthInfo` (token,
+ * clientId, scopes, sub, tenant), otherwise `null`.
  *
- * Two credential types are accepted, tried in order:
- *   1. OAuth2 access tokens issued by the authorization server (the normal flow
- *      used by interactive hosts like claude.ai), validated via introspection.
- *   2. Framework API tokens — long-lived, revocable, per-tenant credentials
- *      minted at `POST /api/v1/user/api-tokens`. These are the credential for
- *      non-interactive hosts (ElevenLabs, n8n, …) that cannot run the OAuth2
- *      authorization-code flow but can send a static header.
+ * Two credential types, kept on separate headers because they are different
+ * things:
+ *   1. **OAuth2 access tokens** — `Authorization: Bearer …`. Issued by the
+ *      authorization server (the normal flow used by interactive hosts like
+ *      claude.ai) and validated via introspection.
+ *   2. **Framework API tokens** — `X-API-KEY: …`. Long-lived, revocable,
+ *      per-tenant credentials minted at `POST /api/v1/user/api-tokens`. This is
+ *      the credential for non-interactive hosts (ElevenLabs, n8n, …) that cannot
+ *      run the OAuth2 authorization-code flow. An API token is not an OAuth
+ *      bearer, so it gets its own header.
+ *
+ * As a convenience, an API token presented in the `Authorization: Bearer` slot
+ * is still accepted (some hosts only expose a single "Bearer token" field).
  *
  * The token kind is recorded on `extra.kind` so `callApi` can forward the
  * credential to the app the way the app expects it (Bearer vs. X-API-KEY).
  */
 export async function authenticate(req: Request): Promise<AuthInfo | null> {
+  // 1. Explicit API-token header — its own, non-OAuth path.
+  const apiKey = req.headers.get("x-api-key");
+  if (apiKey) return validateApiToken(apiKey);
+
+  // 2. OAuth2 access token (with API-token fallback for Bearer-only hosts).
   const header = req.headers.get("authorization") || "";
   if (!header.startsWith("Bearer ")) return null;
   const token = header.slice(7);

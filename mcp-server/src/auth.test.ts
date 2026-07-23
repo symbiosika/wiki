@@ -20,6 +20,12 @@ const bearer = (token: string) =>
     headers: { authorization: `Bearer ${token}` },
   });
 
+const apiKeyHeader = (token: string) =>
+  new Request("https://mcp.example/mcp", {
+    method: "POST",
+    headers: { "x-api-key": token },
+  });
+
 /** Route stubbed responses by URL substring. */
 const stubFetch = (
   routes: Array<{ match: string; status: number; body: unknown }>,
@@ -62,6 +68,21 @@ describe("authenticate()", () => {
     expect((info!.extra as any).kind).toBe("oauth");
     expect((info!.extra as any).sub).toBe("user-1");
     expect(info!.scopes).toEqual(["knowledge:read", "knowledge:write"]);
+  });
+
+  test("accepts an API token sent in its own X-API-KEY header", async () => {
+    const calls: string[] = [];
+    stubFetch(
+      [{ match: "/oauth/userinfo", status: 200, body: { sub: "svc-user" } }],
+      (url) => calls.push(url),
+    );
+    const info = await authenticate(apiKeyHeader("api-token-xyz"));
+    expect(info).not.toBeNull();
+    expect((info!.extra as any).kind).toBe("api");
+    expect((info!.extra as any).sub).toBe("svc-user");
+    // The X-API-KEY path is direct: no OAuth introspection round trip.
+    expect(calls.some((u) => u.includes("/oauth/introspect"))).toBe(false);
+    expect(calls.some((u) => u.includes("/oauth/userinfo"))).toBe(true);
   });
 
   test("falls back to the API-token path when introspection is inactive", async () => {

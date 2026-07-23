@@ -56,6 +56,7 @@ app.use(
     origin: "*",
     allowHeaders: [
       "authorization",
+      "x-api-key",
       "content-type",
       "mcp-session-id",
       "mcp-protocol-version",
