@@ -29,6 +29,7 @@ declare module 'vue' {
     DocumentAssistantPanel: typeof import('./components/wiki/DocumentAssistantPanel.vue')['default']
     EditorBubbleMenu: typeof import('./components/editor/EditorBubbleMenu.vue')['default']
     FileUpload: typeof import('./volt/FileUpload.vue')['default']
+    ImageCropperDialog: typeof import('./components/common/ImageCropperDialog.vue')['default']
     InputText: typeof import('./volt/InputText.vue')['default']
     InvitationsList: typeof import('./components/manage/InvitationsList.vue')['default']
     ManageHeader: typeof import('./components/manage/ManageHeader.vue')['default']

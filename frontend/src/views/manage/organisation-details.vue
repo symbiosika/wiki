@@ -154,6 +154,94 @@
       </Column>
     </DataTable>
 
+    <!-- Branding / colors (admins & owners only) -->
+    <section
+      v-if="isAdmin"
+      class="mt-8 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h2 class="text-lg font-semibold">
+        {{ $t('UserTenants.branding.title') }}
+      </h2>
+      <p class="mt-1 mb-4 text-sm text-surface-500">
+        {{ $t('UserTenants.branding.description') }}
+      </p>
+
+      <div class="flex flex-col gap-5">
+        <!-- primary -->
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium">
+            <input
+              v-model="branding.primaryEnabled"
+              type="checkbox"
+              class="accent-primary"
+            />
+            {{ $t('UserTenants.branding.primary') }}
+          </label>
+          <div class="flex items-center gap-3 pl-6">
+            <input
+              v-model="branding.primary"
+              type="color"
+              :disabled="!branding.primaryEnabled"
+              class="h-9 w-12 cursor-pointer rounded border border-surface-300 disabled:opacity-40 dark:border-surface-600"
+            />
+            <InputText
+              v-model="branding.primary"
+              :disabled="!branding.primaryEnabled"
+              class="w-32 font-mono"
+              placeholder="#204393"
+            />
+          </div>
+          <p class="pl-6 text-xs text-surface-400">
+            {{ $t('UserTenants.branding.primaryHint') }}
+          </p>
+        </div>
+
+        <!-- secondary -->
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium">
+            <input
+              v-model="branding.secondaryEnabled"
+              type="checkbox"
+              class="accent-primary"
+            />
+            {{ $t('UserTenants.branding.secondary') }}
+          </label>
+          <div class="flex items-center gap-3 pl-6">
+            <input
+              v-model="branding.secondary"
+              type="color"
+              :disabled="!branding.secondaryEnabled"
+              class="h-9 w-12 cursor-pointer rounded border border-surface-300 disabled:opacity-40 dark:border-surface-600"
+            />
+            <InputText
+              v-model="branding.secondary"
+              :disabled="!branding.secondaryEnabled"
+              class="w-32 font-mono"
+              placeholder="#71717a"
+            />
+          </div>
+          <p class="pl-6 text-xs text-surface-400">
+            {{ $t('UserTenants.branding.secondaryHint') }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center gap-2">
+        <Button
+          :label="$t('UserTenants.branding.save')"
+          size="small"
+          :loading="savingBranding"
+          @click="saveBranding"
+        />
+        <SecondaryButton
+          :label="$t('UserTenants.branding.reset')"
+          size="small"
+          :disabled="savingBranding"
+          @click="resetBranding"
+        />
+      </div>
+    </section>
+
     <!-- Invite dialog -->
     <Dialog
       v-model:visible="inviteDialog"
@@ -306,6 +394,7 @@ import type {
   KnowledgeAccessLevel,
   TenantMember,
 } from '@/types/usermanagement'
+import { isValidHexColor } from '@/utils/brandColor'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -353,9 +442,29 @@ const knowledgeAccessOptions = [
 // user id of the member whose access is currently being saved (disables its switch)
 const savingAccessFor = ref<string | null>(null)
 
+// ----- branding colours ------------------------------------------------------
+
+const DEFAULT_PRIMARY = '#204393'
+const DEFAULT_SECONDARY = '#71717a'
+
+const branding = reactive({
+  primaryEnabled: false,
+  primary: DEFAULT_PRIMARY,
+  secondaryEnabled: false,
+  secondary: DEFAULT_SECONDARY,
+})
+const savingBranding = ref(false)
+
+/** Only tenant admins/owners may edit branding (backend enforces this too). */
+const isAdmin = computed(() => {
+  const me = members.value.find((m) => m.id === app.state.user?.id)
+  return me?.role === 'admin' || me?.role === 'owner'
+})
+
 onMounted(async () => {
   await app.waitForInit()
   await loadTenantData()
+  await loadBranding()
   app.loadTenantLogoInfo(tenantId.value)
 })
 
@@ -448,6 +557,96 @@ const loadTenantData = async () => {
       detail: t('UserTenants.errors.loadFailed'),
       life: 3000,
     })
+  }
+}
+
+const loadBranding = async () => {
+  try {
+    const colors = await app.getBranding(tenantId.value)
+    if (colors.primary) {
+      branding.primaryEnabled = true
+      branding.primary = colors.primary
+    }
+    if (colors.secondary) {
+      branding.secondaryEnabled = true
+      branding.secondary = colors.secondary
+    }
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingLoadFailed'),
+      life: 3000,
+    })
+  }
+}
+
+const saveBranding = async () => {
+  if (branding.primaryEnabled && !isValidHexColor(branding.primary)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('UserTenants.branding.invalidColor'),
+      life: 3000,
+    })
+    return
+  }
+  if (branding.secondaryEnabled && !isValidHexColor(branding.secondary)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('UserTenants.branding.invalidColor'),
+      life: 3000,
+    })
+    return
+  }
+  savingBranding.value = true
+  try {
+    await app.saveBranding(tenantId.value, {
+      primary: branding.primaryEnabled ? branding.primary : null,
+      secondary: branding.secondaryEnabled ? branding.secondary : null,
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.branding.saved'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingBranding.value = false
+  }
+}
+
+const resetBranding = async () => {
+  savingBranding.value = true
+  try {
+    await app.saveBranding(tenantId.value, { primary: null, secondary: null })
+    branding.primaryEnabled = false
+    branding.secondaryEnabled = false
+    branding.primary = DEFAULT_PRIMARY
+    branding.secondary = DEFAULT_SECONDARY
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.branding.resetDone'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingBranding.value = false
   }
 }
 

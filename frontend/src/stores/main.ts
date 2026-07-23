@@ -10,6 +10,11 @@ import type {
   TenantMember,
 } from '@/types/usermanagement'
 import type { WikiSearchMode } from '@/types/wiki'
+import {
+  applyBrandColors,
+  clearBrandColors,
+  type BrandColors,
+} from '@/utils/brandColor'
 
 // Types
 interface User {
@@ -51,6 +56,8 @@ interface AppState {
 
 /** key under which the search-mode preference lives in `user_settings` */
 const SEARCH_MODE_SETTING_KEY = 'wiki.searchMode'
+/** key under which per-organisation branding colours live in `tenant_settings` */
+const BRANDING_SETTING_KEY = 'branding'
 const SEARCH_MODES: WikiSearchMode[] = ['hybrid', 'fulltext', 'semantic']
 /** smart hybrid search is the default when the user has no stored choice */
 const DEFAULT_SEARCH_MODE: WikiSearchMode = 'hybrid'
@@ -176,6 +183,48 @@ export const useApp = defineStore('app', () => {
     }
   }
 
+  // ----- organisation branding colours ---------------------------------------
+
+  /**
+   * Load and apply the organisation's brand colours from `tenant_settings`.
+   * Best-effort and readable by any tenant member: a 404 (nothing stored yet)
+   * or any failure simply reverts to the default palette from `base.css`.
+   */
+  const getBranding = async (tenantId: string): Promise<BrandColors> => {
+    try {
+      const setting = await fetcher.get<{ key: string; valueJson?: BrandColors }>(
+        `/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`,
+      )
+      return setting.valueJson ?? {}
+    } catch {
+      // no branding stored yet (404) or read failed
+      return {}
+    }
+  }
+
+  const loadBranding = async (tenantId: string) => {
+    if (!tenantId) {
+      clearBrandColors()
+      return
+    }
+    applyBrandColors(await getBranding(tenantId))
+  }
+
+  /**
+   * Persist the organisation's brand colours (tenant admins/owners only) and
+   * apply them immediately. Passing null/empty for a colour clears it.
+   */
+  const saveBranding = async (tenantId: string, colors: BrandColors) => {
+    await fetcher.post(
+      `/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`,
+      {
+        valueJson: colors,
+        description: 'Per-organisation branding colours',
+      },
+    )
+    applyBrandColors(colors)
+  }
+
   const getTenants = async () => {
     const tenants = await fetcher.get<{ tenantId: string; name: string }[]>(
       '/api/v1/user/tenants',
@@ -204,6 +253,8 @@ export const useApp = defineStore('app', () => {
       },
     })
     state.value.selectedTenant = tenantId
+    // Re-theme the UI for the newly selected organisation.
+    await loadBranding(tenantId)
   }
 
   const setupTenant = async (tenantName: string) => {
@@ -507,6 +558,9 @@ export const useApp = defineStore('app', () => {
       ) {
         state.value.selectedTenant = state.value.tenants[0]!.id
       }
+
+      // apply the selected organisation's brand colours (best-effort)
+      await loadBranding(state.value.selectedTenant)
     } catch (error) {
       state.value.user = null
       state.value.tenants = []
@@ -552,6 +606,9 @@ export const useApp = defineStore('app', () => {
     uploadProfileImage,
     loadSearchMode,
     setSearchMode,
+    getBranding,
+    loadBranding,
+    saveBranding,
     waitForInit,
     setSelectedTenant,
     getTenants,

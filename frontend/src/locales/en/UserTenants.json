@@ -87,6 +87,20 @@
     "loadError": "Failed to load document tags",
     "saveError": "Failed to save document tags"
   },
+  "branding": {
+    "title": "Colors",
+    "description": "Customize the primary highlight color and the secondary color for this organisation. Changes apply to everyone in the organisation.",
+    "primary": "Primary color",
+    "primaryHint": "Used for highlighted buttons and accents.",
+    "secondary": "Secondary color",
+    "secondaryHint": "Used for secondary buttons.",
+    "useCustom": "Use custom color",
+    "save": "Save colors",
+    "reset": "Reset to defaults",
+    "saved": "Colors saved",
+    "resetDone": "Colors reset to defaults",
+    "invalidColor": "Please enter a valid color."
+  },
   "logo": {
     "title": "Logo",
     "hint": "Shown at the top of the sidebar in place of the organisation name.",
@@ -112,6 +126,8 @@
     "inviteFailed": "Failed to send invitation",
     "updateNameFailed": "Failed to update name",
     "changeRoleFailed": "Failed to update role",
-    "updateAccessFailed": "Failed to update access level"
+    "updateAccessFailed": "Failed to update access level",
+    "brandingLoadFailed": "Failed to load colors",
+    "brandingSaveFailed": "Failed to save colors"
   }
 }
