@@ -61,7 +61,18 @@
       <Column field="userEmail" :header="$t('UserTeams.memberEmail')" />
       <Column field="role" :header="$t('UserTeams.memberRole')">
         <template #body="{ data }">
-          {{ $t(`UserTeams.roles.${data.role}`, data.role) }}
+          <div class="flex items-center gap-1.5">
+            <span>{{ $t(`UserTeams.roles.${data.role}`, data.role) }}</span>
+            <button
+              v-if="data.userId !== app.state.user?.id"
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
+              :title="$t('UserTeams.changeRole')"
+              @click="openChangeRoleDialog(data)"
+            >
+              <IconPencil class="h-4 w-4" />
+            </button>
+          </div>
         </template>
       </Column>
       <Column :header="$t('UserTeams.knowledgeAccess')" style="width: 200px">
@@ -84,22 +95,20 @@
           />
         </template>
       </Column>
-      <Column header="" style="width: 240px">
+      <Column header="" style="width: 80px">
         <template #body="{ data }">
           <div
             v-if="data.userId !== app.state.user?.id"
-            class="flex justify-end gap-2"
+            class="flex justify-end"
           >
-            <SecondaryButton
-              :label="$t('UserTeams.changeRole')"
-              size="small"
-              @click="openChangeRoleDialog(data)"
-            />
-            <SecondaryButton
-              :label="$t('UserTeams.removeMember')"
-              size="small"
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
+              :title="$t('UserTeams.removeMember')"
               @click="openRemoveDialog(data)"
-            />
+            >
+              <IconTrash class="h-4 w-4" />
+            </button>
           </div>
         </template>
       </Column>

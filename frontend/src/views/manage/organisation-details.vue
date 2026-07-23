@@ -38,7 +38,18 @@
       <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
       <Column field="role" :header="$t('UserTenants.memberRole')">
         <template #body="{ data }">
-          {{ $t(`UserTenants.roles.${data.role}`, data.role) }}
+          <div class="flex items-center gap-1.5">
+            <span>{{ $t(`UserTenants.roles.${data.role}`, data.role) }}</span>
+            <button
+              v-if="data.id !== app.state.user?.id"
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
+              :title="$t('UserTenants.changeRole')"
+              @click="openChangeRoleDialog(data)"
+            >
+              <IconPencil class="h-4 w-4" />
+            </button>
+          </div>
         </template>
       </Column>
       <Column :header="$t('UserTenants.knowledgeAccess')" style="width: 200px">
@@ -59,22 +70,17 @@
           />
         </template>
       </Column>
-      <Column header="" style="width: 240px">
+      <Column header="" style="width: 80px">
         <template #body="{ data }">
-          <div
-            v-if="data.id !== app.state.user?.id"
-            class="flex justify-end gap-2"
-          >
-            <SecondaryButton
-              :label="$t('UserTenants.changeRole')"
-              size="small"
-              @click="openChangeRoleDialog(data)"
-            />
-            <SecondaryButton
-              :label="$t('UserTenants.removeMember')"
-              size="small"
+          <div v-if="data.id !== app.state.user?.id" class="flex justify-end">
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
+              :title="$t('UserTenants.removeMember')"
               @click="openRemoveDialog(data)"
-            />
+            >
+              <IconTrash class="h-4 w-4" />
+            </button>
           </div>
         </template>
       </Column>
