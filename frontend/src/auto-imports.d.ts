@@ -171,10 +171,10 @@ declare global {
   export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
   import('./types/urlImport')
   // @ts-ignore
-  export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
+  export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
