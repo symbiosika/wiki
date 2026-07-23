@@ -10,16 +10,25 @@
         class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
         @click="goHome"
       >
-        <span
-          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
-        >
-          {{ tenantInitial }}
-        </span>
-        <span
-          class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
-        >
-          {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
-        </span>
+        <!-- a cropped organisation logo replaces the initial + name lockup -->
+        <img
+          v-if="logoUrl"
+          :src="logoUrl"
+          :alt="app.currentTenant?.name ?? $t('Wiki.appName')"
+          class="max-h-11 max-w-full shrink object-contain"
+        />
+        <template v-else>
+          <span
+            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
+          >
+            {{ tenantInitial }}
+          </span>
+          <span
+            class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
+          >
+            {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
+          </span>
+        </template>
       </button>
 
       <!--
@@ -378,10 +387,16 @@ const tenantId = computed(() => String(route.params.tenantId ?? ''))
 watch(
   tenantId,
   (id) => {
-    if (id) wiki.loadTree(id)
+    if (id) {
+      wiki.loadTree(id)
+      app.loadTenantLogoInfo(id)
+    }
   },
   { immediate: true },
 )
+
+/** cropped organisation logo for the current tenant (null when none set) */
+const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
 
 // ----- header: organisation ------------------------------------------------
 

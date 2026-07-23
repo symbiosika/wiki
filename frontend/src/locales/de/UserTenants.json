@@ -87,6 +87,22 @@
     "loadError": "Dokument-Tags konnten nicht geladen werden",
     "saveError": "Dokument-Tags konnten nicht gespeichert werden"
   },
+  "logo": {
+    "title": "Logo",
+    "hint": "Wird oben in der Seitenleiste anstelle des Organisationsnamens angezeigt.",
+    "uploadHint": "JPG, PNG oder GIF, max. 5 MB. Wird beim Hochladen zugeschnitten.",
+    "change": "Logo ändern",
+    "cropTitle": "Logo zuschneiden",
+    "success": "Logo aktualisiert",
+    "deleteTitle": "Logo entfernen",
+    "deleteConfirm": "Möchten Sie das Logo dieser Organisation wirklich entfernen?",
+    "deleteSuccess": "Logo entfernt",
+    "errors": {
+      "tooLarge": "Das Bild ist zu groß (max. 5 MB)",
+      "uploadFailed": "Logo konnte nicht hochgeladen werden",
+      "deleteFailed": "Logo konnte nicht entfernt werden"
+    }
+  },
   "errors": {
     "setupFailed": "Organisation konnte nicht angelegt werden",
     "leaveFailed": "Organisation konnte nicht verlassen werden",
