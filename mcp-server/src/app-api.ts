@@ -1,11 +1,12 @@
 /**
  * Thin client for the wiki app API (resource-server view).
  *
- * Every call runs in the name of the user: we forward the user's bearer token
- * unchanged to the app. Server-side, EXACTLY the user's permissions apply
- * (role, team/organisation membership, visibility of personal pages). The MCP
- * server implements NO authorization of its own — it only surfaces endpoints
- * and returns app errors (403/404/…) transparently.
+ * Every call runs in the name of the user: we forward the user's credential
+ * unchanged to the app — an OAuth access token as `Authorization: Bearer`, or a
+ * framework API token as `X-API-KEY`. Server-side, EXACTLY the user's
+ * permissions apply (role, team/organisation membership, visibility of personal
+ * pages). The MCP server implements NO authorization of its own — it only
+ * surfaces endpoints and returns app errors (403/404/…) transparently.
  */
 
 import type { AuthInfo } from "@modelcontextprotocol/server";
@@ -104,7 +105,13 @@ export async function callApi(
     }
   }
 
-  const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+  // Forward the credential the way the app expects it: OAuth access tokens are
+  // JWTs sent as a Bearer, framework API tokens are opaque and are exchanged by
+  // the app when presented via `X-API-KEY` (see mcp auth `validateApiToken`).
+  const headers: Record<string, string> =
+    (authInfo?.extra as any)?.kind === "api"
+      ? { "x-api-key": token }
+      : { authorization: `Bearer ${token}` };
   let body: BodyInit | undefined;
   if (opts.json !== undefined) {
     headers["content-type"] = "application/json";
