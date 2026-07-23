@@ -23,6 +23,8 @@
     "codeDescription": "Code snippet with monospace font",
     "divider": "Divider",
     "dividerDescription": "Horizontal line",
+    "table": "Table",
+    "tableDescription": "Insert a 3×3 table",
     "image": "Image",
     "imageDescription": "Upload and embed an image",
     "reference": "Page reference",
@@ -44,5 +46,14 @@
     "alignCenter": "Center",
     "alignRight": "Align right"
   },
-  "imageUploadError": "Image upload failed. Please try again."
+  "imageUploadError": "Image upload failed. Please try again.",
+  "markdown": {
+    "button": "Markdown",
+    "buttonHint": "Insert Markdown (pasting Markdown is also auto-detected)",
+    "title": "Insert Markdown",
+    "hint": "Paste Markdown here — it will be converted to formatted content and inserted at the cursor.",
+    "placeholder": "# Heading\n\n- List item\n- Another item\n\n**Bold** and `code`…",
+    "preview": "Preview",
+    "insert": "Insert"
+  }
 }

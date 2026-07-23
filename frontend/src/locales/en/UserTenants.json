@@ -40,6 +40,12 @@
   "changeRole": "Change role",
   "changeRoleTitle": "Change member role",
   "changeRoleSuccess": "Role updated",
+  "knowledgeAccess": "Access",
+  "accessSuccess": "Access level updated",
+  "access": {
+    "read": "Read",
+    "readWrite": "Read/Write"
+  },
   "roles": {
     "member": "Member",
     "admin": "Administrator",
@@ -62,6 +68,7 @@
     }
   },
   "metadata": {
+    "tabTitle": "Document tags",
     "title": "Document tags",
     "description": "Define the key-value tags every document in this organisation can use. Each key can allow free text or a fixed list of values.",
     "key": "Key",
@@ -88,6 +95,7 @@
     "removeMemberFailed": "Failed to remove member",
     "inviteFailed": "Failed to send invitation",
     "updateNameFailed": "Failed to update name",
-    "changeRoleFailed": "Failed to update role"
+    "changeRoleFailed": "Failed to update role",
+    "updateAccessFailed": "Failed to update access level"
   }
 }

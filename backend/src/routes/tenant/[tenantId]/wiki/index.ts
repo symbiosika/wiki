@@ -15,8 +15,10 @@ import { isTenantMember } from "@framework/routes/tenant";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator } from "hono-openapi";
 import * as v from "valibot";
+import { validateScope } from "@framework/lib/utils/validate-scope";
 import { buildWikiTree } from "../../../../lib/wiki/tree";
 import { movePage } from "../../../../lib/wiki/move";
+import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -129,6 +131,59 @@ export default function defineWikiRoutes(
           },
           400
         );
+      }
+    }
+  );
+
+  /**
+   * GET /tenant/:tenantId/wiki/:pageId/images/:filename
+   *
+   * Serve an image that is embedded in a wiki page — gated by PAGE visibility
+   * (`knowledge:read`) instead of the generic `files:read` scope. This is what
+   * lets OAuth clients of the MCP server (claude.ai & co, which only get the
+   * knowledge scopes) load the images of pages the user is allowed to read.
+   * The file must actually be referenced by the page's content.
+   */
+  app.get(
+    `${baseRoute}/:pageId/images/:filename`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Get an image embedded in a wiki page (page-scoped access)",
+      responses: {
+        200: { description: "The image bytes" },
+      },
+    }),
+    validateScope("knowledge:read"),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+        filename: v.string(),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId, filename } = c.req.valid("param");
+      const userId = c.get("usersId");
+      try {
+        const file = await getWikiPageImage(tenantId, userId, pageId, filename);
+        const bytes = await file.arrayBuffer();
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "Content-Length": bytes.byteLength.toString(),
+            // page permissions can change at any time — keep caching private
+            "Cache-Control": "private, max-age=300",
+          },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load image";
+        return c.json({ success: false, error: message }, 404);
       }
     }
   );

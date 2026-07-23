@@ -9,6 +9,9 @@
  *                  subtree, links, backlinks, related, history + single version
  *   - write      : create, update/move/curate facets, append, edit content,
  *                  delete
+ *   - app UI     : view_page (rendered page/section view via MCP Apps),
+ *                  view_image / view_page_images (large image + gallery)
+ *                  and get_page_image (images as real image content blocks)
  *
  * Together these let a chat app use the wiki as its "brain": discover what
  * exists, read exactly as much as it needs (context economy), and maintain
@@ -20,10 +23,12 @@ import { registerIdentityTools } from "./identity.ts";
 import { registerDiscoveryTools } from "./discovery.ts";
 import { registerReadTools } from "./read.ts";
 import { registerWriteTools } from "./write.ts";
+import { registerAppUiTools } from "./app-ui.ts";
 
 export function registerAllTools(mcp: any): void {
   registerIdentityTools(mcp);
   registerDiscoveryTools(mcp);
   registerReadTools(mcp);
   registerWriteTools(mcp);
+  registerAppUiTools(mcp);
 }

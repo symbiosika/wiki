@@ -12,7 +12,9 @@
       </template>
     </ManageHeader>
 
-    <!-- tabs (only one job type today, but structured for more) -->
+    <ManageTabs />
+
+    <!-- job-type sub-tabs (only one job type today, but structured for more) -->
     <div
       class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
     >
@@ -89,7 +91,7 @@
               :class="runStatusDot(data.lastRunStatus)"
             />
             <span class="text-surface-600 dark:text-surface-300">
-              {{ formatDate(data.lastRunAt) }}
+              {{ formatDateTime(data.lastRunAt) }}
             </span>
           </span>
           <span v-else class="text-xs text-surface-400 dark:text-surface-500">
@@ -205,6 +207,10 @@ import type { UrlImportJob, UrlImportRunStatus } from '@/types/urlImport'
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 const toast = useToast()
 const app = useApp()
 const store = useUrlImportJobs()
@@ -224,8 +230,6 @@ watch(
   },
   { immediate: true },
 )
-
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
 const runStatusDot = (status: UrlImportRunStatus | null) => {
   switch (status) {

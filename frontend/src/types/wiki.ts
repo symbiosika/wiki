@@ -70,6 +70,17 @@ export interface WikiPage {
   /** Set when `status` transitions to "verified": when and by whom. */
   verifiedAt: string | null
   verifiedBy: string | null
+  // --- AI page summary (the "docstring" of a page, see framework summaries.ts) ---
+  /**
+   * Short (1-2 sentence) AI-generated (or manual) description of the page.
+   * Null when no summary has been generated yet (e.g. no LLM configured, or
+   * the debounced sweeper has not run). Only surfaced read-only in the UI.
+   */
+  summary: string | null
+  /** How the summary is maintained: "auto" | "manual" | "off". */
+  summaryMode: 'auto' | 'manual' | 'off'
+  /** When the summary was last (re)generated. */
+  summaryUpdatedAt: string | null
   // --- per-organisation key-value metadata (see framework knowledge.ts) ---
   /**
    * Free key-value metadata whose allowed keys (and optionally a closed list of
@@ -109,6 +120,38 @@ export interface WikiKnowledgeConfig {
   attributes: KnowledgeAttributeDefinition[]
 }
 
+/**
+ * Per-modality "extra service" flags the configured parsing service advertises
+ * via its capabilities. Any flag defaults to `false` when absent. Mirrors the
+ * framework `ServiceModality.features` shape (camelCase).
+ */
+export interface WikiParserFeatures {
+  extractImages?: boolean
+  extractFields?: boolean
+  async?: boolean
+  parseImagesInDoc?: boolean
+  ocr?: boolean
+  detectTables?: boolean
+}
+
+/** One document type the configured parsing service accepts. */
+export interface WikiParserModality {
+  modality: string
+  mimeTypes: string[]
+  extensions: string[]
+  features?: WikiParserFeatures
+}
+
+/**
+ * Capabilities of the configured parsing service (modalities + feature flags),
+ * as returned by `GET /knowledge/parser/capabilities`. An empty `modalities`
+ * list means the configured parser advertises no pass-through options.
+ */
+export interface WikiParserCapabilities {
+  service: string
+  modalities: WikiParserModality[]
+}
+
 /** A content block as stored by the backend */
 export interface WikiBlock {
   id?: string
@@ -129,6 +172,21 @@ export interface WikiSearchResult {
   score: number
   snippet: string
   matchedBy: string[]
+  /** wiki path (breadcrumb) of the hit, root first; '' for a top-level page */
+  path?: string
+  /**
+   * The matched chunk's sequence number within the page (semantic hits only).
+   * Address surrounding chunks via GET .../texts/:id/chunk-context?order=…
+   */
+  chunkOrder?: number | null
+  /** source page number of the matched chunk (PDF imports), when known */
+  sourcePage?: number | null
+  /**
+   * Id of the content block the matched chunk starts in (block-mode pages).
+   * Lets the UI jump straight to the block in the rendered document. Null for
+   * fulltext-only hits or chunks without block provenance.
+   */
+  blockId?: string | null
 }
 
 /**

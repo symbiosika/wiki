@@ -20,6 +20,37 @@ export const stripEmpty = (row: Row): Row => {
   return out;
 };
 
+/** Wiki image references as they appear in page content (markdown or html). */
+const IMAGE_REF_RE =
+  /\/files\/db\/knowledge\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}/gi;
+
+/** All unique wiki image references embedded in a page's content. */
+export const extractEmbeddedImageRefs = (content: string): string[] => [
+  ...new Set(content.match(IMAGE_REF_RE) ?? []),
+];
+
+/**
+ * If a page's `content` embeds wiki images, list them explicitly and say how
+ * to load one. This lands in the tool result at exactly the moment the model
+ * sees the (otherwise dead) image paths — without it, models tend to assume
+ * the images are unreachable instead of reaching for `get_page_image`.
+ */
+export const annotateEmbeddedImages = (data: unknown): unknown => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const page = data as Row;
+  if (typeof page.content !== "string") return data;
+  const refs = extractEmbeddedImageRefs(page.content);
+  if (refs.length === 0) return data;
+  return {
+    ...page,
+    embeddedImages: refs,
+    embeddedImagesHint:
+      "This page embeds image(s). Call get_page_image with this pageId and " +
+      "one of the references above to actually view/show an image; " +
+      "view_page renders them all automatically.",
+  };
+};
+
 /**
  * Derive the human meaning of the access fields: a page is either in a team,
  * organisation-wide, or personal.

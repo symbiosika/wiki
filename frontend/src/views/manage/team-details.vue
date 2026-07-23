@@ -33,29 +33,82 @@
       </template>
     </ManageHeader>
 
+    <!-- Team settings -->
+    <div
+      class="mb-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h3 class="mb-3 text-sm font-medium">
+        {{ $t('UserTeams.settingsTitle') }}
+      </h3>
+      <label
+        class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
+        :class="{ 'cursor-not-allowed opacity-60': !isCurrentUserAdmin }"
+      >
+        <Checkbox
+          v-model="addNewUsersByDefault"
+          binary
+          :disabled="!isCurrentUserAdmin || savingSettings"
+          @change="confirmUpdateAddNewUsersByDefault"
+        />
+        {{ $t('UserTeams.addNewUsersByDefault') }}
+      </label>
+      <p class="mt-1 text-xs text-surface-400 dark:text-surface-500">
+        {{ $t('UserTeams.addNewUsersByDefaultHint') }}
+      </p>
+    </div>
+
     <DataTable v-if="members.length > 0" :value="members">
       <Column field="userEmail" :header="$t('UserTeams.memberEmail')" />
       <Column field="role" :header="$t('UserTeams.memberRole')">
         <template #body="{ data }">
-          {{ $t(`UserTeams.roles.${data.role}`, data.role) }}
+          <div class="flex items-center gap-1.5">
+            <span>{{ $t(`UserTeams.roles.${data.role}`, data.role) }}</span>
+            <button
+              v-if="data.userId !== app.state.user?.id"
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
+              :title="$t('UserTeams.changeRole')"
+              @click="openChangeRoleDialog(data)"
+            >
+              <IconPencil class="h-4 w-4" />
+            </button>
+          </div>
         </template>
       </Column>
-      <Column header="" style="width: 240px">
+      <Column :header="$t('UserTeams.knowledgeAccess')" style="width: 200px">
+        <template #body="{ data }">
+          <SelectButton
+            :model-value="data.knowledgeAccess"
+            :options="knowledgeAccessOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            :disabled="
+              !isCurrentUserAdmin ||
+              data.userId === app.state.user?.id ||
+              savingAccessFor === data.userId
+            "
+            @update:model-value="
+              (value: KnowledgeAccessLevel) =>
+                value && changeKnowledgeAccess(data, value)
+            "
+          />
+        </template>
+      </Column>
+      <Column header="" style="width: 80px">
         <template #body="{ data }">
           <div
             v-if="data.userId !== app.state.user?.id"
-            class="flex justify-end gap-2"
+            class="flex justify-end"
           >
-            <SecondaryButton
-              :label="$t('UserTeams.changeRole')"
-              size="small"
-              @click="openChangeRoleDialog(data)"
-            />
-            <SecondaryButton
-              :label="$t('UserTeams.removeMember')"
-              size="small"
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
+              :title="$t('UserTeams.removeMember')"
               @click="openRemoveDialog(data)"
-            />
+            >
+              <IconTrash class="h-4 w-4" />
+            </button>
           </div>
         </template>
       </Column>
@@ -85,8 +138,9 @@
         </div>
 
         <Message v-if="foundUser" severity="secondary">
-          {{ foundUser.firstname }} {{ foundUser.surname }}
-          ({{ foundUser.email }})
+          {{ foundUser.firstname }} {{ foundUser.surname }} ({{
+            foundUser.email
+          }})
         </Message>
 
         <div v-if="foundUser">
@@ -196,7 +250,11 @@ import { useToast } from 'primevue/usetoast'
 import IconPencil from '~icons/mdi/pencil'
 import IconAccountPlus from '~icons/mdi/account-plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
-import type { FoundUser, TeamMember } from '@/types/usermanagement'
+import type {
+  FoundUser,
+  KnowledgeAccessLevel,
+  TeamMember,
+} from '@/types/usermanagement'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -209,6 +267,16 @@ const wiki = useWiki()
 const teamId = computed(() => String(route.params.teamId))
 const teamName = ref('')
 const members = ref<TeamMember[]>([])
+
+const addNewUsersByDefault = ref(false)
+const savingSettings = ref(false)
+
+// Only team admins may change team settings (the backend enforces this too).
+const isCurrentUserAdmin = computed(() =>
+  members.value.some(
+    (member) => member.userId === app.state.user?.id && member.role === 'admin',
+  ),
+)
 
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
@@ -227,6 +295,14 @@ const roleOptions = [
   { label: t('UserTeams.roles.admin'), value: 'admin' },
 ]
 
+const knowledgeAccessOptions = [
+  { label: t('UserTeams.access.read'), value: 'read' },
+  { label: t('UserTeams.access.readWrite'), value: 'write' },
+]
+
+// userId of the member whose access is currently being saved (disables its switch)
+const savingAccessFor = ref<string | null>(null)
+
 onMounted(async () => {
   await app.waitForInit()
   await app.getTeams()
@@ -237,11 +313,16 @@ const loadTeamData = async () => {
   try {
     const team = app.state.teams.find((entry) => entry.id === teamId.value)
     if (!team) {
-      router.push({ name: 'Teams', params: { tenantId: route.params.tenantId } })
+      router.push({
+        name: 'Teams',
+        params: { tenantId: route.params.tenantId },
+      })
       return
     }
     teamName.value = team.name
     members.value = (await app.getTeamMembers(teamId.value)) || []
+    const details = await app.getTeam(teamId.value)
+    addNewUsersByDefault.value = details?.addNewUsersByDefault ?? false
   } catch {
     toast.add({
       severity: 'error',
@@ -348,6 +429,41 @@ const confirmChangeRole = async () => {
   }
 }
 
+// ----- knowledge access -------------------------------------------------------
+
+const changeKnowledgeAccess = async (
+  member: TeamMember,
+  value: KnowledgeAccessLevel,
+) => {
+  if (member.knowledgeAccess === value) return
+  const previous = member.knowledgeAccess
+  member.knowledgeAccess = value // optimistic update
+  savingAccessFor.value = member.userId
+  try {
+    await app.updateTeamMemberKnowledgeAccess(
+      teamId.value,
+      member.userId,
+      value,
+    )
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTeams.accessSuccess'),
+      life: 3000,
+    })
+  } catch {
+    member.knowledgeAccess = previous // revert on failure
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTeams.errors.updateAccessFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingAccessFor.value = null
+  }
+}
+
 // ----- invite -----------------------------------------------------------------
 
 const resetInviteForm = () => {
@@ -375,7 +491,11 @@ const searchUser = async () => {
 const confirmInvite = async () => {
   if (!foundUser.value || !selectedRole.value) return
   try {
-    await app.addTeamMember(teamId.value, foundUser.value.id, selectedRole.value)
+    await app.addTeamMember(
+      teamId.value,
+      foundUser.value.id,
+      selectedRole.value,
+    )
     await loadTeamData()
     inviteDialog.value = false
     toast.add({
@@ -391,6 +511,35 @@ const confirmInvite = async () => {
       detail: t('UserTeams.errors.inviteFailed'),
       life: 3000,
     })
+  }
+}
+
+// ----- settings ---------------------------------------------------------------
+
+const confirmUpdateAddNewUsersByDefault = async () => {
+  savingSettings.value = true
+  try {
+    await app.updateTeam(teamId.value, {
+      name: teamName.value,
+      addNewUsersByDefault: addNewUsersByDefault.value,
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTeams.updateSuccess'),
+      life: 3000,
+    })
+  } catch {
+    // revert the optimistic toggle on failure
+    addNewUsersByDefault.value = !addNewUsersByDefault.value
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTeams.errors.updateSettingsFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingSettings.value = false
   }
 }
 

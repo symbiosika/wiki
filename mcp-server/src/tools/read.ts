@@ -12,6 +12,7 @@ import { z } from "zod";
 import { defineTool } from "./_helpers.ts";
 import { callApi, tenantPath } from "../app-api.ts";
 import {
+  annotateEmbeddedImages,
   pageMetadata,
   pageVersion,
   slimBatchRows,
@@ -38,6 +39,7 @@ export function registerReadTools(mcp: any): void {
       callApi(
         authInfo,
         tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        { transform: annotateEmbeddedImages },
       ),
   );
 
@@ -232,6 +234,8 @@ export function registerReadTools(mcp: any): void {
         "PLUS its neighbouring chunks before/after, in reading order. A search " +
         "hit only carries a single snippet — use this to reload the surrounding " +
         "context an agent lost: pass the hit's `pageId` and its `chunkOrder`. " +
+        "Also returns the page's `path` (its breadcrumb in the wiki tree, e.g. " +
+        "\"Handbook/HR/Vacation Policy\") so you can cite where the chunks live. " +
         "Returns `totalChunks` (0 = the page has no embeddings) and, per chunk, " +
         "its `order`, `header`, `text`, `sourcePage` (the PDF page it came " +
         "from, when known) and `matched` (true for the addressed chunk). " +

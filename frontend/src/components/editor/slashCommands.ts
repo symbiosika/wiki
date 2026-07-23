@@ -140,6 +140,20 @@ export const getSlashCommandItems = (
       command: ({ editor, range }) =>
         editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
     },
+    {
+      key: 'table',
+      title: t('Editor.slash.table'),
+      description: t('Editor.slash.tableDescription'),
+      icon: '▦',
+      keywords: ['table', 'tabelle', 'grid', 'raster'],
+      command: ({ editor, range }) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run(),
+    },
   ]
 
   // only offered when the host wired up the reference picker

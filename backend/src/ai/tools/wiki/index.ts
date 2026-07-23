@@ -75,7 +75,12 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
     description:
       "Search the wiki for pages relevant to a query. Uses hybrid semantic + " +
       "full-text search and returns the best matching pages with a short " +
-      "snippet and their pageId. This is the primary way to find knowledge — " +
+      "snippet, an AI-generated one-line `summary` (when available) and their " +
+      "pageId. Use the summary to judge which hits are worth reading in full. " +
+      "Each hit also carries `path`, the page's location in the wiki tree as a " +
+      "breadcrumb (e.g. \"Handbook/HR/Vacation Policy\", the last segment is the " +
+      "page itself) — cite it so the user sees WHERE the answer lives. " +
+      "This is the primary way to find knowledge — " +
       "start here, then read the most promising pages with read_wiki_page. " +
       "When a hit matched semantically it also carries `chunkOrder` (the " +
       "position of the matching chunk) — pass it to get_wiki_chunk_context to " +
@@ -122,10 +127,14 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           results: results.map((r) => ({
             pageId: r.id,
             title: r.title,
+            path: r.path,
+            pathIds: r.pathIds,
             snippet: r.snippet,
+            summary: r.summary,
             matchedBy: r.matchedBy,
             chunkOrder: r.chunkOrder,
             sourcePage: r.sourcePage,
+            blockId: r.blockId,
           })),
         };
       } catch (error) {
@@ -136,7 +145,8 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
 
   const list_wiki_pages = tool({
     description:
-      "List wiki pages (title + pageId) the user can access. Useful to get an " +
+      "List wiki pages (title + pageId, plus a short `summary` when available) " +
+      "the user can access. Useful to get an " +
       "overview of what exists when a search is too narrow. Does not return " +
       "page bodies — use read_wiki_page for the content.",
     inputSchema: valibotSchema(
@@ -164,6 +174,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           pages: pages.map((p) => ({
             pageId: p.id,
             title: p.title,
+            summary: p.summary,
             parentId: p.parentId,
             tenantWide: p.tenantWide,
             teamId: p.teamId,
@@ -268,7 +279,9 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
       "only gives you one short snippet — call this with the hit's pageId and " +
       "its chunkOrder to get the matching chunk plus the chunks before and " +
       "after it, so you can quote the full surrounding context without reading " +
-      "the whole page. Returns totalChunks (0 = the page has no embeddings) " +
+      "the whole page. Also returns the page's `path` (its breadcrumb in the " +
+      "wiki tree, e.g. \"Handbook/HR/Vacation Policy\") so you can cite where " +
+      "the chunks live. Returns totalChunks (0 = the page has no embeddings) " +
       "and, per chunk, its order, header, text, sourcePage (the PDF page it " +
       "came from, when known) and matched (true for the addressed chunk).",
     inputSchema: valibotSchema(
@@ -316,12 +329,15 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           success: true,
           pageId: context.pageId,
           title: context.title,
+          path: context.path,
+          pathIds: context.pathIds,
           totalChunks: context.totalChunks,
           chunks: context.chunks.map((chunk) => ({
             order: chunk.order,
             header: chunk.header,
             text: clip(chunk.text),
             sourcePage: chunk.sourcePage,
+            blockId: chunk.blockId,
             matched: chunk.matched,
           })),
         };
@@ -559,7 +575,7 @@ How to work:
 - To find knowledge, start with search_wiki, then read the most relevant pages with read_wiki_page. Use list_wiki_pages for an overview and get_related_wiki_pages to broaden research.
 - When a search snippet is promising but too short, call get_wiki_chunk_context with the hit's pageId and chunkOrder to pull the surrounding chunks — cheaper than reading the whole page for long documents.
 - Base your answers on what the tools return — never invent facts. If the wiki has no answer, say so plainly.
-- Cite the pages you used by their title so the user can open them. Answer in the user's language, concise and well structured.
+- Cite the pages you used by their title so the user can open them; when a hit carries a \`path\` (its breadcrumb in the wiki tree), mention it so the user sees where the answer lives. Answer in the user's language, concise and well structured.
 - All content comes only from this wiki; you have no other data sources.`;
 
   const modeSection =

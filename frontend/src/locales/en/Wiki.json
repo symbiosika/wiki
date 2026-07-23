@@ -23,13 +23,35 @@
     "title": "Import page",
     "fromFile": "File / PDF",
     "fromUrl": "Web page",
-    "dropHint": "Click to choose a file or drop it here",
+    "dropHint": "Drag files here or click to choose",
+    "dropFolderHint": "Whole folders keep their folder structure",
+    "selectFolder": "Choose folder",
+    "clearAll": "Remove all",
+    "colFile": "File",
+    "colTitle": "Title",
+    "colPath": "Extra path",
+    "pathPlaceholder": "e.g. Manuals/2024",
+    "pathColHint": "Added on top of the location. Nest with / — missing levels are created.",
+    "removeFile": "Remove file",
     "fileTypes": "Markdown, HTML, text, PDF, Word",
     "titleLabel": "Title (optional)",
     "titlePlaceholder": "Defaults to the file or page name",
-    "scopeLabel": "Where should it live?",
+    "scopeLabel": "Location",
+    "baseLocationHint": "Base location for all files",
+    "submitMulti": "Import {count}",
+    "retry": "Retry {count}",
+    "progress": "{done} of {total}…",
+    "partialError": "{count} file(s) could not be imported.",
     "underSelected": "Under selected page",
     "splitIntoBlocks": "Split into sections at headings",
+    "parserOptionsLabel": "Additional processing",
+    "parserOptionsHint": "Extra services supported by the configured parsing service. Your selection is remembered.",
+    "flags": {
+      "extractImages": "Extract images",
+      "ocr": "OCR (recognise text in scans/images)",
+      "parseImagesInDoc": "Analyse images inside the document",
+      "detectTables": "Detect tables"
+    },
     "postProcessingLabel": "AI post-processing",
     "postProcessingNone": "None",
     "postProcessingHint": "Optionally let an AI agent clean up and restructure the document before it is saved.",
@@ -49,13 +71,24 @@
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
   },
+  "copyMarkdown": {
+    "hint": "Copy as markdown (for AI agents & co.)",
+    "error": "Copy failed. Please try again."
+  },
   "info": {
     "button": "Info",
     "hint": "Show document details",
+    "scope": "Scope",
     "created": "Created",
     "updated": "Last edited",
     "verified": "Verified",
     "by": "by {name}"
+  },
+  "summary": {
+    "button": "Summary",
+    "hint": "Show the AI-generated page summary",
+    "title": "Summary",
+    "updated": "Generated {date}"
   },
   "references": {
     "backlinks": "Linked from",

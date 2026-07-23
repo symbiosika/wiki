@@ -15,6 +15,7 @@ declare global {
   const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
+  const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const computed: typeof import('vue').computed
@@ -30,6 +31,7 @@ declare global {
   const flagsFromScope: typeof import('./utils/wikiTreeOptions').flagsFromScope
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
+  const formatDateTime: typeof import('./utils/date').formatDateTime
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
@@ -43,6 +45,7 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
   const onActivated: typeof import('vue').onActivated
@@ -62,6 +65,7 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pageOptionsForScope: typeof import('./utils/wikiTreeOptions').pageOptionsForScope
+  const parseServerDate: typeof import('./utils/date').parseServerDate
   const parseUrlLine: typeof import('./utils/urlImportLines').parseUrlLine
   const parseUrlLines: typeof import('./utils/urlImportLines').parseUrlLines
   const prefersDark: typeof import('./utils/theme').prefersDark
@@ -92,6 +96,7 @@ declare global {
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
   const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
   const useAiChat: typeof import('./stores/aiChat').useAiChat
+  const useAiTests: typeof import('./stores/aiTests').useAiTests
   const useApiTokens: typeof import('./stores/apiTokens').useApiTokens
   const useApp: typeof import('./stores/main').useApp
   const useAttrs: typeof import('vue').useAttrs
@@ -151,6 +156,9 @@ declare global {
   export type { WikiImportOptions, IngestJob, WikiImageUpload } from './stores/wiki'
   import('./stores/wiki')
   // @ts-ignore
+  export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
+  import('./types/aiTests')
+  // @ts-ignore
   export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
   import('./types/notifications')
   // @ts-ignore
@@ -163,10 +171,10 @@ declare global {
   export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
   import('./types/urlImport')
   // @ts-ignore
-  export type { Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
+  export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'

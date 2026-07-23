@@ -40,6 +40,12 @@
   "changeRole": "Rolle ändern",
   "changeRoleTitle": "Rolle des Mitglieds ändern",
   "changeRoleSuccess": "Rolle aktualisiert",
+  "knowledgeAccess": "Zugriff",
+  "accessSuccess": "Zugriffsrecht aktualisiert",
+  "access": {
+    "read": "Lesen",
+    "readWrite": "Lesen/Schreiben"
+  },
   "roles": {
     "member": "Mitglied",
     "admin": "Administrator",
@@ -62,6 +68,7 @@
     }
   },
   "metadata": {
+    "tabTitle": "Dokument-Tags",
     "title": "Dokument-Tags",
     "description": "Lege die Schlüssel-Wert-Tags fest, die jedes Dokument dieser Organisation nutzen kann. Jeder Schlüssel erlaubt entweder Freitext oder eine feste Werteliste.",
     "key": "Schlüssel",
@@ -88,6 +95,7 @@
     "removeMemberFailed": "Mitglied konnte nicht entfernt werden",
     "inviteFailed": "Einladung konnte nicht versendet werden",
     "updateNameFailed": "Name konnte nicht aktualisiert werden",
-    "changeRoleFailed": "Rolle konnte nicht aktualisiert werden"
+    "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
+    "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden"
   }
 }

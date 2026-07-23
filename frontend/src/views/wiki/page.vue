@@ -21,24 +21,23 @@
     <template v-else-if="page">
       <!-- meta bar -->
       <div
-        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center justify-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
-        <span
-          class="rounded-full border border-surface-200 px-2 py-0.5 dark:border-surface-700"
-        >
-          {{ scopeLabel }}
-        </span>
-
-        <!-- info: clickable chip that opens a metadata popover -->
+        <!--
+          summary: clickable chip that opens the AI page summary. Only rendered
+          when a summary exists (which itself only happens when a global LLM is
+          configured and auto-summaries are enabled — see framework summaries.ts).
+        -->
         <button
+          v-if="page.summary"
           type="button"
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': infoOpen }"
-          :title="$t('Wiki.info.hint')"
-          @click="toggleInfo"
+          :class="{ 'border-primary text-primary': summaryOpen }"
+          :title="$t('Wiki.summary.hint')"
+          @click="toggleSummary"
         >
-          <IconInfo class="h-3.5 w-3.5" />
-          <span>{{ $t('Wiki.info.button') }}</span>
+          <IconTextBox class="h-3.5 w-3.5" />
+          <span>{{ $t('Wiki.summary.button') }}</span>
         </button>
 
         <!-- classification (pageType): clickable chip that opens a chooser -->
@@ -114,13 +113,6 @@
         <span v-if="breadcrumb" class="min-w-0 max-w-full truncate">{{
           breadcrumb
         }}</span>
-        <span v-if="wiki.state.saveError" class="text-red-500">
-          {{ $t('Wiki.saveError') }}
-        </span>
-        <span v-else-if="wiki.state.saving">{{ $t('Wiki.saving') }}</span>
-        <span v-else-if="wiki.state.lastSavedAt && editable">{{
-          $t('Wiki.saved')
-        }}</span>
 
         <!-- edit lock / read-only status -->
         <span
@@ -168,11 +160,35 @@
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
           :class="{ 'border-primary text-primary': assistant.open }"
           :title="$t('Assistant.title')"
-          :disabled="!editable"
+          :disabled="lockedByOther"
           @click="toggleAssistant"
         >
           <IconRobot class="h-3.5 w-3.5" />
           <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
+        </button>
+        <button
+          v-if="editable"
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :title="$t('Editor.markdown.buttonHint')"
+          @click="markdownDialogOpen = true"
+        >
+          <IconLanguageMarkdown class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{
+            $t('Editor.markdown.button')
+          }}</span>
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': copied }"
+          :title="$t('Wiki.copyMarkdown.hint')"
+          :disabled="copying"
+          @click="copyMarkdown"
+        >
+          <IconSpinner v-if="copying" class="h-3.5 w-3.5 animate-spin" />
+          <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
+          <IconContentCopy v-else class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -187,6 +203,43 @@
             exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
           }}</span>
         </button>
+
+        <!--
+          import a page from a file or URL. Lives here on the open page (rather
+          than in the sidebar) so it reads as an "upload into the wiki" action,
+          right where the content is.
+        -->
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :title="$t('Wiki.import.button')"
+          @click="wiki.openImportDialog()"
+        >
+          <IconUpload class="h-3.5 w-3.5" />
+        </button>
+
+        <!-- pinned to the right edge: info chip + save status -->
+        <div class="ml-auto flex items-center gap-2">
+          <!-- info: clickable chip that opens a metadata popover -->
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': infoOpen }"
+            :title="$t('Wiki.info.hint')"
+            @click="toggleInfo"
+          >
+            <IconInfo class="h-3.5 w-3.5" />
+            <span>{{ $t('Wiki.info.button') }}</span>
+          </button>
+
+          <span v-if="wiki.state.saveError" class="text-red-500">
+            {{ $t('Wiki.saveError') }}
+          </span>
+          <span v-else-if="wiki.state.saving">{{ $t('Wiki.saving') }}</span>
+          <span v-else-if="wiki.state.lastSavedAt && editable">{{
+            $t('Wiki.saved')
+          }}</span>
+        </div>
       </div>
 
       <!-- title -->
@@ -240,13 +293,50 @@
         @applied="onAssistantApplied"
       />
 
+      <!-- manual "insert markdown" dialog, opened by the Markdown chip -->
+      <MarkdownPasteDialog
+        v-model:visible="markdownDialogOpen"
+        @insert="onInsertMarkdown"
+      />
+
       <!-- facet choosers, opened by the chips in the meta bar -->
       <Menu ref="pageTypeMenuRef" :model="pageTypeItems" popup />
       <Menu ref="statusMenuRef" :model="statusItems" popup />
 
+      <!-- AI page summary, opened by the "Summary" chip -->
+      <Popover ref="summaryPopoverRef" @hide="summaryOpen = false">
+        <div class="w-72 space-y-2 text-xs">
+          <p class="font-medium text-surface-500 dark:text-surface-400">
+            {{ $t('Wiki.summary.title') }}
+          </p>
+          <p class="leading-relaxed text-surface-800 dark:text-surface-100">
+            {{ page.summary }}
+          </p>
+          <p
+            v-if="page.summaryUpdatedAt"
+            class="text-surface-400 dark:text-surface-500"
+          >
+            {{
+              $t('Wiki.summary.updated', {
+                date: formatDateTime(page.summaryUpdatedAt),
+              })
+            }}
+          </p>
+        </div>
+      </Popover>
+
       <!-- document metadata, opened by the "Info" chip -->
       <Popover ref="infoPopoverRef" @hide="infoOpen = false">
         <dl class="w-64 space-y-3 text-xs">
+          <div class="flex flex-col gap-0.5">
+            <dt class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.scope') }}
+            </dt>
+            <dd class="text-surface-800 dark:text-surface-100">
+              {{ scopeLabel }}
+            </dd>
+          </div>
+
           <div class="flex flex-col gap-0.5">
             <dt class="font-medium text-surface-500 dark:text-surface-400">
               {{ $t('Wiki.info.created') }}
@@ -344,22 +434,29 @@ import type { KnowledgeAttributeDefinition, WikiBlock } from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
 import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
+import IconUpload from '~icons/mdi/tray-arrow-up'
+import IconContentCopy from '~icons/mdi/content-copy'
+import IconCheck from '~icons/mdi/check'
 import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconTag from '~icons/mdi/tag-outline'
 import IconInfo from '~icons/mdi/information-outline'
+import IconTextBox from '~icons/mdi/text-box-outline'
 import IconCircle from '~icons/mdi/circle-outline'
 import IconCheckCircle from '~icons/mdi/check-circle-outline'
 import IconAlertCircle from '~icons/mdi/alert-circle-outline'
 import IconDraft from '~icons/mdi/file-document-edit-outline'
 import { useToast } from 'primevue/usetoast'
+import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
+import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
 import { useWikiPresence } from '@/composables/useWikiPresence'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'
+import { blocksToMarkdown } from '@/utils/wikiMarkdown'
 
 const wiki = useWiki()
 const app = useApp()
@@ -390,21 +487,83 @@ const titleRef = ref<HTMLTextAreaElement | null>(null)
 const editorRef = ref<{
   flush: () => void
   getBlocks: () => WikiBlock[]
+  insertMarkdown: (markdown: string) => void
 } | null>(null)
 const exporting = ref(false)
 // bumped to remount the editor after the assistant edits the page server-side
 const reloadKey = ref(0)
 
 const toggleAssistant = () => {
-  // the assistant edits the document server-side, so keep it behind the lock
-  if (!editable.value) return
-  if (assistant.open) assistant.closePanel()
-  else assistant.openPanel()
+  if (assistant.open) {
+    assistant.closePanel()
+    return
+  }
+  // the assistant edits the document server-side, so it needs the edit lock;
+  // someone else holding it is the only hard blocker
+  if (lockedByOther.value) return
+  // in read-only mode, opening the assistant switches editing on as well
+  if (!editable.value) readOnly.setReadOnly(false)
+  assistant.openPanel()
 }
+
+// close the assistant if the page becomes locked by someone else while open
+watch(lockedByOther, (locked) => {
+  if (locked && assistant.open) assistant.closePanel()
+})
 
 // close the assistant if the page becomes read-only while it is open
 watch(editable, (canEdit) => {
   if (!canEdit && assistant.open) assistant.closePanel()
+})
+
+// ----- markdown paste --------------------------------------------------------
+
+// Pasting raw markdown into the editor is auto-detected (see BlockEditor's
+// handlePaste). This dialog is the explicit fallback: paste markdown, preview
+// it, and insert it as formatted content at the cursor.
+const markdownDialogOpen = ref(false)
+
+const onInsertMarkdown = (markdown: string) => {
+  editorRef.value?.insertMarkdown(markdown)
+}
+
+// ----- copy as markdown ------------------------------------------------------
+
+// Icon-only chip that copies the page (title + content) as markdown, so it can
+// be pasted straight into an AI agent / chat. Uses the live editor blocks so
+// unsaved edits are included, matching the PDF export.
+const copying = ref(false)
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const copyMarkdown = async () => {
+  if (!page.value || copying.value) return
+  copying.value = true
+  try {
+    const blocks = editorRef.value?.getBlocks() ?? wiki.state.blocks
+    const markdown = await blocksToMarkdown(
+      blocks,
+      title.value.trim() || page.value.title,
+    )
+    await navigator.clipboard.writeText(markdown)
+    copied.value = true
+    if (copiedTimer) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  } catch (error) {
+    console.error('Copy as markdown failed', error)
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Wiki.copyMarkdown.error'),
+      life: 4000,
+    })
+  } finally {
+    copying.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  if (copiedTimer) clearTimeout(copiedTimer)
 })
 
 // ----- PDF export -----------------------------------------------------------
@@ -460,6 +619,8 @@ const loadPage = async () => {
     await nextTick()
     autoGrowTitle()
     if (!title.value) titleRef.value?.focus()
+    // honour a deep-link target (?block=… / ?match=…) once the editor renders
+    scheduleJump()
   } catch {
     loadError.value = true
   }
@@ -467,9 +628,96 @@ const loadPage = async () => {
 
 watch(pageId, loadPage, { immediate: true })
 
+// Re-jump when only the target changes but the page stays (e.g. two search
+// hits in the same document opened one after another).
+watch(
+  () => [route.query.block, route.query.match],
+  () => {
+    if (!wiki.state.pageLoading) scheduleJump()
+  },
+)
+
 onBeforeUnmount(() => {
+  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
   editorRef.value?.flush()
 })
+
+// ----- deep-link jump (scroll to a block / match + highlight) ----------------
+
+const JUMP_HIGHLIGHT_MS = 2200
+let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
+// increments on every scheduleJump so a stale retry loop bows out
+let jumpToken = 0
+
+/** The rendered editor root (ProseMirror content), if mounted. */
+const editorRoot = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>('.wiki-editor .wiki-prose')
+
+/** Find a top-level block element by its stable data-block-id. */
+const findBlockEl = (blockId: string): HTMLElement | null => {
+  const root = editorRoot()
+  if (!root) return null
+  return (
+    Array.from(root.children).find(
+      (el) => el.getAttribute('data-block-id') === blockId,
+    ) as HTMLElement | undefined
+  ) ?? null
+}
+
+/**
+ * Fallback when no block id is known (fulltext hits, legacy chunks): the first
+ * top-level block whose text contains the query — or one of its words, so a
+ * multi-word query still lands somewhere sensible.
+ */
+const findMatchEl = (text: string): HTMLElement | null => {
+  const root = editorRoot()
+  if (!root) return null
+  const needle = text.toLowerCase().trim()
+  if (!needle) return null
+  const tokens = needle.split(/\s+/).filter((t) => t.length >= 3)
+  for (const el of Array.from(root.children) as HTMLElement[]) {
+    const content = (el.textContent ?? '').toLowerCase()
+    if (content.includes(needle) || tokens.some((t) => content.includes(t))) {
+      return el
+    }
+  }
+  return null
+}
+
+const scrollAndHighlight = (el: HTMLElement) => {
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  document
+    .querySelectorAll('.wiki-jump-highlight')
+    .forEach((node) => node.classList.remove('wiki-jump-highlight'))
+  el.classList.add('wiki-jump-highlight')
+  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
+  jumpHighlightTimer = setTimeout(() => {
+    el.classList.remove('wiki-jump-highlight')
+  }, JUMP_HIGHLIGHT_MS)
+}
+
+/**
+ * Locate the deep-link target and scroll to it. The editor mounts and renders
+ * asynchronously after the blocks load, so retry briefly until the node exists.
+ */
+const scheduleJump = () => {
+  const block = route.query.block ? String(route.query.block) : ''
+  const match = route.query.match ? String(route.query.match) : ''
+  if (!block && !match) return
+
+  const token = ++jumpToken
+  let attempts = 0
+  const tick = () => {
+    if (token !== jumpToken) return // superseded by a newer jump
+    const el = block ? findBlockEl(block) : findMatchEl(match)
+    if (el) {
+      scrollAndHighlight(el)
+      return
+    }
+    if (attempts++ < 30) setTimeout(tick, 100) // ~3s budget for the editor
+  }
+  tick()
+}
 
 // ----- title ----------------------------------------------------------------
 
@@ -704,6 +952,16 @@ const toggleInfo = (event: Event) => {
   infoPopoverRef.value?.toggle(event)
 }
 
+// ----- summary popover (AI page summary) ------------------------------------
+
+const summaryPopoverRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const summaryOpen = ref(false)
+
+const toggleSummary = (event: Event) => {
+  summaryOpen.value = !summaryOpen.value
+  summaryPopoverRef.value?.toggle(event)
+}
+
 // userId -> email lookup, so authorship fields (createdBy / updatedBy /
 // verifiedBy) can be shown as human-readable names. Loaded once per tenant.
 const memberEmails = ref<Record<string, string>>({})
@@ -731,12 +989,40 @@ const userLabel = (userId: string | null | undefined): string =>
 
 /** Full date + time in the active locale, or '—' when missing. */
 const formatDateTime = (value: string | null | undefined): string => {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
+  const date = parseServerDate(value)
+  if (!date) return '—'
   return date.toLocaleString(locale.value, {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
 }
 </script>
+
+<style>
+/*
+  Deep-link jump highlight. Global (not scoped): the editor renders its blocks
+  unscoped via ProseMirror, so the class lands on nodes outside this
+  component's scoped style. A brief tinted pulse draws the eye to the block a
+  search hit / chunk citation pointed at, then fades out on its own.
+*/
+.wiki-jump-highlight {
+  border-radius: 0.375rem;
+  animation: wiki-jump-pulse 2.2s ease-out forwards;
+}
+@keyframes wiki-jump-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--p-primary-color) 28%, transparent);
+    box-shadow: 0 0 0 6px
+      color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+  }
+  70% {
+    background-color: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+    box-shadow: 0 0 0 6px
+      color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+</style>

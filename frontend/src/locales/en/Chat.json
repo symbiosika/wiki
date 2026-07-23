@@ -24,6 +24,8 @@
   },
   "config": {
     "title": "Chat agent",
+    "tabTitle": "Chat agent",
+    "tabDescription": "Configure the chat agent for the \"{tenant}\" organisation. These settings apply to all members.",
     "settings": "Agent settings",
     "settingsTitle": "Adjust system prompt",
     "systemPrompt": "System prompt",
