@@ -7,6 +7,7 @@ import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-a
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
+import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { aiTestJobHandler } from "./lib/ai-tests/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
@@ -85,6 +86,7 @@ const server = defineServer({
         defineUrlImportRoutes(app);
         definePostProcessingAgentRoutes(app);
         defineAiTestRoutes(app);
+        defineOrganisationLogoRoutes(app);
       },
     },
   ],

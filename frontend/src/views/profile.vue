@@ -73,6 +73,17 @@
         />
       </div>
 
+      <!-- crop the picture (square) before it is uploaded -->
+      <ImageCropperDialog
+        v-model:visible="cropperVisible"
+        :file="pendingImage"
+        :aspect-ratio="1"
+        :max-output="512"
+        round
+        :title="$t('Profile.cropTitle')"
+        @cropped="onImageCropped"
+      />
+
       <!-- name fields -->
       <div class="flex flex-col gap-4">
         <div>
@@ -707,6 +718,9 @@ const surname = ref('')
 const saving = ref(false)
 const uploadingImage = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+// picture picked but not yet cropped/uploaded
+const pendingImage = ref<File | null>(null)
+const cropperVisible = ref(false)
 // bumped after an upload so the browser refetches the (same-URL) image
 const imageVersion = ref(0)
 
@@ -1176,6 +1190,12 @@ const onFileSelected = async (event: Event) => {
     return
   }
 
+  // hand the picked file to the cropper; upload happens once it emits `cropped`
+  pendingImage.value = file
+  cropperVisible.value = true
+}
+
+const onImageCropped = async (file: File) => {
   uploadingImage.value = true
   try {
     await app.uploadProfileImage(file)
@@ -1195,6 +1215,7 @@ const onFileSelected = async (event: Event) => {
     })
   } finally {
     uploadingImage.value = false
+    pendingImage.value = null
   }
 }
 </script>

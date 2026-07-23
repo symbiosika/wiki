@@ -87,6 +87,22 @@
     "loadError": "Failed to load document tags",
     "saveError": "Failed to save document tags"
   },
+  "logo": {
+    "title": "Logo",
+    "hint": "Shown at the top of the sidebar in place of the organisation name.",
+    "uploadHint": "JPG, PNG or GIF, max. 5 MB. Cropped on upload.",
+    "change": "Change logo",
+    "cropTitle": "Crop logo",
+    "success": "Logo updated",
+    "deleteTitle": "Remove logo",
+    "deleteConfirm": "Are you sure you want to remove this organisation's logo?",
+    "deleteSuccess": "Logo removed",
+    "errors": {
+      "tooLarge": "The image is too large (max. 5 MB)",
+      "uploadFailed": "Failed to upload logo",
+      "deleteFailed": "Failed to remove logo"
+    }
+  },
   "errors": {
     "setupFailed": "Failed to create organisation",
     "leaveFailed": "Failed to leave organisation",
