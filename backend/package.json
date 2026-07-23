@@ -15,7 +15,7 @@
     "drizzle-kit": "^0.31.5",
     "prettier": "^3.3.3",
     "ts-morph": "^22.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@ai-sdk/mistral": "^3.0.5",
@@ -50,6 +50,7 @@
     "valibot": "^1.2.0"
   },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "db:local": "bun run ./framework/.scripts/local-db-server.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
