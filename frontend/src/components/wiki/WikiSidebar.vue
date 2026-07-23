@@ -540,10 +540,18 @@ watch(searchQuery, (query) => {
 })
 
 const openSearchResult = (result: WikiSearchResult) => {
+  const query = searchQuery.value.trim()
   searchQuery.value = ''
+  // Deep-link to the matched spot: prefer the exact block the semantic hit
+  // came from; otherwise pass the query so the page can locate & highlight
+  // the first match in the rendered document.
   router.push({
     name: 'WikiPage',
     params: { tenantId: tenantId.value, pageId: result.id },
+    query: {
+      ...(result.blockId ? { block: result.blockId } : {}),
+      ...(query ? { match: query } : {}),
+    },
   })
 }
 
