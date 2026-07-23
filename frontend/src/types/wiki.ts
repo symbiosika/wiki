@@ -172,6 +172,21 @@ export interface WikiSearchResult {
   score: number
   snippet: string
   matchedBy: string[]
+  /** wiki path (breadcrumb) of the hit, root first; '' for a top-level page */
+  path?: string
+  /**
+   * The matched chunk's sequence number within the page (semantic hits only).
+   * Address surrounding chunks via GET .../texts/:id/chunk-context?order=…
+   */
+  chunkOrder?: number | null
+  /** source page number of the matched chunk (PDF imports), when known */
+  sourcePage?: number | null
+  /**
+   * Id of the content block the matched chunk starts in (block-mode pages).
+   * Lets the UI jump straight to the block in the rendered document. Null for
+   * fulltext-only hits or chunks without block provenance.
+   */
+  blockId?: string | null
 }
 
 /**

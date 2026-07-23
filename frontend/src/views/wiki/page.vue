@@ -604,6 +604,8 @@ const loadPage = async () => {
     await nextTick()
     autoGrowTitle()
     if (!title.value) titleRef.value?.focus()
+    // honour a deep-link target (?block=… / ?match=…) once the editor renders
+    scheduleJump()
   } catch {
     loadError.value = true
   }
@@ -611,9 +613,96 @@ const loadPage = async () => {
 
 watch(pageId, loadPage, { immediate: true })
 
+// Re-jump when only the target changes but the page stays (e.g. two search
+// hits in the same document opened one after another).
+watch(
+  () => [route.query.block, route.query.match],
+  () => {
+    if (!wiki.state.pageLoading) scheduleJump()
+  },
+)
+
 onBeforeUnmount(() => {
+  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
   editorRef.value?.flush()
 })
+
+// ----- deep-link jump (scroll to a block / match + highlight) ----------------
+
+const JUMP_HIGHLIGHT_MS = 2200
+let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
+// increments on every scheduleJump so a stale retry loop bows out
+let jumpToken = 0
+
+/** The rendered editor root (ProseMirror content), if mounted. */
+const editorRoot = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>('.wiki-editor .wiki-prose')
+
+/** Find a top-level block element by its stable data-block-id. */
+const findBlockEl = (blockId: string): HTMLElement | null => {
+  const root = editorRoot()
+  if (!root) return null
+  return (
+    Array.from(root.children).find(
+      (el) => el.getAttribute('data-block-id') === blockId,
+    ) as HTMLElement | undefined
+  ) ?? null
+}
+
+/**
+ * Fallback when no block id is known (fulltext hits, legacy chunks): the first
+ * top-level block whose text contains the query — or one of its words, so a
+ * multi-word query still lands somewhere sensible.
+ */
+const findMatchEl = (text: string): HTMLElement | null => {
+  const root = editorRoot()
+  if (!root) return null
+  const needle = text.toLowerCase().trim()
+  if (!needle) return null
+  const tokens = needle.split(/\s+/).filter((t) => t.length >= 3)
+  for (const el of Array.from(root.children) as HTMLElement[]) {
+    const content = (el.textContent ?? '').toLowerCase()
+    if (content.includes(needle) || tokens.some((t) => content.includes(t))) {
+      return el
+    }
+  }
+  return null
+}
+
+const scrollAndHighlight = (el: HTMLElement) => {
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  document
+    .querySelectorAll('.wiki-jump-highlight')
+    .forEach((node) => node.classList.remove('wiki-jump-highlight'))
+  el.classList.add('wiki-jump-highlight')
+  if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
+  jumpHighlightTimer = setTimeout(() => {
+    el.classList.remove('wiki-jump-highlight')
+  }, JUMP_HIGHLIGHT_MS)
+}
+
+/**
+ * Locate the deep-link target and scroll to it. The editor mounts and renders
+ * asynchronously after the blocks load, so retry briefly until the node exists.
+ */
+const scheduleJump = () => {
+  const block = route.query.block ? String(route.query.block) : ''
+  const match = route.query.match ? String(route.query.match) : ''
+  if (!block && !match) return
+
+  const token = ++jumpToken
+  let attempts = 0
+  const tick = () => {
+    if (token !== jumpToken) return // superseded by a newer jump
+    const el = block ? findBlockEl(block) : findMatchEl(match)
+    if (el) {
+      scrollAndHighlight(el)
+      return
+    }
+    if (attempts++ < 30) setTimeout(tick, 100) // ~3s budget for the editor
+  }
+  tick()
+}
 
 // ----- title ----------------------------------------------------------------
 
@@ -893,3 +982,32 @@ const formatDateTime = (value: string | null | undefined): string => {
   })
 }
 </script>
+
+<style>
+/*
+  Deep-link jump highlight. Global (not scoped): the editor renders its blocks
+  unscoped via ProseMirror, so the class lands on nodes outside this
+  component's scoped style. A brief tinted pulse draws the eye to the block a
+  search hit / chunk citation pointed at, then fades out on its own.
+*/
+.wiki-jump-highlight {
+  border-radius: 0.375rem;
+  animation: wiki-jump-pulse 2.2s ease-out forwards;
+}
+@keyframes wiki-jump-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--p-primary-color) 28%, transparent);
+    box-shadow: 0 0 0 6px
+      color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+  }
+  70% {
+    background-color: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+    box-shadow: 0 0 0 6px
+      color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+</style>

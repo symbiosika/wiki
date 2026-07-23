@@ -134,6 +134,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
             matchedBy: r.matchedBy,
             chunkOrder: r.chunkOrder,
             sourcePage: r.sourcePage,
+            blockId: r.blockId,
           })),
         };
       } catch (error) {
@@ -336,6 +337,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
             header: chunk.header,
             text: clip(chunk.text),
             sourcePage: chunk.sourcePage,
+            blockId: chunk.blockId,
             matched: chunk.matched,
           })),
         };

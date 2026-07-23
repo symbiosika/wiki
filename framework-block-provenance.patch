@@ -1,0 +1,691 @@
+diff --git a/src/lib/db/schema/knowledge.ts b/src/lib/db/schema/knowledge.ts
+index 85d8194..8606951 100644
+--- a/src/lib/db/schema/knowledge.ts
++++ b/src/lib/db/schema/knowledge.ts
+@@ -666,6 +666,13 @@ export type KnowledgeChunkMeta = {
+   sourceUri?: string;
+   textLength?: number;
+   page?: number;
++  /**
++   * Id of the knowledge_text_block this chunk starts in (wiki pages in block
++   * mode only). Written by the block-provenance mapper during the embedding
++   * sync so search/RAG hits can deep-link to the exact block in the rendered
++   * document. Absent for non-block sources (PDF/URL/file imports).
++   */
++  blockId?: string;
+ };
+ 
+ export const knowledgeChunks = pgBaseTable(
+diff --git a/src/lib/knowledge/add-knowledge.ts b/src/lib/knowledge/add-knowledge.ts
+index 7608ec3..389b2b6 100644
+--- a/src/lib/knowledge/add-knowledge.ts
++++ b/src/lib/knowledge/add-knowledge.ts
+@@ -15,6 +15,7 @@ import { getDb } from "../db/db-connection";
+ import log from "../log";
+ import type { FileSourceType } from "../storage";
+ import { splitDocumentIntoChunks } from "./chunking";
++import { assignBlockProvenance, type BlockSpan } from "./block-provenance";
+ import type { ChunkWithEmbedding } from "../types/chunks";
+ import {
+   knowledgeChunks,
+@@ -93,6 +94,14 @@ export const extractKnowledgeFromText = async (data: {
+   generateSummary?: boolean;
+   summaryCustomPrompt?: string;
+   summaryModel?: string;
++  /**
++   * Character spans of the source content blocks inside `text`, in order.
++   * When given, each chunk is tagged with the id of the block it starts in
++   * (`chunk.meta.blockId`) so retrieval hits can deep-link back to the exact
++   * block. Only meaningful for block-mode wiki pages; ignored for `pages`
++   * (PDF) input, which has its own page provenance.
++   */
++  blockSpans?: BlockSpan[];
+ }) => {
+   const title = data.title;
+ 
+@@ -105,6 +114,13 @@ export const extractKnowledgeFromText = async (data: {
+   // Split the content into chunks - now handles both text and pages
+   const chunks = splitDocumentIntoChunks(data.pages || fullText);
+ 
++  // Tag chunks with their source block (wiki block-mode pages). Text-based
++  // only: `pages` input carries page provenance instead. No effect on chunk
++  // boundaries or text — purely additive metadata.
++  if (!data.pages && data.blockSpans && data.blockSpans.length > 0) {
++    assignBlockProvenance(chunks, fullText, data.blockSpans);
++  }
++
+   // Generate embeddings for all chunks
+   const allEmbeddings: ChunkWithEmbedding[] = await Promise.all(
+     chunks.map(async (chunk) => {
+diff --git a/src/lib/knowledge/block-provenance.test.ts b/src/lib/knowledge/block-provenance.test.ts
+new file mode 100644
+index 0000000..5385a6f
+--- /dev/null
++++ b/src/lib/knowledge/block-provenance.test.ts
+@@ -0,0 +1,131 @@
++import { describe, it, expect } from "bun:test";
++import { assignBlockProvenance, type BlockSpan } from "./block-provenance";
++import { materializeBlocksTextWithSpans } from "./materialize-blocks";
++import { splitTextIntoSectionsOrChunks } from "./splitter";
++import { smartSplitTextIntoSectionsOrChunks } from "./smart-splitter";
++import type { Chunk } from "../types/chunks";
++
++/** Build spans quickly from block-id + text pairs joined by the real separator. */
++const materialize = (blocks: { id: string; content: string }[]) =>
++  materializeBlocksTextWithSpans(
++    blocks.map((b) => ({ id: b.id, type: "markdown" as const, content: b.content }))
++  );
++
++describe("materializeBlocksTextWithSpans", () => {
++  it("produces the same text as a plain \\n\\n join and exact spans", () => {
++    const { text, spans } = materialize([
++      { id: "a", content: "# Title" },
++      { id: "b", content: "First paragraph." },
++      { id: "c", content: "Second paragraph." },
++    ]);
++
++    expect(text).toBe("# Title\n\nFirst paragraph.\n\nSecond paragraph.");
++    // every span points back at its exact source slice
++    const contentById: Record<string, string> = {
++      a: "# Title",
++      b: "First paragraph.",
++      c: "Second paragraph.",
++    };
++    for (const span of spans) {
++      expect(text.slice(span.start, span.end)).toBe(contentById[span.blockId]!);
++    }
++  });
++
++  it("drops empty blocks from both text and spans", () => {
++    const { text, spans } = materialize([
++      { id: "a", content: "Alpha" },
++      { id: "b", content: "   " },
++      { id: "c", content: "Gamma" },
++    ]);
++
++    expect(text).toBe("Alpha\n\nGamma");
++    expect(spans.map((s) => s.blockId)).toEqual(["a", "c"]);
++  });
++});
++
++describe("assignBlockProvenance", () => {
++  it("tags each chunk with the block it starts in (simple splitter)", () => {
++    // three sizable sections, one per block, so the splitter emits >= 3 chunks
++    // (each section alone exceeds the 500-word soft limit)
++    const para = (word: string) => Array(600).fill(word).join(" ");
++    const blocks = [
++      { id: "blk-1", content: `# Section One\n\n${para("alpha")}` },
++      { id: "blk-2", content: `# Section Two\n\n${para("bravo")}` },
++      { id: "blk-3", content: `# Section Three\n\n${para("charlie")}` },
++    ];
++    const { text, spans } = materialize(blocks);
++
++    const chunks = splitTextIntoSectionsOrChunks(text);
++    expect(chunks.length).toBeGreaterThanOrEqual(3);
++
++    assignBlockProvenance(chunks, text, spans);
++
++    // every chunk resolved to a real block id
++    for (const chunk of chunks) {
++      expect(chunk.meta?.blockId).toBeDefined();
++      expect(["blk-1", "blk-2", "blk-3"]).toContain(chunk.meta!.blockId!);
++    }
++    // each chunk's first line really lives inside the block span it was
++    // tagged with (i.e. the mapping is correct, not just non-empty)
++    const spanById = new Map(spans.map((s) => [s.blockId, s]));
++    for (const chunk of chunks) {
++      const span = spanById.get(chunk.meta!.blockId!)!;
++      const source = text.slice(span.start, span.end);
++      const firstLine = chunk.text.split("\n").find((l) => l.trim().length > 0)!;
++      expect(source).toContain(firstLine.trim());
++    }
++  });
++
++  it("keeps chunk boundaries and text untouched", () => {
++    const para = (word: string) => Array(120).fill(word).join(" ");
++    const blocks = [
++      { id: "b1", content: `# A\n\n${para("one")}` },
++      { id: "b2", content: `# B\n\n${para("two")}` },
++    ];
++    const { text, spans } = materialize(blocks);
++
++    const before = splitTextIntoSectionsOrChunks(text);
++    const beforeSnapshot = before.map((c) => ({ text: c.text, order: c.order }));
++
++    const after = splitTextIntoSectionsOrChunks(text);
++    assignBlockProvenance(after, text, spans);
++
++    expect(after.map((c) => ({ text: c.text, order: c.order }))).toEqual(
++      beforeSnapshot
++    );
++  });
++
++  it("works with the smart splitter too", () => {
++    const para = (word: string) => Array(80).fill(word).join(" ");
++    const blocks = [
++      { id: "s1", content: `# One\n\n${para("uno")}` },
++      { id: "s2", content: `# Two\n\n${para("dos")}` },
++    ];
++    const { text, spans } = materialize(blocks);
++
++    const chunks = smartSplitTextIntoSectionsOrChunks(text);
++    assignBlockProvenance(chunks, text, spans);
++
++    for (const chunk of chunks) {
++      expect(["s1", "s2"]).toContain(chunk.meta!.blockId!);
++    }
++  });
++
++  it("no-ops when there are no spans", () => {
++    const chunks: Chunk[] = [{ text: "hello", header: undefined, order: 0 }];
++    assignBlockProvenance(chunks, "hello", []);
++    expect(chunks[0]!.meta?.blockId).toBeUndefined();
++  });
++
++  it("inherits the previous block when an anchor cannot be located", () => {
++    const spans: BlockSpan[] = [{ blockId: "only", start: 0, end: 5 }];
++    const chunks: Chunk[] = [
++      { text: "hello", header: undefined, order: 0 },
++      { text: "not-in-source-text", header: undefined, order: 1 },
++    ];
++    assignBlockProvenance(chunks, "hello", spans);
++    expect(chunks[0]!.meta?.blockId).toBe("only");
++    // second chunk's anchor isn't in the source → inherits the first's block
++    expect(chunks[1]!.meta?.blockId).toBe("only");
++  });
++});
+diff --git a/src/lib/knowledge/block-provenance.ts b/src/lib/knowledge/block-provenance.ts
+new file mode 100644
+index 0000000..e8c51e0
+--- /dev/null
++++ b/src/lib/knowledge/block-provenance.ts
+@@ -0,0 +1,96 @@
++/**
++ * Block provenance for chunks.
++ *
++ * When a wiki page in block mode is mirrored into the RAG pipeline, its
++ * content is first materialized into a single markdown blob (see
++ * `materializeBlocksTextWithSpans`) and then chunked. Chunking is a pure
++ * function of that blob and is intentionally left untouched here — chunk
++ * boundaries, text and embeddings stay exactly as they are.
++ *
++ * This module adds, as a post-processing step, the missing back-reference:
++ * for every chunk it records the id of the content block the chunk STARTS in,
++ * stored on `chunk.meta.blockId`. That lets the UI jump from a retrieved chunk
++ * (search hit, RAG citation) straight to the right block in the rendered
++ * document.
++ *
++ * The mapping is offset-based and does not depend on the chunking strategy:
++ * chunks are produced in reading order, so a single forward cursor over the
++ * source text locates each chunk's start offset, which is then matched against
++ * the block spans. It degrades gracefully — a chunk whose anchor cannot be
++ * located inherits the previous chunk's block (chunks are ordered, so that is
++ * the nearest preceding block), and everything no-ops when no spans are given.
++ */
++
++import type { Chunk } from "../types/chunks";
++
++/** Half-open character range `[start, end)` of one block in the source text. */
++export type BlockSpan = {
++  blockId: string;
++  start: number;
++  end: number;
++};
++
++/** First non-empty line of a chunk, used as the search anchor. */
++const firstAnchorLine = (text: string): string | null => {
++  for (const line of text.split("\n")) {
++    const trimmed = line.trim();
++    if (trimmed.length > 0) return trimmed;
++  }
++  return null;
++};
++
++/** The block span that contains `offset` (or the last span that starts before it). */
++const blockAtOffset = (spans: BlockSpan[], offset: number): string | null => {
++  let candidate: string | null = null;
++  for (const span of spans) {
++    if (offset < span.start) break;
++    // within the span, or past its end but no later span has started yet
++    candidate = span.blockId;
++    if (offset < span.end) return span.blockId;
++  }
++  return candidate;
++};
++
++/**
++ * Annotate each chunk with the id of the block it starts in.
++ *
++ * Mutates the chunks in place (sets `chunk.meta.blockId`) and returns them for
++ * convenience. `spans` must describe blocks within `text` in ascending order;
++ * pass the output of `materializeBlocksTextWithSpans`. Chunks are expected in
++ * reading order (as every splitter emits them).
++ */
++export const assignBlockProvenance = (
++  chunks: Chunk[],
++  text: string,
++  spans: BlockSpan[]
++): Chunk[] => {
++  if (spans.length === 0) return chunks;
++
++  let cursor = 0;
++  let lastBlockId: string | null = null;
++
++  for (const chunk of chunks) {
++    const anchor = firstAnchorLine(chunk.text);
++    let offset = -1;
++    if (anchor) {
++      offset = text.indexOf(anchor, cursor);
++      // Retry from the top in case ordering assumptions broke (e.g. a splitter
++      // reordered content); better a correct-but-backwards match than none.
++      if (offset === -1) offset = text.indexOf(anchor);
++    }
++
++    const blockId: string | null =
++      offset === -1 ? lastBlockId : blockAtOffset(spans, offset);
++
++    if (blockId) {
++      chunk.meta = { ...(chunk.meta ?? {}), blockId };
++      lastBlockId = blockId;
++    }
++
++    if (offset !== -1) {
++      cursor = offset + (anchor?.length ?? 0);
++    }
++  }
++
++  return chunks;
++};
+diff --git a/src/lib/knowledge/knowledge-text-blocks.ts b/src/lib/knowledge/knowledge-text-blocks.ts
+index 5a93097..24c5aed 100644
+--- a/src/lib/knowledge/knowledge-text-blocks.ts
++++ b/src/lib/knowledge/knowledge-text-blocks.ts
+@@ -15,8 +15,6 @@
+  */
+ 
+ import { asc, eq, and, desc, inArray, sql } from "drizzle-orm";
+-import TurndownService from "turndown";
+-import { gfm } from "turndown-plugin-gfm";
+ import { getDb } from "../db/db-connection";
+ import {
+   knowledgeText,
+@@ -68,34 +66,17 @@ type Context = {
+   source?: WebhookEventSource;
+ };
+ 
+-let turndown: TurndownService | null = null;
+-const getTurndown = (): TurndownService => {
+-  if (!turndown) {
+-    turndown = new TurndownService({
+-      headingStyle: "atx",
+-      codeBlockStyle: "fenced",
+-    });
+-    turndown.use(gfm);
+-  }
+-  return turndown;
+-};
+-
+-/**
+- * Assemble the page's materialized `text` from its blocks. HTML blocks are
+- * converted to markdown so the cache stays homogeneous for search/embedding.
+- */
+-export const materializeBlocksText = (
+-  blocks: Pick<KnowledgeTextBlockInput, "type" | "content">[]
+-): string => {
+-  return blocks
+-    .map((block) =>
+-      block.type === "html"
+-        ? getTurndown().turndown(block.content).trim()
+-        : block.content.trim()
+-    )
+-    .filter((part) => part.length > 0)
+-    .join("\n\n");
+-};
++// Materialization of the `text` cache lives in a pure, DB-free module so it
++// can be unit-tested and reused by the embedding sync (which also needs the
++// per-block character spans). Imported for local use (syncKnowledgeTextBlocks
++// re-materializes the cache) and re-exported to keep the historical import
++// site (`materializeBlocksText` from this module) working.
++import { materializeBlocksText } from "./materialize-blocks";
++export {
++  materializeBlocksText,
++  materializeBlocksTextWithSpans,
++  type MaterializedBlockSpan,
++} from "./materialize-blocks";
+ 
+ const toSnapshot = (
+   block: KnowledgeTextBlockSelect
+diff --git a/src/lib/knowledge/knowledge-text-chunks.ts b/src/lib/knowledge/knowledge-text-chunks.ts
+index 8ef6a58..50db3ef 100644
+--- a/src/lib/knowledge/knowledge-text-chunks.ts
++++ b/src/lib/knowledge/knowledge-text-chunks.ts
+@@ -27,6 +27,8 @@ export type PageChunkContextItem = {
+   text: string;
+   /** source page number (PDF), when known */
+   sourcePage: number | null;
++  /** id of the content block this chunk starts in (block-mode pages), if known */
++  blockId: string | null;
+   /** true for the chunk addressed by `order` (the hit), false for neighbours */
+   matched: boolean;
+ };
+@@ -109,6 +111,7 @@ export const getPageChunkContext = async (
+       header: r.header,
+       text: r.text,
+       sourcePage: r.meta?.page ?? null,
++      blockId: r.meta?.blockId ?? null,
+       matched: r.order === center,
+     })),
+   };
+diff --git a/src/lib/knowledge/knowledge-text-embedding.ts b/src/lib/knowledge/knowledge-text-embedding.ts
+index e642d81..5d52787 100644
+--- a/src/lib/knowledge/knowledge-text-embedding.ts
++++ b/src/lib/knowledge/knowledge-text-embedding.ts
+@@ -13,15 +13,18 @@
+  */
+ 
+ import { createHash } from "node:crypto";
+-import { eq, and } from "drizzle-orm";
++import { eq, and, asc } from "drizzle-orm";
+ import { getDb } from "../db/db-connection";
+ import {
+   knowledgeText,
++  knowledgeTextBlock,
+   knowledgeEntry,
+   type KnowledgeTextSelect,
+   type KnowledgeTextMeta,
+ } from "../db/schema/knowledge";
+ import { upsertKnowledgeFromText } from "./upsert-knowledge";
++import { materializeBlocksTextWithSpans } from "./materialize-blocks";
++import type { BlockSpan } from "./block-provenance";
+ import log from "../log";
+ 
+ /** Stable upsert key linking a wiki page to its knowledge entry */
+@@ -31,6 +34,34 @@ export const knowledgeTextSourceIdentifier = (knowledgeTextId: string) =>
+ const contentHash = (title: string, text: string) =>
+   createHash("sha256").update(`${title}\n${text}`).digest("hex");
+ 
++/**
++ * Character spans of a block-mode page's blocks within its materialized
++ * `text`, used to tag chunks with their source block. Returns `undefined`
++ * for text-mode pages, pages without blocks, or when the freshly materialized
++ * text does not match the stored cache (so provenance is never mis-mapped).
++ */
++const resolveBlockSpans = async (
++  page: KnowledgeTextSelect
++): Promise<BlockSpan[] | undefined> => {
++  if (page.contentMode !== "blocks") return undefined;
++
++  const blocks = await getDb()
++    .select({
++      id: knowledgeTextBlock.id,
++      type: knowledgeTextBlock.type,
++      content: knowledgeTextBlock.content,
++    })
++    .from(knowledgeTextBlock)
++    .where(eq(knowledgeTextBlock.knowledgeTextId, page.id))
++    .orderBy(asc(knowledgeTextBlock.position));
++
++  if (blocks.length === 0) return undefined;
++
++  const { text, spans } = materializeBlocksTextWithSpans(blocks);
++  if (spans.length === 0 || text !== page.text) return undefined;
++  return spans;
++};
++
+ export type KnowledgeTextEmbeddingSyncResult = {
+   /** true if an embedding upsert was performed */
+   synced: boolean;
+@@ -124,6 +155,13 @@ export const syncKnowledgeTextEmbedding = async (
+     };
+   }
+ 
++  // Block provenance: for block-mode pages, map each chunk back to the block
++  // it starts in so retrieval hits can deep-link to the exact spot. The spans
++  // are only trustworthy when they describe the SAME text that gets chunked
++  // (`page.text`); the materialized text is compared defensively, so a legacy
++  // page whose cache drifted simply skips provenance instead of mis-mapping.
++  const blockSpans = await resolveBlockSpans(page);
++
+   const result = await upsertKnowledgeFromText({
+     tenantId: page.tenantId,
+     sourceIdentifier: knowledgeTextSourceIdentifier(page.id),
+@@ -133,6 +171,7 @@ export const syncKnowledgeTextEmbedding = async (
+     sourceId: page.id,
+     userId: page.userId ?? undefined,
+     teamId: page.teamId ?? undefined,
++    blockSpans,
+   });
+ 
+   await getDb()
+diff --git a/src/lib/knowledge/knowledge-text-search.ts b/src/lib/knowledge/knowledge-text-search.ts
+index 41f0f5e..ad574e7 100644
+--- a/src/lib/knowledge/knowledge-text-search.ts
++++ b/src/lib/knowledge/knowledge-text-search.ts
+@@ -87,6 +87,12 @@ export type KnowledgeTextSearchResult = {
+   chunkOrder: number | null;
+   /** source page number (e.g. the PDF page the chunk came from), when known */
+   sourcePage: number | null;
++  /**
++   * Id of the content block the matched chunk starts in (block-mode wiki
++   * pages only), so the UI can deep-link straight to the block. Null for
++   * fulltext-only hits and chunks without block provenance.
++   */
++  blockId: string | null;
+ };
+ 
+ const RRF_K = 60;
+@@ -105,6 +111,7 @@ type RankedHit = {
+   // only set by the semantic leg:
+   chunkOrder?: number;
+   sourcePage?: number | null;
++  blockId?: string | null;
+ };
+ 
+ /** Combine extra (facet/scope) conditions into a single SQL fragment. */
+@@ -202,6 +209,7 @@ const semanticSearch = async (
+       ${knowledgeChunks.text} AS "snippet",
+       ${knowledgeChunks.order} AS "chunkOrder",
+       (${knowledgeChunks.meta} ->> 'page')::int AS "sourcePage",
++      (${knowledgeChunks.meta} ->> 'blockId') AS "blockId",
+       ${embeddingColumn} <=> ${queryVector} AS "distance"
+     FROM ${knowledgeChunks}
+     JOIN ${knowledgeText}
+@@ -335,6 +343,7 @@ export const searchKnowledgeTexts = async (
+     matchedBy: ("fulltext" | "semantic")[];
+     chunkOrder?: number;
+     sourcePage?: number | null;
++    blockId?: string | null;
+   };
+   const fused = new Map<string, Fused>();
+   const addLeg = (hits: RankedHit[], leg: "fulltext" | "semantic") => {
+@@ -349,6 +358,7 @@ export const searchKnowledgeTexts = async (
+         if (hit.chunkOrder != null) {
+           existing.chunkOrder = hit.chunkOrder;
+           existing.sourcePage = hit.sourcePage ?? null;
++          existing.blockId = hit.blockId ?? null;
+         }
+       } else {
+         fused.set(hit.id, {
+@@ -359,6 +369,7 @@ export const searchKnowledgeTexts = async (
+           matchedBy: [leg],
+           chunkOrder: hit.chunkOrder,
+           sourcePage: hit.sourcePage ?? null,
++          blockId: hit.blockId ?? null,
+         });
+       }
+     });
+@@ -403,6 +414,7 @@ export const searchKnowledgeTexts = async (
+       supersedesId: m?.supersedesId ?? null,
+       chunkOrder: f.chunkOrder ?? null,
+       sourcePage: f.sourcePage ?? null,
++      blockId: f.blockId ?? null,
+     };
+   });
+ 
+diff --git a/src/lib/knowledge/materialize-blocks.ts b/src/lib/knowledge/materialize-blocks.ts
+new file mode 100644
+index 0000000..054a148
+--- /dev/null
++++ b/src/lib/knowledge/materialize-blocks.ts
+@@ -0,0 +1,83 @@
++/**
++ * Pure assembly of a block-mode page's materialized `text` from its blocks.
++ *
++ * Kept free of DB / side-effecting imports so it can be unit-tested and reused
++ * by both the block-save path (`knowledge-text-blocks.ts`) and the embedding
++ * sync (which needs the per-block character spans to attach chunk provenance).
++ */
++
++import TurndownService from "turndown";
++import { gfm } from "turndown-plugin-gfm";
++
++/** Join separator between materialized blocks. */
++export const BLOCK_SEPARATOR = "\n\n";
++
++export type MaterializeBlock = {
++  id?: string;
++  type: "markdown" | "html";
++  content: string;
++};
++
++let turndown: TurndownService | null = null;
++const getTurndown = (): TurndownService => {
++  if (!turndown) {
++    turndown = new TurndownService({
++      headingStyle: "atx",
++      codeBlockStyle: "fenced",
++    });
++    turndown.use(gfm);
++  }
++  return turndown;
++};
++
++/** One block's rendered markdown text (html → markdown), trimmed. */
++const renderBlockText = (block: Pick<MaterializeBlock, "type" | "content">): string =>
++  block.type === "html"
++    ? getTurndown().turndown(block.content).trim()
++    : block.content.trim();
++
++/**
++ * Assemble the page's materialized `text` from its blocks. HTML blocks are
++ * converted to markdown so the cache stays homogeneous for search/embedding.
++ */
++export const materializeBlocksText = (
++  blocks: Pick<MaterializeBlock, "type" | "content">[]
++): string => materializeBlocksTextWithSpans(blocks).text;
++
++/** Half-open character range of one block inside the materialized text. */
++export type MaterializedBlockSpan = {
++  blockId: string;
++  start: number;
++  end: number;
++};
++
++/**
++ * Like {@link materializeBlocksText}, but also returns the character span each
++ * block occupies in the produced text. Only blocks that carry an `id` and
++ * render to non-empty text get a span (empty blocks are dropped from the text,
++ * exactly as in `materializeBlocksText`, so the two outputs stay identical).
++ *
++ * Used by the embedding sync to map chunks back to their source block without
++ * changing how the text itself is assembled.
++ */
++export const materializeBlocksTextWithSpans = (
++  blocks: Pick<MaterializeBlock, "id" | "type" | "content">[]
++): { text: string; spans: MaterializedBlockSpan[] } => {
++  const spans: MaterializedBlockSpan[] = [];
++  const parts: string[] = [];
++  let offset = 0;
++
++  for (const block of blocks) {
++    const part = renderBlockText(block);
++    if (part.length === 0) continue;
++
++    if (parts.length > 0) offset += BLOCK_SEPARATOR.length;
++    const start = offset;
++    offset += part.length;
++    parts.push(part);
++
++    if (block.id) spans.push({ blockId: block.id, start, end: offset });
++  }
++
++  return { text: parts.join(BLOCK_SEPARATOR), spans };
++};
+diff --git a/src/lib/knowledge/upsert-knowledge.ts b/src/lib/knowledge/upsert-knowledge.ts
+index c863866..386dbb2 100644
+--- a/src/lib/knowledge/upsert-knowledge.ts
++++ b/src/lib/knowledge/upsert-knowledge.ts
+@@ -41,6 +41,7 @@ import type { ChunkWithEmbedding } from "../types/chunks";
+ import type { PageContent } from "./parsing/pdf/types";
+ import type { FileSourceType } from "../storage";
+ import { splitDocumentIntoChunks } from "./chunking";
++import { assignBlockProvenance, type BlockSpan } from "./block-provenance";
+ import { generateEmbedding } from "./embedding";
+ import { extractKnowledgeFromText } from "./add-knowledge";
+ import { computeSourceHash, isSourceUnchanged } from "./source-hash";
+@@ -98,10 +99,17 @@ export const findKnowledgeEntryBySourceIdentifier = async (
+ const generateChunksAndEmbeddings = async (
+   text: string,
+   pages: PageContent[] | undefined,
+-  context: { tenantId: string; userId?: string }
++  context: { tenantId: string; userId?: string },
++  blockSpans?: BlockSpan[]
+ ): Promise<ChunkWithEmbedding[]> => {
+   const chunks = splitDocumentIntoChunks(pages || text);
+ 
++  // Tag chunks with their source block (wiki block-mode pages) before
++  // embedding. Text-based only; no effect on chunk boundaries or text.
++  if (!pages && blockSpans && blockSpans.length > 0) {
++    assignBlockProvenance(chunks, text, blockSpans);
++  }
++
+   return await Promise.all(
+     chunks.map(async (chunk) => {
+       try {
+@@ -169,6 +177,13 @@ export type UpsertKnowledgeFromTextInput = {
+    * configs in the same tenant cannot collide on the same URL.
+    */
+   matchScope?: MatchScope;
++  /**
++   * Character spans of the source content blocks inside `text`, in order.
++   * When given, each chunk is tagged with the id of the block it starts in
++   * (`chunk.meta.blockId`) so retrieval hits can deep-link back to the exact
++   * block. Flows to both the insert and the replace path. Text-based only.
++   */
++  blockSpans?: BlockSpan[];
+ };
+ 
+ export type UpsertKnowledgeFromTextResult = {
+@@ -262,7 +277,8 @@ export const upsertKnowledgeFromText = async (
+   const allEmbeddings = await generateChunksAndEmbeddings(
+     fullText,
+     data.pages,
+-    { tenantId: data.tenantId, userId: data.userId }
++    { tenantId: data.tenantId, userId: data.userId },
++    data.blockSpans
+   );
+ 
+   const db = getDb();
+diff --git a/src/lib/types/chunks.ts b/src/lib/types/chunks.ts
+index 639a163..30ca59a 100644
+--- a/src/lib/types/chunks.ts
++++ b/src/lib/types/chunks.ts
+@@ -2,7 +2,17 @@ export type Chunk = {
+   text: string;
+   header: string | undefined;
+   order: number;
+-  meta?: { page?: number };
++  meta?: {
++    page?: number;
++    /**
++     * Id of the source content block this chunk starts in, when the chunked
++     * document was assembled from addressable blocks (wiki pages in block
++     * mode). Lets a UI jump from a retrieved chunk back to the exact spot in
++     * the rendered document. Absent for chunks whose source has no blocks
++     * (PDF/URL/file imports).
++     */
++    blockId?: string;
++  };
+ };
+ 
+ export type ChunkWithEmbedding = Chunk & {
