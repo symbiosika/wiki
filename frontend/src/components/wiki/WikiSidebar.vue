@@ -265,6 +265,16 @@
         </span>
       </button>
 
+      <!-- open AI chat: kept next to the account avatar, subtle primary tint -->
+      <button
+        type="button"
+        :title="$t('Chat.chatWithAi')"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+        @click="aiChat.open()"
+      >
+        <IconChat class="h-5 w-5" />
+      </button>
+
       <!-- manage (with open-invitation dot) -->
       <button
         type="button"
@@ -278,16 +288,6 @@
           class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary"
           :title="$t('UserTenants.invitations.openInvitations')"
         />
-      </button>
-
-      <!-- open AI chat: kept findable with a subtle primary tint -->
-      <button
-        type="button"
-        :title="$t('Chat.chatWithAi')"
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20"
-        @click="aiChat.open()"
-      >
-        <IconChat class="h-5 w-5" />
       </button>
 
       <!-- record daily protocol -->
