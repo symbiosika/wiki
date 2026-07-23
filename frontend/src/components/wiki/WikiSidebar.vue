@@ -22,6 +22,32 @@
         </span>
       </button>
 
+      <!--
+        Read-only / edit mode toggle. Compact icon that lives up here next to
+        the close/collapse controls so the current mode is always one glance
+        away without eating a full row. Read-only is the default "safe" state,
+        so the icon turns into a filled primary chip while active — loud enough
+        to notice, small enough to ignore once you are editing.
+      -->
+      <button
+        type="button"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors lg:h-7 lg:w-7"
+        :class="
+          readOnly.readOnly
+            ? 'bg-primary text-primary-contrast hover:bg-primary-emphasis'
+            : 'text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800 dark:hover:text-surface-300'
+        "
+        :title="
+          readOnly.readOnly
+            ? $t('Wiki.readonly.enableEditing')
+            : $t('Wiki.readonly.enableReadOnly')
+        "
+        @click="readOnly.toggle()"
+      >
+        <IconLock v-if="readOnly.readOnly" class="h-4 w-4" />
+        <IconPencil v-else class="h-4 w-4" />
+      </button>
+
       <!-- switch organisation (only if the user has several) -->
       <button
         v-if="app.state.tenants.length > 1"
@@ -86,43 +112,6 @@
         :placeholder="$t('Wiki.search')"
         class="w-full rounded-md border border-surface-200 bg-surface-0 py-2 pr-2 pl-8 text-base text-surface-800 outline-none placeholder:text-surface-400 focus:border-primary lg:py-1.5 lg:text-sm dark:border-surface-700 dark:bg-surface-950 dark:text-surface-200"
       />
-    </div>
-
-    <!--
-      Read-only / edit mode indicator.
-
-      Sits right under the search so the current mode is always visible above
-      the (scrolling) tree. Read-only is the default, "safe" state, so it is
-      deliberately loud — a filled primary bar reading "Read-only mode" — and
-      is easy to spot and click. Once editing, it turns into a quiet, border-
-      only chip so it stops competing for attention while you work.
-    -->
-    <div class="px-3 pb-2">
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-        :class="
-          readOnly.readOnly
-            ? 'bg-primary font-semibold text-primary-contrast hover:bg-primary-emphasis'
-            : 'border border-surface-200 text-surface-500 hover:bg-surface-100 hover:text-surface-700 dark:border-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200'
-        "
-        :title="
-          readOnly.readOnly
-            ? $t('Wiki.readonly.enableEditing')
-            : $t('Wiki.readonly.enableReadOnly')
-        "
-        @click="readOnly.toggle()"
-      >
-        <IconLock v-if="readOnly.readOnly" class="h-4 w-4 shrink-0" />
-        <IconPencil v-else class="h-4 w-4 shrink-0" />
-        <span class="flex-1 text-left">
-          {{
-            readOnly.readOnly
-              ? $t('Wiki.readonly.readOnlyMode')
-              : $t('Wiki.readonly.editMode')
-          }}
-        </span>
-      </button>
     </div>
 
     <!-- search results -->
@@ -242,163 +231,106 @@
       </WikiSidebarSection>
     </nav>
 
-    <!-- footer: actions + account, collapsed by default so the tree gets the space -->
-    <div class="border-t border-surface-200 dark:border-surface-800">
-      <div v-show="footerExpanded" class="flex flex-col gap-2 px-3 pt-2 pb-1">
-        <!-- open AI chat -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-contrast transition-colors hover:bg-primary-emphasis"
-          @click="aiChat.open()"
-        >
-          <IconChat class="h-4 w-4 shrink-0" />
-          <span class="flex-1 text-left">{{ $t('Chat.chatWithAi') }}</span>
-        </button>
-
-        <!-- record daily protocol -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-          @click="protocol.openDialog()"
-        >
-          <IconMicrophone class="h-4 w-4" />
-          {{ $t('Protocol.recordButton') }}
-        </button>
-
-        <!-- import a page from a file or URL -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-          @click="wiki.openImportDialog()"
-        >
-          <IconUpload class="h-4 w-4" />
-          {{ $t('Wiki.import.button') }}
-        </button>
-
-        <!-- jobs (scheduled automations) -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          :class="
-            isJobsActive
-              ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-              : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
-          "
-          @click="gotoJobs"
-        >
-          <IconJobs class="h-4 w-4" />
-          {{ $t('Jobs.menu') }}
-        </button>
-
-        <!-- inbox (user notification queue) with unread chip -->
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          :class="
-            isNotificationsActive
-              ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
-              : 'text-surface-600 hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800'
-          "
-          @click="gotoNotifications"
-        >
-          <IconInbox class="h-4 w-4" />
-          <span class="flex-1 text-left">{{ $t('Notifications.menu') }}</span>
-          <span
-            v-if="notifications.unreadCount > 0"
-            class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-contrast"
-          >
-            {{
-              notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
-            }}
-          </span>
-        </button>
-
-        <!-- account: set apart from the actions above by a divider -->
-        <div class="my-1 border-t border-surface-200 dark:border-surface-800" />
-
-        <button
-          type="button"
-          :title="$t('Profile.title')"
-          class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-          @click="gotoProfile"
-        >
-          <span
-            class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
-            :class="
-              app.state.user?.profileImageName
-                ? 'bg-transparent'
-                : 'bg-primary text-primary-contrast'
-            "
-          >
-            <img
-              v-if="app.state.user?.profileImageName"
-              :src="profileImageUrl"
-              alt=""
-              class="h-full w-full object-cover"
-            />
-            <template v-else>{{ userInitials }}</template>
-          </span>
-          <span
-            class="min-w-0 flex-1 truncate text-sm text-surface-600 dark:text-surface-300"
-          >
-            {{ app.state.user?.email }}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          class="relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-          @click="gotoManage"
-        >
-          <IconCog class="h-4 w-4" />
-          {{ $t('Wiki.manage') }}
-          <span
-            v-if="app.state.tenantInvitations.length > 0"
-            class="absolute top-1.5 left-6 h-2 w-2 rounded-full bg-primary"
-            :title="$t('UserTenants.invitations.openInvitations')"
-          />
-        </button>
-
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-surface-600 transition-colors hover:bg-surface-100 active:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800 dark:active:bg-surface-800"
-          @click="auth.logout()"
-        >
-          <IconLogout class="h-4 w-4" />
-          {{ $t('Wiki.logout') }}
-        </button>
-      </div>
-
-      <!-- slide-out toggle: the only thing visible here by default -->
+    <!--
+      footer: a single, always-visible icon bar. Account (profile, manage) on
+      the left, quick actions (chat, protocol, inbox) in the middle, log out
+      pinned to the right. Everything is icon-only with a title tooltip so the
+      whole footer is one compact row instead of a stack of full-width buttons.
+    -->
+    <div
+      class="flex items-center gap-0.5 border-t border-surface-200 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-surface-800"
+    >
+      <!-- profile -->
       <button
         type="button"
-        :title="
-          footerExpanded ? $t('Wiki.collapseActions') : $t('Wiki.expandActions')
-        "
-        class="relative flex w-full items-center justify-center px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 active:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 dark:active:bg-surface-800"
-        @click="toggleFooterExpanded"
+        :title="`${$t('Profile.title')} · ${app.state.user?.email ?? ''}`"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
+        @click="gotoProfile"
       >
-        <IconChevronUp
-          class="h-4 w-4 shrink-0 transition-transform"
-          :class="{ 'rotate-180': footerExpanded }"
-        />
         <span
-          v-if="!footerExpanded && notifications.unreadCount > 0"
-          class="absolute top-2.5 right-3 flex items-center"
+          class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+          :class="
+            app.state.user?.profileImageName
+              ? 'bg-transparent'
+              : 'bg-primary text-primary-contrast'
+          "
         >
-          <span class="relative flex items-center justify-center">
-            <IconInbox class="h-4 w-4" />
-            <span
-              class="absolute -top-1.5 -right-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
-            >
-              {{
-                notifications.unreadCount > 99
-                  ? '99+'
-                  : notifications.unreadCount
-              }}
-            </span>
-          </span>
+          <img
+            v-if="app.state.user?.profileImageName"
+            :src="profileImageUrl"
+            alt=""
+            class="h-full w-full object-cover"
+          />
+          <template v-else>{{ userInitials }}</template>
         </span>
+      </button>
+
+      <!-- open AI chat: kept next to the account avatar, subtle primary tint -->
+      <button
+        type="button"
+        :title="$t('Chat.chatWithAi')"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+        @click="aiChat.open()"
+      >
+        <IconChat class="h-5 w-5" />
+      </button>
+
+      <!-- manage (with open-invitation dot) -->
+      <button
+        type="button"
+        :title="$t('Wiki.manage')"
+        class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        @click="gotoManage"
+      >
+        <IconCog class="h-5 w-5" />
+        <span
+          v-if="app.state.tenantInvitations.length > 0"
+          class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary"
+          :title="$t('UserTenants.invitations.openInvitations')"
+        />
+      </button>
+
+      <!-- record daily protocol -->
+      <button
+        type="button"
+        :title="$t('Protocol.recordButton')"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        @click="protocol.openDialog()"
+      >
+        <IconMicrophone class="h-5 w-5" />
+      </button>
+
+      <!-- inbox (user notification queue) with unread badge -->
+      <button
+        type="button"
+        :title="$t('Notifications.menu')"
+        class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors"
+        :class="
+          isNotificationsActive
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-surface-500 hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200'
+        "
+        @click="gotoNotifications"
+      >
+        <IconInbox class="h-5 w-5" />
+        <span
+          v-if="notifications.unreadCount > 0"
+          class="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-contrast"
+        >
+          {{
+            notifications.unreadCount > 99 ? '99+' : notifications.unreadCount
+          }}
+        </span>
+      </button>
+
+      <!-- log out, pinned to the right edge -->
+      <button
+        type="button"
+        :title="$t('Wiki.logout')"
+        class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        @click="auth.logout()"
+      >
+        <IconLogout class="h-5 w-5" />
       </button>
     </div>
   </aside>
@@ -410,8 +342,6 @@ import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
 import IconChat from '~icons/mdi/robot-happy-outline'
 import IconMicrophone from '~icons/mdi/microphone'
-import IconUpload from '~icons/mdi/tray-arrow-up'
-import IconJobs from '~icons/mdi/calendar-sync-outline'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconLogout from '~icons/mdi/logout'
 import IconCog from '~icons/mdi/cog-outline'
@@ -419,7 +349,6 @@ import IconChevronDown from '~icons/mdi/chevron-down'
 import IconCheck from '~icons/mdi/check'
 import IconClose from '~icons/mdi/close'
 import IconPanelLeft from '~icons/mdi/dock-left'
-import IconChevronUp from '~icons/mdi/chevron-up'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import type {
@@ -507,14 +436,7 @@ const onMove = async (payload: WikiMovePayload) => {
   }
 }
 
-// ----- footer: actions/account drawer, collapsed by default, persisted -----
-
-const FOOTER_EXPANDED_KEY = 'wiki:sidebar-footer-expanded'
-const footerExpanded = ref(localStorage.getItem(FOOTER_EXPANDED_KEY) === '1')
-const toggleFooterExpanded = () => {
-  footerExpanded.value = !footerExpanded.value
-  localStorage.setItem(FOOTER_EXPANDED_KEY, footerExpanded.value ? '1' : '0')
-}
+// ----- tree section collapse state -----------------------------------------
 
 const collapsedSections = ref(new Set<string>())
 const toggleSection = (key: string) => {
@@ -649,16 +571,6 @@ const gotoProfile = () => {
 }
 
 const profileImageUrl = '/api/v1/user/profile-image'
-
-const isJobsActive = computed(
-  () =>
-    String(route.name ?? '').startsWith('Jobs') ||
-    String(route.name ?? '').startsWith('UrlImportJob'),
-)
-
-const gotoJobs = () => {
-  router.push({ name: 'Jobs', params: { tenantId: tenantId.value } })
-}
 
 const isNotificationsActive = computed(
   () => String(route.name ?? '') === 'Notifications',

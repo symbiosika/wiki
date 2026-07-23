@@ -12,7 +12,9 @@
       </template>
     </ManageHeader>
 
-    <!-- tabs (only one job type today, but structured for more) -->
+    <ManageTabs />
+
+    <!-- job-type sub-tabs (only one job type today, but structured for more) -->
     <div
       class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
     >

@@ -1,6 +1,7 @@
 {
   "menu": "Jobs",
   "title": "Jobs",
+  "tabTitle": "Jobs",
   "urlImport": {
     "tab": "URL Batch-Import",
     "addJob": "Neuer Job",

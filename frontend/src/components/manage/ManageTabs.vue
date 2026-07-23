@@ -34,15 +34,24 @@ const tabs = computed(() => [
     routeName: 'PostProcessingAgents',
   },
   { label: t('OAuthApps.tabTitle'), routeName: 'OAuthApps' },
+  { label: t('Jobs.tabTitle'), routeName: 'Jobs' },
   { label: t('AiTests.tabTitle'), routeName: 'AiTests' },
 ])
+
+// Route families that belong to a tab but don't share its name prefix, so the
+// tab still lights up on nested detail routes (e.g. the URL-import job editor).
+const extraActiveRoutes: Record<string, string[]> = {
+  Jobs: ['UrlImportJob'],
+}
 
 // Match the tab's route family (e.g. "Tenants" also lights up on
 // "TenantDetails"). Names without a trailing plural — like "ChatAgent" — are
 // compared as-is, so unrelated routes can't accidentally activate a tab.
 const isActive = (routeName: string) => {
+  const current = String(route.name ?? '')
   const prefix = routeName.replace(/s$/, '')
-  return String(route.name ?? '').startsWith(prefix)
+  if (current.startsWith(prefix)) return true
+  return (extraActiveRoutes[routeName] ?? []).includes(current)
 }
 
 const navigate = (routeName: string) => {
