@@ -10,6 +10,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import {
@@ -20,6 +21,43 @@ import {
 import { PREFIX } from "./index";
 
 export const pgBaseTable = pgTableCreator((name: string) => `${PREFIX}${name}`);
+
+/** Raw binary column (Postgres `bytea`), used to store small uploaded blobs. */
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Organisation logos
+//
+// One optional logo per organisation (tenant), shown in the app header. The
+// framework owns the `tenants` table (in the submodule) and can't be extended
+// from the app, so the logo lives here as an app-side table keyed 1:1 by the
+// organisation id. The image is cropped client-side to the header aspect ratio
+// before upload and stored as-is (PNG, so transparent corners survive).
+// ---------------------------------------------------------------------------
+
+export const organisationLogos = pgBaseTable("organisation_logos", {
+  /** the tenant this logo belongs to — one logo per organisation */
+  organisationId: uuid("organisation_id").primaryKey(),
+  image: bytea("image").notNull(),
+  contentType: text("content_type").notNull(),
+  fileName: text("file_name").notNull(),
+  createdAt: timestamp("created_at", { mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const organisationLogoSelectSchema =
+  createSelectSchema(organisationLogos);
+
+export type OrganisationLogoSelect = typeof organisationLogos.$inferSelect;
+export type OrganisationLogoInsert = typeof organisationLogos.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // URL batch-import jobs

@@ -14,6 +14,7 @@
   "email": "E-Mail",
   "picture": "Profilbild",
   "changePicture": "Bild ändern",
+  "cropTitle": "Profilbild zuschneiden",
   "uploadHint": "JPG, PNG oder GIF, max. 5 MB",
   "save": "Speichern",
   "saveSuccess": "Profil gespeichert",

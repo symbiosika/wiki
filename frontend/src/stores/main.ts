@@ -32,6 +32,12 @@ interface Tenant {
   name: string
 }
 
+/** existence + cache-busting metadata of an organisation's logo */
+interface TenantLogoInfo {
+  exists: boolean
+  updatedAt: string | null
+}
+
 interface AppState {
   isDarkMode: boolean
   loading: boolean
@@ -44,6 +50,8 @@ interface AppState {
   isMobile: boolean
   /** the user's preferred sidebar search mode (server-persisted) */
   searchMode: WikiSearchMode
+  /** per-organisation logo metadata, keyed by tenant id */
+  tenantLogos: Record<string, TenantLogoInfo>
 }
 
 /** key under which the search-mode preference lives in `user_settings` */
@@ -78,6 +86,7 @@ export const useApp = defineStore('app', () => {
     isMobile: false,
     isDarkMode: false,
     searchMode: DEFAULT_SEARCH_MODE,
+    tenantLogos: {},
   })
 
   const checkDarkMode = () => {
@@ -264,6 +273,44 @@ export const useApp = defineStore('app', () => {
     await fetcher.put(`/api/v1/tenant/${tenantId}`, { name })
     const tenant = state.value.tenants.find((org) => org.id === tenantId)
     if (tenant) tenant.name = name
+  }
+
+  // ----- organisation logo ---------------------------------------------------
+
+  /**
+   * Load a tenant's logo metadata (best-effort). Populates `tenantLogos` so the
+   * header knows whether to render a logo and which `?v=` cache buster to use.
+   */
+  const loadTenantLogoInfo = async (tenantId: string) => {
+    if (!tenantId) return
+    try {
+      const info = await fetcher.get<TenantLogoInfo>(
+        `/api/v1/tenant/${tenantId}/logo/info`,
+      )
+      state.value.tenantLogos[tenantId] = info
+    } catch {
+      state.value.tenantLogos[tenantId] = { exists: false, updatedAt: null }
+    }
+  }
+
+  /** Cache-busting URL for a tenant's logo, or null when it has none. */
+  const tenantLogoUrl = (tenantId: string): string | null => {
+    const info = state.value.tenantLogos[tenantId]
+    if (!info?.exists) return null
+    const version = info.updatedAt ? encodeURIComponent(info.updatedAt) : '1'
+    return `/api/v1/tenant/${tenantId}/logo?v=${version}`
+  }
+
+  const uploadTenantLogo = async (tenantId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await fetcher.postFormData(`/api/v1/tenant/${tenantId}/logo`, formData)
+    await loadTenantLogoInfo(tenantId)
+  }
+
+  const deleteTenantLogo = async (tenantId: string) => {
+    await fetcher.delete(`/api/v1/tenant/${tenantId}/logo`)
+    state.value.tenantLogos[tenantId] = { exists: false, updatedAt: null }
   }
 
   const deleteTenant = async (tenantId: string) => {
@@ -568,6 +615,10 @@ export const useApp = defineStore('app', () => {
     setupTenant,
     createTenant,
     updateTenantName,
+    loadTenantLogoInfo,
+    tenantLogoUrl,
+    uploadTenantLogo,
+    deleteTenantLogo,
     deleteTenant,
     leaveTenant,
     getTenantMembers,

@@ -34,6 +34,74 @@
       </template>
     </ManageHeader>
 
+    <!-- organisation logo -->
+    <section class="mb-8">
+      <h2
+        class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
+      >
+        {{ $t('UserTenants.logo.title') }}
+      </h2>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('UserTenants.logo.hint') }}
+      </p>
+
+      <div class="flex items-center gap-4">
+        <span
+          class="flex h-16 w-32 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-800"
+        >
+          <img
+            v-if="logoUrl"
+            :src="logoUrl"
+            :alt="$t('UserTenants.logo.title')"
+            class="max-h-full max-w-full object-contain"
+          />
+          <IconImage v-else class="h-6 w-6 text-surface-300" />
+        </span>
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <SecondaryButton
+              :label="$t('UserTenants.logo.change')"
+              size="small"
+              :loading="uploadingLogo"
+              @click="logoInput?.click()"
+            >
+              <template #icon><IconImage /></template>
+            </SecondaryButton>
+            <SecondaryButton
+              v-if="logoUrl"
+              :label="$t('Common.delete')"
+              size="small"
+              severity="danger"
+              :disabled="uploadingLogo"
+              @click="removeLogo"
+            >
+              <template #icon><IconTrash /></template>
+            </SecondaryButton>
+          </div>
+          <p class="text-xs text-surface-500 dark:text-surface-400">
+            {{ $t('UserTenants.logo.uploadHint') }}
+          </p>
+        </div>
+        <input
+          ref="logoInput"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="onLogoSelected"
+        />
+      </div>
+
+      <ImageCropperDialog
+        v-model:visible="logoCropperVisible"
+        :file="pendingLogo"
+        :aspect-ratio="2"
+        :max-output="600"
+        fit="contain"
+        :title="$t('UserTenants.logo.cropTitle')"
+        @cropped="onLogoCropped"
+      />
+    </section>
+
     <DataTable v-if="members.length > 0" :value="members">
       <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
       <Column field="role" :header="$t('UserTenants.memberRole')">
@@ -320,6 +388,7 @@ import { useToast } from 'primevue/usetoast'
 import IconPencil from '~icons/mdi/pencil'
 import IconAccountPlus from '~icons/mdi/account-plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
+import IconImage from '~icons/mdi/image-outline'
 import type {
   FoundUser,
   KnowledgeAccessLevel,
@@ -337,6 +406,15 @@ const app = useApp()
 const tenantId = computed(() => String(route.params.id))
 const tenantName = ref('')
 const members = ref<TenantMember[]>([])
+
+// ----- logo ------------------------------------------------------------------
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024
+const logoInput = ref<HTMLInputElement | null>(null)
+const pendingLogo = ref<File | null>(null)
+const logoCropperVisible = ref(false)
+const uploadingLogo = ref(false)
+const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
 
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
@@ -387,7 +465,78 @@ onMounted(async () => {
   await app.waitForInit()
   await loadTenantData()
   await loadBranding()
+  app.loadTenantLogoInfo(tenantId.value)
 })
+
+// ----- logo ------------------------------------------------------------------
+
+const onLogoSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // let the same file re-trigger change
+  if (!file) return
+  if (file.size > MAX_LOGO_BYTES) {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.logo.errors.tooLarge'),
+      life: 3000,
+    })
+    return
+  }
+  pendingLogo.value = file
+  logoCropperVisible.value = true
+}
+
+const onLogoCropped = async (file: File) => {
+  uploadingLogo.value = true
+  try {
+    await app.uploadTenantLogo(tenantId.value, file)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.logo.success'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.logo.errors.uploadFailed'),
+      life: 3000,
+    })
+  } finally {
+    uploadingLogo.value = false
+    pendingLogo.value = null
+  }
+}
+
+const removeLogo = () => {
+  confirm.require({
+    header: t('UserTenants.logo.deleteTitle'),
+    message: t('UserTenants.logo.deleteConfirm'),
+    rejectProps: { label: t('Common.cancel') },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    accept: async () => {
+      try {
+        await app.deleteTenantLogo(tenantId.value)
+        toast.add({
+          severity: 'success',
+          summary: t('Common.success'),
+          detail: t('UserTenants.logo.deleteSuccess'),
+          life: 3000,
+        })
+      } catch {
+        toast.add({
+          severity: 'error',
+          summary: t('Common.error'),
+          detail: t('UserTenants.logo.errors.deleteFailed'),
+          life: 3000,
+        })
+      }
+    },
+  })
+}
 
 const loadTenantData = async () => {
   try {
