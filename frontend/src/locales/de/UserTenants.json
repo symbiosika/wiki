@@ -87,6 +87,20 @@
     "loadError": "Dokument-Tags konnten nicht geladen werden",
     "saveError": "Dokument-Tags konnten nicht gespeichert werden"
   },
+  "branding": {
+    "title": "Farben",
+    "description": "Passe die primäre Highlight-Farbe und die Sekundärfarbe für diese Organisation an. Änderungen gelten für alle Mitglieder der Organisation.",
+    "primary": "Primärfarbe",
+    "primaryHint": "Wird für hervorgehobene Buttons und Akzente verwendet.",
+    "secondary": "Sekundärfarbe",
+    "secondaryHint": "Wird für sekundäre Buttons verwendet.",
+    "useCustom": "Eigene Farbe verwenden",
+    "save": "Farben speichern",
+    "reset": "Auf Standard zurücksetzen",
+    "saved": "Farben gespeichert",
+    "resetDone": "Farben auf Standard zurückgesetzt",
+    "invalidColor": "Bitte eine gültige Farbe eingeben."
+  },
   "errors": {
     "setupFailed": "Organisation konnte nicht angelegt werden",
     "leaveFailed": "Organisation konnte nicht verlassen werden",
@@ -96,6 +110,8 @@
     "inviteFailed": "Einladung konnte nicht versendet werden",
     "updateNameFailed": "Name konnte nicht aktualisiert werden",
     "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
-    "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden"
+    "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden",
+    "brandingLoadFailed": "Farben konnten nicht geladen werden",
+    "brandingSaveFailed": "Farben konnten nicht gespeichert werden"
   }
 }

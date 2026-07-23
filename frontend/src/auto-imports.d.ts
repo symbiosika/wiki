@@ -12,12 +12,14 @@ declare global {
   const FetcherError: typeof import('./utils/fetcher').FetcherError
   const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
+  const applyBrandColors: typeof import('./utils/brandColor').applyBrandColors
   const applyTheme: typeof import('./utils/theme').applyTheme
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
+  const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const customRef: typeof import('vue').customRef
@@ -33,6 +35,7 @@ declare global {
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
   const formatDateTime: typeof import('./utils/date').formatDateTime
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
+  const generateScale: typeof import('./utils/brandColor').generateScale
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
@@ -45,9 +48,11 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
+  const normalizeHex: typeof import('./utils/brandColor').normalizeHex
   const onActivated: typeof import('vue').onActivated
   const onBeforeMount: typeof import('vue').onBeforeMount
   const onBeforeRouteLeave: typeof import('vue-router').onBeforeRouteLeave
@@ -176,6 +181,9 @@ declare global {
   // @ts-ignore
   export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
+  // @ts-ignore
+  export type { BrandColors } from './utils/brandColor'
+  import('./utils/brandColor')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
