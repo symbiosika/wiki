@@ -28,4 +28,3 @@ Monorepo with three apps:
 | PrimeVue component details | PrimeVue APIs, props, DataTable, Dialog, Form, theming | `.claude/skills/prime-vue/SKILL.md` |
 | ApexCharts | `apexcharts`, `vue3-apexcharts`, chart types, series schemas, reactivity | `.claude/skills/charts/SKILL.md` |
 | Login to app (browser) | log in, sign in, authenticate, open app, browser login, test UI | `.claude/skills/login-to-app/SKILL.md` |
-
