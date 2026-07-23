@@ -47,13 +47,13 @@
 
       <div class="flex items-center gap-4">
         <span
-          class="flex h-14 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-800"
+          class="flex h-16 w-32 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-800"
         >
           <img
             v-if="logoUrl"
             :src="logoUrl"
             :alt="$t('UserTenants.logo.title')"
-            class="h-full w-full object-contain"
+            class="max-h-full max-w-full object-contain"
           />
           <IconImage v-else class="h-6 w-6 text-surface-300" />
         </span>
@@ -94,8 +94,9 @@
       <ImageCropperDialog
         v-model:visible="logoCropperVisible"
         :file="pendingLogo"
-        :aspect-ratio="3"
+        :aspect-ratio="2"
         :max-output="600"
+        fit="contain"
         :title="$t('UserTenants.logo.cropTitle')"
         @cropped="onLogoCropped"
       />

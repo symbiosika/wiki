@@ -15,7 +15,7 @@
           v-if="logoUrl"
           :src="logoUrl"
           :alt="app.currentTenant?.name ?? $t('Wiki.appName')"
-          class="h-8 max-w-full shrink object-contain"
+          class="max-h-11 max-w-full shrink object-contain"
         />
         <template v-else>
           <span
