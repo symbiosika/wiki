@@ -3,6 +3,7 @@ import { fetcher } from '@/utils/fetcher'
 import { nanoid } from 'nanoid'
 import type {
   FoundUser,
+  KnowledgeAccessLevel,
   Team,
   TeamMember,
   TenantInvitation,
@@ -252,6 +253,16 @@ export const useApp = defineStore('app', () => {
     await fetcher.put(`/api/v1/tenant/${tenantId}/members/${userId}`, { role })
   }
 
+  const updateTenantMemberKnowledgeAccess = async (
+    tenantId: string,
+    userId: string,
+    knowledgeAccess: KnowledgeAccessLevel,
+  ) => {
+    await fetcher.put(`/api/v1/tenant/${tenantId}/members/${userId}`, {
+      knowledgeAccess,
+    })
+  }
+
   const inviteTenantMember = async (
     tenantId: string,
     email: string,
@@ -389,10 +400,11 @@ export const useApp = defineStore('app', () => {
     teamId: string,
     userId: string,
     role: string,
+    knowledgeAccess?: KnowledgeAccessLevel,
   ) => {
     await fetcher.post(
       `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}/members`,
-      { userId, role },
+      { userId, role, ...(knowledgeAccess && { knowledgeAccess }) },
     )
   }
 
@@ -410,6 +422,17 @@ export const useApp = defineStore('app', () => {
     await fetcher.put(
       `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}/members/${userId}`,
       { role },
+    )
+  }
+
+  const updateTeamMemberKnowledgeAccess = async (
+    teamId: string,
+    userId: string,
+    knowledgeAccess: KnowledgeAccessLevel,
+  ) => {
+    await fetcher.put(
+      `/api/v1/tenant/${state.value.selectedTenant}/teams/${teamId}/members/${userId}`,
+      { knowledgeAccess },
     )
   }
 
@@ -493,6 +516,7 @@ export const useApp = defineStore('app', () => {
     getTenantMembers,
     removeTenantMember,
     updateTenantMemberRole,
+    updateTenantMemberKnowledgeAccess,
     inviteTenantMember,
     searchUserByEmail,
     searchUserInTenantByEmail,
@@ -510,6 +534,7 @@ export const useApp = defineStore('app', () => {
     addTeamMember,
     removeTeamMember,
     updateTeamMemberRole,
+    updateTeamMemberKnowledgeAccess,
     init,
   }
 })
