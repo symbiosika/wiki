@@ -64,6 +64,26 @@
           {{ $t(`UserTeams.roles.${data.role}`, data.role) }}
         </template>
       </Column>
+      <Column :header="$t('UserTeams.knowledgeAccess')" style="width: 200px">
+        <template #body="{ data }">
+          <SelectButton
+            :model-value="data.knowledgeAccess"
+            :options="knowledgeAccessOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            :disabled="
+              !isCurrentUserAdmin ||
+              data.userId === app.state.user?.id ||
+              savingAccessFor === data.userId
+            "
+            @update:model-value="
+              (value: KnowledgeAccessLevel) =>
+                value && changeKnowledgeAccess(data, value)
+            "
+          />
+        </template>
+      </Column>
       <Column header="" style="width: 240px">
         <template #body="{ data }">
           <div
@@ -221,7 +241,11 @@ import { useToast } from 'primevue/usetoast'
 import IconPencil from '~icons/mdi/pencil'
 import IconAccountPlus from '~icons/mdi/account-plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
-import type { FoundUser, TeamMember } from '@/types/usermanagement'
+import type {
+  FoundUser,
+  KnowledgeAccessLevel,
+  TeamMember,
+} from '@/types/usermanagement'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -261,6 +285,14 @@ const roleOptions = [
   { label: t('UserTeams.roles.member'), value: 'member' },
   { label: t('UserTeams.roles.admin'), value: 'admin' },
 ]
+
+const knowledgeAccessOptions = [
+  { label: t('UserTeams.access.read'), value: 'read' },
+  { label: t('UserTeams.access.readWrite'), value: 'write' },
+]
+
+// userId of the member whose access is currently being saved (disables its switch)
+const savingAccessFor = ref<string | null>(null)
 
 onMounted(async () => {
   await app.waitForInit()
@@ -385,6 +417,41 @@ const confirmChangeRole = async () => {
       detail: t('UserTeams.errors.changeRoleFailed'),
       life: 3000,
     })
+  }
+}
+
+// ----- knowledge access -------------------------------------------------------
+
+const changeKnowledgeAccess = async (
+  member: TeamMember,
+  value: KnowledgeAccessLevel,
+) => {
+  if (member.knowledgeAccess === value) return
+  const previous = member.knowledgeAccess
+  member.knowledgeAccess = value // optimistic update
+  savingAccessFor.value = member.userId
+  try {
+    await app.updateTeamMemberKnowledgeAccess(
+      teamId.value,
+      member.userId,
+      value,
+    )
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTeams.accessSuccess'),
+      life: 3000,
+    })
+  } catch {
+    member.knowledgeAccess = previous // revert on failure
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTeams.errors.updateAccessFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingAccessFor.value = null
   }
 }
 

@@ -39,6 +39,12 @@
   "changeRole": "Change role",
   "changeRoleTitle": "Change member role",
   "changeRoleSuccess": "Role updated",
+  "knowledgeAccess": "Access",
+  "accessSuccess": "Access level updated",
+  "access": {
+    "read": "Read",
+    "readWrite": "Read/Write"
+  },
   "roles": {
     "member": "Member",
     "admin": "Administrator"
@@ -54,6 +60,7 @@
     "inviteFailed": "Failed to add member",
     "updateNameFailed": "Failed to update name",
     "updateSettingsFailed": "Failed to update settings",
-    "changeRoleFailed": "Failed to update role"
+    "changeRoleFailed": "Failed to update role",
+    "updateAccessFailed": "Failed to update access level"
   }
 }

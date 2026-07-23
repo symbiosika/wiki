@@ -40,6 +40,12 @@
   "changeRole": "Rolle ändern",
   "changeRoleTitle": "Rolle des Mitglieds ändern",
   "changeRoleSuccess": "Rolle aktualisiert",
+  "knowledgeAccess": "Zugriff",
+  "accessSuccess": "Zugriffsrecht aktualisiert",
+  "access": {
+    "read": "Lesen",
+    "readWrite": "Lesen/Schreiben"
+  },
   "roles": {
     "member": "Mitglied",
     "admin": "Administrator",
@@ -89,6 +95,7 @@
     "removeMemberFailed": "Mitglied konnte nicht entfernt werden",
     "inviteFailed": "Einladung konnte nicht versendet werden",
     "updateNameFailed": "Name konnte nicht aktualisiert werden",
-    "changeRoleFailed": "Rolle konnte nicht aktualisiert werden"
+    "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
+    "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden"
   }
 }
