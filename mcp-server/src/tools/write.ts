@@ -206,10 +206,13 @@ export function registerWriteTools(mcp: any): void {
         "Edits a page's body by replacing an exact substring, like a code " +
         "editor's find-and-replace. `oldString` must match the current content " +
         "exactly and unambiguously (read it first with `read_page_content`). " +
-        "Set `replaceAll: true` to replace every occurrence. Returns the number " +
-        "of replacements and the new content. Fails (409) if the string is " +
-        "missing or ambiguous. For adding at the end, `append_to_page` is " +
-        "simpler and safer.",
+        "Set `replaceAll: true` to replace every occurrence. To delete, pass an " +
+        "empty `newString`: on block pages a block left empty is removed cleanly " +
+        "(no empty placeholder), and an `oldString` that spans several blocks " +
+        "(copy it verbatim, including the blank lines between them) removes them " +
+        "all at once. Returns the number of replacements and the new content. " +
+        "Fails (409) if the string is missing or ambiguous. For adding at the " +
+        "end, `append_to_page` is simpler and safer.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         oldString: z

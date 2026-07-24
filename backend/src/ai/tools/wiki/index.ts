@@ -430,7 +430,10 @@ function buildWriteTools(ctx: WikiToolContext): ToolMap {
       "Edit a page's body by exact find-and-replace (like a code editor). " +
       "`oldString` must match the current content exactly; unless replaceAll " +
       "is true it must be unique — read the page first with read_wiki_page and " +
-      "include enough surrounding context. Returns the number of replacements.",
+      "include enough surrounding context. To delete, pass an empty newString: " +
+      "a block left empty is removed cleanly, and an oldString spanning several " +
+      "blocks (including the blank lines between them) removes them all at once. " +
+      "Returns the number of replacements.",
     inputSchema: valibotSchema(
       v.object({
         pageId: v.pipe(v.string(), v.description("The page id.")),
