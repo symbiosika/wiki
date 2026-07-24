@@ -46,10 +46,16 @@ import path from "node:path";
 // Run from the app's backend root (the directory containing framework/ and
 // package.json) — `bun run test:local` does this automatically. Location-
 // independent so the same file works from <app>/.scripts/ or framework/.scripts/.
+// Layout detection: in an app, the framework lives in framework/ and the app's
+// own drizzle.config.ts sits in the root; in the framework repo itself, the
+// framework config IS ./drizzle.config.ts and there is no app config.
 const BACKEND_DIR = process.cwd();
-if (!existsSync(path.join(BACKEND_DIR, "framework", "drizzle.config.ts"))) {
+const isAppLayout = existsSync(
+  path.join(BACKEND_DIR, "framework", "drizzle.config.ts")
+);
+if (!isAppLayout && !existsSync(path.join(BACKEND_DIR, "drizzle.config.ts"))) {
   console.error(
-    `[test-local] run this from the backend root (framework/drizzle.config.ts not found in ${BACKEND_DIR})`
+    `[test-local] run this from the backend root (no framework/drizzle.config.ts or drizzle.config.ts found in ${BACKEND_DIR})`
   );
   process.exit(1);
 }
@@ -139,13 +145,16 @@ process.on("SIGINT", () => void shutdown(130));
 process.on("SIGTERM", () => void shutdown(143));
 
 // ---- Migrations ---------------------------------------------------------------
+const frameworkConfig = isAppLayout
+  ? "framework/drizzle.config.ts"
+  : "drizzle.config.ts";
 const frameworkMigrate = await run(
-  ["bunx", "drizzle-kit", "migrate", "--config", "framework/drizzle.config.ts"],
+  ["bunx", "drizzle-kit", "migrate", "--config", frameworkConfig],
   "framework migrations"
 );
 if (frameworkMigrate !== 0) await shutdown(frameworkMigrate);
 
-if (existsSync(path.join(BACKEND_DIR, "drizzle.config.ts"))) {
+if (isAppLayout && existsSync(path.join(BACKEND_DIR, "drizzle.config.ts"))) {
   const appMigrate = await run(["bunx", "drizzle-kit", "migrate"], "app migrations");
   if (appMigrate !== 0) await shutdown(appMigrate);
 }
