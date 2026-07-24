@@ -48,7 +48,11 @@ separate, explicit call (get_page_metadata). list_recent_changes answers
 
 Writing: append_to_page is the safe default for adding notes/log entries. For
 edits inside a page, read first (read_page_content), then edit_page_content —
-its oldString must match exactly and unambiguously. create_page defaults to a
+its oldString must match exactly and unambiguously. To delete text, edit with
+an empty newString; a block left empty is removed cleanly (no blank leftover),
+and an oldString copied straight from read_page_content that covers several
+blocks (including the blank lines between them) removes them all at once.
+create_page defaults to a
 private personal page; set teamId or organisation:true deliberately. Curate
 with update_page facets (pageType/status from get_wiki_config, validUntil,
 supersedesId). Confirm with the user before delete_page or before publishing

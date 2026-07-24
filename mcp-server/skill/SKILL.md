@@ -146,6 +146,10 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
   muss **eindeutig** vorkommen. Immer zuerst `read_page_content`, dann ersetzen.
   Bei mehrfachen Vorkommen `replaceAll: true`. Ein `409` heißt: String fehlt oder
   ist mehrdeutig → neu lesen und präziser matchen.
+- **Löschen:** `edit_page_content` mit leerem `newString`. Ein dadurch leer
+  gewordener Block wird sauber entfernt (kein leerer Platzhalter), und ein
+  `oldString`, der mehrere Blöcke umspannt (wörtlich aus `read_page_content`
+  kopiert, inkl. der Leerzeilen dazwischen), entfernt sie alle auf einmal.
 - **Neue Seite:** `create_page`. Standard ist **persönlich/privat**. Bewusst wählen:
   - `teamId` → Seite gehört einem Team,
   - `organisation: true` → firmenweit sichtbar,
