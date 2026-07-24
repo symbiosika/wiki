@@ -18,6 +18,15 @@
     "createFirst": "Erste Seite anlegen"
   },
   "noPagesYet": "Noch keine Seiten",
+  "dashboard": {
+    "greeting": "Willkommen zurück",
+    "greetingNamed": "Willkommen zurück, {name}",
+    "subtitle": "Deine zuletzt bearbeiteten Seiten und Bereiche auf einen Blick.",
+    "areas": "Bereiche, denen du angehörst",
+    "recent": "Kürzlich aktualisiert",
+    "noRecent": "Noch keine Seiten bearbeitet.",
+    "pageCount": "{count} Seite | {count} Seiten"
+  },
   "import": {
     "button": "Seite importieren",
     "title": "Seite importieren",

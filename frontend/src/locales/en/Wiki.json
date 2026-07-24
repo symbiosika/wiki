@@ -18,6 +18,15 @@
     "createFirst": "Create your first page"
   },
   "noPagesYet": "No pages yet",
+  "dashboard": {
+    "greeting": "Welcome back",
+    "greetingNamed": "Welcome back, {name}",
+    "subtitle": "Your recently edited pages and areas at a glance.",
+    "areas": "Areas you belong to",
+    "recent": "Recently updated",
+    "noRecent": "No pages edited yet.",
+    "pageCount": "{count} page | {count} pages"
+  },
   "import": {
     "button": "Import page",
     "title": "Import page",
