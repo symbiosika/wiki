@@ -27,11 +27,22 @@ about the values.
 
 ## Usage
 
+Run from the `backend/` directory:
+
 ```bash
 bun run db:query "<SQL>"
 ```
 
 Always wrap the query in quotes so the shell passes it as a single argument.
+
+To query the **local PGlite test database** (started via `bun run test:local
+--serve` or `--keep`, see the backend-testing skill), point the env at it:
+
+```bash
+POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5499 POSTGRES_DB=postgres \
+POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres \
+bun run db:query "SELECT count(*) FROM base_users"
+```
 
 ## Examples
 
