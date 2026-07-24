@@ -19,220 +19,79 @@
     </div>
 
     <template v-else-if="page">
-      <!-- meta bar -->
+      <!--
+        meta bar — three fixed zones (left / centre / right) via a
+        1fr-auto-1fr grid so the centre group stays visually centred over the
+        text column regardless of how wide the side groups get:
+          • left   — the document assistant (chat)
+          • centre — read-only toggle + info (document details live in Info now)
+          • right  — content actions, with "Inhalt" and "Upload" pinned to the
+                     very right edge
+        Classification, status, tags and the AI summary used to be their own
+        chips here; they are informational, so they moved into the Info popover.
+      -->
       <div
-        class="sticky top-0 z-10 -mx-4 flex shrink-0 flex-wrap items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
+        class="sticky top-0 z-10 -mx-4 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-surface-0/90 px-4 py-2 text-xs text-surface-400 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10 dark:bg-surface-950/90 dark:text-surface-500"
       >
-        <!--
-          summary: clickable chip that opens the AI page summary. Only rendered
-          when a summary exists (which itself only happens when a global LLM is
-          configured and auto-summaries are enabled — see framework summaries.ts).
-        -->
-        <button
-          v-if="page.summary"
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': summaryOpen }"
-          :title="$t('Wiki.summary.hint')"
-          @click="toggleSummary"
-        >
-          <IconTextBox class="h-3.5 w-3.5" />
-          <span>{{ $t('Wiki.summary.button') }}</span>
-        </button>
-
-        <!-- classification (pageType): clickable chip that opens a chooser -->
-        <button
-          v-if="page.pageType || editable"
-          type="button"
-          class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors disabled:cursor-default"
-          :class="
-            page.pageType
-              ? 'border-primary/40 bg-primary/5 text-primary'
-              : 'border-dashed border-surface-300 text-surface-400 hover:border-primary hover:text-primary dark:border-surface-600'
-          "
-          :disabled="!editable"
-          :title="$t('Wiki.pageType.hint')"
-          @click="pageTypeMenuRef?.toggle($event)"
-        >
-          <IconTag class="h-3.5 w-3.5" />
-          <span>{{
-            page.pageType
-              ? facetLabel('pageType', page.pageType)
-              : $t('Wiki.pageType.empty')
-          }}</span>
-        </button>
-
-        <!-- status (trust signal): clickable chip that opens a chooser -->
-        <button
-          v-if="page.status || editable"
-          type="button"
-          class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors disabled:cursor-default"
-          :class="
-            page.status
-              ? statusChipClass
-              : 'border-dashed border-surface-300 text-surface-400 hover:border-primary hover:text-primary dark:border-surface-600'
-          "
-          :disabled="!editable"
-          :title="$t('Wiki.status.hint')"
-          @click="statusMenuRef?.toggle($event)"
-        >
-          <component :is="statusIcon" class="h-3.5 w-3.5" />
-          <span>{{
-            page.status
-              ? facetLabel('status', page.status)
-              : $t('Wiki.status.empty')
-          }}</span>
-        </button>
-
-        <!-- per-organisation metadata (tags): read-only value chips -->
-        <span
-          v-for="chip in attributeChips"
-          :key="chip.key"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 dark:border-surface-700 dark:text-surface-300"
-          :title="`${chip.label}: ${chip.value}`"
-        >
-          <span class="text-surface-400 dark:text-surface-500"
-            >{{ chip.label }}:</span
+        <!-- LEFT: document assistant, pinned to the far left -->
+        <div class="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': assistant.open }"
+            :title="$t('Assistant.title')"
+            :disabled="lockedByOther"
+            @click="toggleAssistant"
           >
-          <span>{{ chip.value }}</span>
-        </span>
+            <IconChat class="h-3.5 w-3.5" />
+            <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
+          </button>
+        </div>
 
-        <!-- metadata editor: clickable chip that opens the attribute chooser -->
-        <button
-          v-if="editable && attributeDefinitions.length > 0"
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-dashed border-surface-300 px-2 py-0.5 text-surface-400 transition-colors hover:border-primary hover:text-primary dark:border-surface-600"
-          :class="{ 'border-primary text-primary': attributesOpen }"
-          :title="$t('Wiki.attributes.hint')"
-          @click="openAttributes($event)"
-        >
-          <IconTagMultiple class="h-3.5 w-3.5" />
-          <span>{{ $t('Wiki.attributes.button') }}</span>
-        </button>
+        <!-- CENTRE: read-only status + info + save state, centred over the text -->
+        <div class="flex items-center justify-center gap-2">
+          <!-- edit lock / read-only status -->
+          <span
+            v-if="lockedByOther"
+            class="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
+            :title="$t('Wiki.readonly.lockedBy', { name: lockHolderName })"
+          >
+            <IconLock class="h-3.5 w-3.5" />
+            <span class="hidden truncate sm:inline">{{
+              $t('Wiki.readonly.lockedBy', { name: lockHolderName })
+            }}</span>
+            <span class="sm:hidden">{{ $t('Wiki.readonly.locked') }}</span>
+          </span>
+          <button
+            v-else
+            type="button"
+            class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors"
+            :class="
+              editable
+                ? 'border-primary text-primary'
+                : 'border-surface-200 text-surface-600 hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300'
+            "
+            :title="
+              presenceUnavailable
+                ? $t('Wiki.readonly.presenceUnavailable')
+                : editable
+                  ? $t('Wiki.readonly.lockHint')
+                  : $t('Wiki.readonly.editHint')
+            "
+            @click="readOnly.toggle()"
+          >
+            <component
+              :is="editable ? IconPencil : IconLock"
+              class="h-3.5 w-3.5"
+            />
+            <span class="hidden sm:inline">{{
+              editable
+                ? $t('Wiki.readonly.editing')
+                : $t('Wiki.readonly.readOnly')
+            }}</span>
+          </button>
 
-        <span v-if="breadcrumb" class="min-w-0 max-w-full truncate">{{
-          breadcrumb
-        }}</span>
-
-        <!-- edit lock / read-only status -->
-        <span
-          v-if="lockedByOther"
-          class="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
-          :title="$t('Wiki.readonly.lockedBy', { name: lockHolderName })"
-        >
-          <IconLock class="h-3.5 w-3.5" />
-          <span class="hidden truncate sm:inline">{{
-            $t('Wiki.readonly.lockedBy', { name: lockHolderName })
-          }}</span>
-          <span class="sm:hidden">{{ $t('Wiki.readonly.locked') }}</span>
-        </span>
-        <button
-          v-else
-          type="button"
-          class="flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors"
-          :class="
-            editable
-              ? 'border-primary text-primary'
-              : 'border-surface-200 text-surface-600 hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300'
-          "
-          :title="
-            presenceUnavailable
-              ? $t('Wiki.readonly.presenceUnavailable')
-              : editable
-                ? $t('Wiki.readonly.lockHint')
-                : $t('Wiki.readonly.editHint')
-          "
-          @click="readOnly.toggle()"
-        >
-          <component
-            :is="editable ? IconPencil : IconLock"
-            class="h-3.5 w-3.5"
-          />
-          <span class="hidden sm:inline">{{
-            editable
-              ? $t('Wiki.readonly.editing')
-              : $t('Wiki.readonly.readOnly')
-          }}</span>
-        </button>
-
-        <!-- table of contents: toggles a collapsible panel of page headings -->
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': tocOpen }"
-          :title="$t('Wiki.toc.hint')"
-          @click="tocOpen = !tocOpen"
-        >
-          <IconListBox class="h-3.5 w-3.5" />
-          <span class="hidden sm:inline">{{ $t('Wiki.toc.button') }}</span>
-        </button>
-
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': assistant.open }"
-          :title="$t('Assistant.title')"
-          :disabled="lockedByOther"
-          @click="toggleAssistant"
-        >
-          <IconRobot class="h-3.5 w-3.5" />
-          <span class="hidden sm:inline">{{ $t('Assistant.button') }}</span>
-        </button>
-        <button
-          v-if="editable"
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :title="$t('Editor.markdown.buttonHint')"
-          @click="markdownDialogOpen = true"
-        >
-          <IconLanguageMarkdown class="h-3.5 w-3.5" />
-          <span class="hidden sm:inline">{{
-            $t('Editor.markdown.button')
-          }}</span>
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
-          :class="{ 'border-primary text-primary': copied }"
-          :title="$t('Wiki.copyMarkdown.hint')"
-          :disabled="copying"
-          @click="copyMarkdown"
-        >
-          <IconSpinner v-if="copying" class="h-3.5 w-3.5 animate-spin" />
-          <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
-          <IconContentCopy v-else class="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
-          :title="$t('Wiki.export.title')"
-          :disabled="exporting"
-          @click="exportPdf"
-        >
-          <IconSpinner v-if="exporting" class="h-3.5 w-3.5 animate-spin" />
-          <IconFilePdf v-else class="h-3.5 w-3.5" />
-          <span class="hidden sm:inline">{{
-            exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
-          }}</span>
-        </button>
-
-        <!--
-          import a page from a file or URL. Lives here on the open page (rather
-          than in the sidebar) so it reads as an "upload into the wiki" action,
-          right where the content is.
-        -->
-        <button
-          type="button"
-          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-          :title="$t('Wiki.import.button')"
-          @click="wiki.openImportDialog()"
-        >
-          <IconUpload class="h-3.5 w-3.5" />
-        </button>
-
-        <!-- pinned to the right edge: info chip + save status -->
-        <div class="ml-auto flex items-center gap-2">
-          <!-- info: clickable chip that opens a metadata popover -->
+          <!-- info: clickable chip that opens the document-details popover -->
           <button
             type="button"
             class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
@@ -251,6 +110,73 @@
           <span v-else-if="wiki.state.lastSavedAt && editable">{{
             $t('Wiki.saved')
           }}</span>
+        </div>
+
+        <!-- RIGHT: content actions; "Inhalt" and "Upload" sit at the far edge -->
+        <div class="flex items-center justify-end gap-2">
+          <button
+            v-if="editable"
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :title="$t('Editor.markdown.buttonHint')"
+            @click="markdownDialogOpen = true"
+          >
+            <IconLanguageMarkdown class="h-3.5 w-3.5" />
+            <span class="hidden lg:inline">{{
+              $t('Editor.markdown.button')
+            }}</span>
+          </button>
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': copied }"
+            :title="$t('Wiki.copyMarkdown.hint')"
+            :disabled="copying"
+            @click="copyMarkdown"
+          >
+            <IconSpinner v-if="copying" class="h-3.5 w-3.5 animate-spin" />
+            <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
+            <IconContentCopy v-else class="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+            :title="$t('Wiki.export.title')"
+            :disabled="exporting"
+            @click="exportPdf"
+          >
+            <IconSpinner v-if="exporting" class="h-3.5 w-3.5 animate-spin" />
+            <IconFilePdf v-else class="h-3.5 w-3.5" />
+            <span class="hidden lg:inline">{{
+              exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
+            }}</span>
+          </button>
+
+          <!-- table of contents: toggles a collapsible panel of page headings -->
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': tocOpen }"
+            :title="$t('Wiki.toc.hint')"
+            @click="tocOpen = !tocOpen"
+          >
+            <IconListBox class="h-3.5 w-3.5" />
+            <span class="hidden sm:inline">{{ $t('Wiki.toc.button') }}</span>
+          </button>
+
+          <!--
+            import a page from a file or URL. Lives here on the open page (rather
+            than in the sidebar) so it reads as an "upload into the wiki" action,
+            right where the content is.
+          -->
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :title="$t('Wiki.import.button')"
+            @click="wiki.openImportDialog()"
+          >
+            <IconUpload class="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
@@ -320,130 +246,209 @@
         @insert="onInsertMarkdown"
       />
 
-      <!-- facet choosers, opened by the chips in the meta bar -->
-      <Menu ref="pageTypeMenuRef" :model="pageTypeItems" popup />
-      <Menu ref="statusMenuRef" :model="statusItems" popup />
-
-      <!-- AI page summary, opened by the "Summary" chip -->
-      <Popover ref="summaryPopoverRef" @hide="summaryOpen = false">
-        <div class="w-72 space-y-2 text-xs">
-          <p class="font-medium text-surface-500 dark:text-surface-400">
-            {{ $t('Wiki.summary.title') }}
-          </p>
-          <p class="leading-relaxed text-surface-800 dark:text-surface-100">
-            {{ page.summary }}
-          </p>
-          <p
-            v-if="page.summaryUpdatedAt"
-            class="text-surface-400 dark:text-surface-500"
-          >
-            {{
-              $t('Wiki.summary.updated', {
-                date: formatDateTime(page.summaryUpdatedAt),
-              })
-            }}
-          </p>
-        </div>
-      </Popover>
-
-      <!-- document metadata, opened by the "Info" chip -->
-      <Popover ref="infoPopoverRef" @hide="infoOpen = false">
-        <dl class="w-64 space-y-3 text-xs">
-          <div class="flex flex-col gap-0.5">
-            <dt class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.scope') }}
-            </dt>
-            <dd class="text-surface-800 dark:text-surface-100">
-              {{ scopeLabel }}
-            </dd>
-          </div>
-
-          <div class="flex flex-col gap-0.5">
-            <dt class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.created') }}
-            </dt>
-            <dd class="text-surface-800 dark:text-surface-100">
-              {{ formatDateTime(page.createdAt) }}
-            </dd>
-            <dd
-              v-if="userLabel(page.createdBy)"
-              class="text-surface-500 dark:text-surface-400"
+      <!--
+        document details, opened by the "Info" chip. This is now the single
+        home for everything informational about the page: the AI summary,
+        classification, status, per-organisation tags (all editable in place
+        when the page is editable), plus location and the authorship stamps.
+      -->
+      <Popover ref="infoPopoverRef" @hide="onInfoHide">
+        <div class="max-h-[70vh] w-80 space-y-4 overflow-y-auto text-xs">
+          <!-- AI-generated summary (read-only) -->
+          <section v-if="page.summary" class="space-y-1">
+            <p class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.summary.title') }}
+            </p>
+            <p class="leading-relaxed text-surface-800 dark:text-surface-100">
+              {{ page.summary }}
+            </p>
+            <p
+              v-if="page.summaryUpdatedAt"
+              class="text-surface-400 dark:text-surface-500"
             >
-              {{ $t('Wiki.info.by', { name: userLabel(page.createdBy) }) }}
-            </dd>
-          </div>
+              {{
+                $t('Wiki.summary.updated', {
+                  date: formatDateTime(page.summaryUpdatedAt),
+                })
+              }}
+            </p>
+          </section>
 
-          <div class="flex flex-col gap-0.5">
-            <dt class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.updated') }}
-            </dt>
-            <dd class="text-surface-800 dark:text-surface-100">
-              {{ formatDateTime(page.updatedAt) }}
-            </dd>
-            <dd
-              v-if="userLabel(page.updatedBy)"
-              class="text-surface-500 dark:text-surface-400"
-            >
-              {{ $t('Wiki.info.by', { name: userLabel(page.updatedBy) }) }}
-            </dd>
-          </div>
-
-          <div v-if="page.verifiedAt" class="flex flex-col gap-0.5">
-            <dt class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.verified') }}
-            </dt>
-            <dd class="text-surface-800 dark:text-surface-100">
-              {{ formatDateTime(page.verifiedAt) }}
-            </dd>
-            <dd
-              v-if="userLabel(page.verifiedBy)"
-              class="text-surface-500 dark:text-surface-400"
-            >
-              {{ $t('Wiki.info.by', { name: userLabel(page.verifiedBy) }) }}
-            </dd>
-          </div>
-        </dl>
-      </Popover>
-
-      <!-- per-organisation metadata (tags) editor, opened by the "Tags" chip -->
-      <Popover ref="attributesPopoverRef" @hide="attributesOpen = false">
-        <div class="w-72 space-y-3">
-          <p class="text-xs font-medium text-surface-500 dark:text-surface-400">
-            {{ $t('Wiki.attributes.title') }}
-          </p>
-          <div
-            v-for="def in attributeDefinitions"
-            :key="def.key"
+          <!-- classification (pageType) -->
+          <section
+            v-if="editable || page.pageType"
             class="flex flex-col gap-1"
           >
-            <label
-              class="text-xs font-medium text-surface-700 dark:text-surface-300"
-            >
-              {{ def.label || def.key }}
+            <label class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.classification') }}
             </label>
             <Select
-              v-if="def.values && def.values.length"
-              v-model="attrDraft[def.key]"
-              :options="attributeOptions(def)"
+              v-if="editable"
+              v-model="pageTypeModel"
+              :options="pageTypeOptions"
               option-label="label"
               option-value="value"
+              show-clear
               class="w-full"
+              :placeholder="$t('Wiki.pageType.empty')"
             />
-            <InputText
+            <span v-else class="text-surface-800 dark:text-surface-100">
+              {{ facetLabel('pageType', page.pageType) }}
+            </span>
+          </section>
+
+          <!-- status (trust signal) -->
+          <section v-if="editable || page.status" class="flex flex-col gap-1">
+            <label class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.info.status') }}
+            </label>
+            <Select
+              v-if="editable"
+              v-model="statusModel"
+              :options="statusOptions"
+              option-label="label"
+              option-value="value"
+              show-clear
+              class="w-full"
+              :placeholder="$t('Wiki.status.empty')"
+            />
+            <span
               v-else
-              v-model="attrDraft[def.key]"
-              class="w-full"
-              :placeholder="$t('Wiki.attributes.valuePlaceholder')"
-            />
-          </div>
-          <div class="flex justify-end pt-1">
-            <Button
-              :label="$t('Wiki.attributes.save')"
-              size="small"
-              :loading="wiki.state.saving"
-              @click="saveAttributesDraft"
-            />
-          </div>
+              class="flex items-center gap-1 text-surface-800 dark:text-surface-100"
+            >
+              <component :is="statusIcon" class="h-3.5 w-3.5" />
+              {{ facetLabel('status', page.status) }}
+            </span>
+          </section>
+
+          <!-- per-organisation metadata (document tags) -->
+          <section
+            v-if="attributeDefinitions.length || attributeChips.length"
+            class="space-y-2"
+          >
+            <p class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.attributes.title') }}
+            </p>
+            <template v-if="editable && attributeDefinitions.length">
+              <div
+                v-for="def in attributeDefinitions"
+                :key="def.key"
+                class="flex flex-col gap-1"
+              >
+                <label
+                  class="text-xs text-surface-600 dark:text-surface-400"
+                >
+                  {{ def.label || def.key }}
+                </label>
+                <Select
+                  v-if="def.values && def.values.length"
+                  v-model="attrDraft[def.key]"
+                  :options="attributeOptions(def)"
+                  option-label="label"
+                  option-value="value"
+                  class="w-full"
+                />
+                <InputText
+                  v-else
+                  v-model="attrDraft[def.key]"
+                  class="w-full"
+                  :placeholder="$t('Wiki.attributes.valuePlaceholder')"
+                />
+              </div>
+              <div class="flex justify-end pt-1">
+                <Button
+                  :label="$t('Wiki.attributes.save')"
+                  size="small"
+                  :loading="wiki.state.saving"
+                  @click="saveAttributesDraft"
+                />
+              </div>
+            </template>
+            <div v-else class="flex flex-col gap-1">
+              <span
+                v-for="chip in attributeChips"
+                :key="chip.key"
+                class="text-surface-800 dark:text-surface-100"
+              >
+                <span class="text-surface-400 dark:text-surface-500"
+                  >{{ chip.label }}:</span
+                >
+                {{ chip.value }}
+              </span>
+              <span
+                v-if="!attributeChips.length"
+                class="text-surface-400 dark:text-surface-500"
+                >—</span
+              >
+            </div>
+          </section>
+
+          <hr class="border-surface-200 dark:border-surface-700" />
+
+          <dl class="space-y-3">
+            <div v-if="breadcrumb" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.location') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ breadcrumb }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.scope') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ scopeLabel }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.created') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.createdAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.createdBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.createdBy) }) }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.updated') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.updatedAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.updatedBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.updatedBy) }) }}
+              </dd>
+            </div>
+
+            <div v-if="page.verifiedAt" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.verified') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.verifiedAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.verifiedBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.verifiedBy) }) }}
+              </dd>
+            </div>
+          </dl>
         </div>
       </Popover>
     </template>
@@ -456,9 +461,8 @@ import type {
   WikiBlock,
   WikiTocEntry,
 } from '@/types/wiki'
-import IconRobot from '~icons/mdi/robot-outline'
+import IconChat from '~icons/mdi/message-text-outline'
 import IconListBox from '~icons/mdi/format-list-bulleted'
-import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
 import IconUpload from '~icons/mdi/tray-arrow-up'
 import IconContentCopy from '~icons/mdi/content-copy'
@@ -466,9 +470,7 @@ import IconCheck from '~icons/mdi/check'
 import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
-import IconTag from '~icons/mdi/tag-outline'
 import IconInfo from '~icons/mdi/information-outline'
-import IconTextBox from '~icons/mdi/text-box-outline'
 import IconCircle from '~icons/mdi/circle-outline'
 import IconCheckCircle from '~icons/mdi/check-circle-outline'
 import IconAlertCircle from '~icons/mdi/alert-circle-outline'
@@ -792,9 +794,8 @@ const onBlocksChange = async (blocks: WikiBlock[]) => {
 }
 
 // ----- facets (classification / status) -------------------------------------
-
-const pageTypeMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
-const statusMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+// Both live in the Info popover now, edited via Select dropdowns that save the
+// moment a value is picked (or cleared).
 
 /**
  * Human label for a facet value. Falls back to the raw value so tenant-custom
@@ -824,40 +825,31 @@ const setStatus = async (value: string | null) => {
   )
 }
 
-/** Build a popup-menu model from a vocabulary + a "clear" entry when set. */
-const facetItems = (
-  facet: 'pageType' | 'status',
-  vocabulary: string[],
-  current: string | null | undefined,
-  choose: (value: string | null) => void,
-) => {
-  const items = vocabulary.map((value) => ({
-    label: facetLabel(facet, value),
-    command: () => choose(value),
-  }))
-  if (current) {
-    items.push({ label: t('Wiki.facets.clear'), command: () => choose(null) })
-  }
-  return items
-}
+/** Select options for a facet vocabulary. */
+const facetOptions = (facet: 'pageType' | 'status', vocabulary: string[]) =>
+  vocabulary.map((value) => ({ label: facetLabel(facet, value), value }))
 
-const pageTypeItems = computed(() =>
-  facetItems(
-    'pageType',
-    wiki.state.config?.pageTypes ?? [],
-    page.value?.pageType,
-    setPageType,
-  ),
+const pageTypeOptions = computed(() =>
+  facetOptions('pageType', wiki.state.config?.pageTypes ?? []),
 )
 
-const statusItems = computed(() =>
-  facetItems(
-    'status',
-    wiki.state.config?.statuses ?? [],
-    page.value?.status,
-    setStatus,
-  ),
+const statusOptions = computed(() =>
+  facetOptions('status', wiki.state.config?.statuses ?? []),
 )
+
+/**
+ * Writable models for the Info-popover selects: reading reflects the page,
+ * assigning (a pick or a clear → null) persists immediately.
+ */
+const pageTypeModel = computed<string | null>({
+  get: () => page.value?.pageType ?? null,
+  set: (value) => void setPageType(value),
+})
+
+const statusModel = computed<string | null>({
+  get: () => page.value?.status ?? null,
+  set: (value) => void setStatus(value),
+})
 
 const statusIcon = computed(() => {
   switch (page.value?.status) {
@@ -872,26 +864,10 @@ const statusIcon = computed(() => {
   }
 })
 
-const statusChipClass = computed(() => {
-  switch (page.value?.status) {
-    case 'verified':
-      return 'border-green-300 bg-green-50 text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-400'
-    case 'outdated':
-      return 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400'
-    case 'draft':
-      return 'border-surface-300 bg-surface-100 text-surface-600 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
-    default:
-      return 'border-surface-200 text-surface-500 dark:border-surface-700 dark:text-surface-400'
-  }
-})
-
 // ----- per-organisation metadata (attributes / tags) ------------------------
+// Edited inside the Info popover; the draft is seeded when that popover opens
+// (see toggleInfo) and committed with the "Save" button.
 
-const attributesPopoverRef = ref<{
-  toggle: (event: Event) => void
-  hide: () => void
-} | null>(null)
-const attributesOpen = ref(false)
 /** Working copy edited in the popover; committed on save. */
 const attrDraft = ref<Record<string, string>>({})
 
@@ -921,23 +897,20 @@ const attributeOptions = (def: KnowledgeAttributeDefinition) => [
   ...(def.values ?? []).map((value) => ({ label: value, value })),
 ]
 
-const openAttributes = (event: Event) => {
+/** Seed the editable draft from the page's stored attribute values. */
+const seedAttrDraft = () => {
   const attrs = page.value?.attributes ?? {}
   const draft: Record<string, string> = {}
   for (const def of attributeDefinitions.value) {
     draft[def.key] = attrs[def.key] ?? ''
   }
   attrDraft.value = draft
-  attributesOpen.value = true
-  attributesPopoverRef.value?.toggle(event)
 }
 
 const saveAttributesDraft = async () => {
   if (!page.value || !editable.value) return
   try {
     await wiki.saveAttributes(tenantId.value, page.value.id, attrDraft.value)
-    attributesPopoverRef.value?.hide()
-    attributesOpen.value = false
     toast.add({
       severity: 'success',
       summary: t('Common.success'),
@@ -981,24 +954,21 @@ const breadcrumb = computed(() => {
   return parts.join(' / ')
 })
 
-// ----- info popover (document metadata) -------------------------------------
+// ----- info popover (document details) --------------------------------------
+// Single home for summary, classification, status, tags, location + authorship.
 
 const infoPopoverRef = ref<{ toggle: (event: Event) => void } | null>(null)
 const infoOpen = ref(false)
 
 const toggleInfo = (event: Event) => {
+  // seed the tag draft on open so in-place edits start from stored values
+  if (!infoOpen.value) seedAttrDraft()
   infoOpen.value = !infoOpen.value
   infoPopoverRef.value?.toggle(event)
 }
 
-// ----- summary popover (AI page summary) ------------------------------------
-
-const summaryPopoverRef = ref<{ toggle: (event: Event) => void } | null>(null)
-const summaryOpen = ref(false)
-
-const toggleSummary = (event: Event) => {
-  summaryOpen.value = !summaryOpen.value
-  summaryPopoverRef.value?.toggle(event)
+const onInfoHide = () => {
+  infoOpen.value = false
 }
 
 // userId -> email lookup, so authorship fields (createdBy / updatedBy /

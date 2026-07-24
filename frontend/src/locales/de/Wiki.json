@@ -87,6 +87,9 @@
   "info": {
     "button": "Info",
     "hint": "Dokumentdetails anzeigen",
+    "classification": "Klassifizierung",
+    "status": "Status",
+    "location": "Ablage",
     "scope": "Bereich",
     "created": "Erstellt",
     "updated": "Zuletzt bearbeitet",
