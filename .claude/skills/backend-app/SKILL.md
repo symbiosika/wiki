@@ -13,7 +13,10 @@ The app uses the symbiosika-framework (`backend/framework/`). Path alias: `@fram
 
 ## Commands
 
-- `bun run docker:up` / `docker:down` - Start/stop development database
+- `bun run docker:up` / `docker:down` - Start/stop development database (Docker)
+- `bun run db:local` - Start an embedded PGlite dev database on port 5432 (no Docker needed)
+- `bun run test:local` - Run tests against an embedded PGlite DB, zero setup (see backend-testing skill)
+- `bun run db:query "<SQL>"` - Inspect the dev database (see db-query skill)
 - `bun run dev` - Start dev server with hot reload
 - `bun run init` - Generate secrets (AES keys, JWT keys) into .env
 - `bun run app:generate` - Generate app-specific migrations
