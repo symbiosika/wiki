@@ -52,10 +52,6 @@
         </p>
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <Button size="small" @click="createFirstPage">
-          <template #icon><IconPlus class="h-4 w-4" /></template>
-          {{ $t('Wiki.newPage') }}
-        </Button>
         <SecondaryButton
           size="small"
           :label="$t('Wiki.import.button')"
@@ -180,7 +176,6 @@
 
 <script setup lang="ts">
 import IconMicrophone from '~icons/mdi/microphone'
-import IconPlus from '~icons/mdi/plus'
 import IconImport from '~icons/mdi/tray-arrow-down'
 import IconClock from '~icons/mdi/clock-outline'
 import IconFile from '~icons/mdi/file-document-outline'
