@@ -171,8 +171,9 @@ export function registerWriteTools(mcp: any): void {
         "Appends markdown to the END of a page — the robust way to add a " +
         "note, log entry or new section: no reading first, no string " +
         "matching, no edit conflicts. A blank line separates the appended " +
-        "text by default (override with `separator`). Returns only counters " +
-        "(appendedChars, totalChars), not the full content.",
+        "text by default (override with `separator` on plain-text pages; " +
+        "block pages always add the text as a new block). Returns only " +
+        "counters (appendedChars, totalChars), not the full content.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         content: z
