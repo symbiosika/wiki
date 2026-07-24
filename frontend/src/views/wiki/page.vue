@@ -25,7 +25,7 @@
         text column regardless of how wide the side groups get:
           • left   — the document assistant (chat)
           • centre — read-only toggle + info (document details live in Info now)
-          • right  — content actions, with "Inhalt" and "Upload" pinned to the
+          • right  — content actions, with "Inhalt" pinned flush to the
                      very right edge
         Classification, status, tags and the AI summary used to be their own
         chips here; they are informational, so they moved into the Info popover.
@@ -112,7 +112,7 @@
           }}</span>
         </div>
 
-        <!-- RIGHT: content actions; "Inhalt" and "Upload" sit at the far edge -->
+        <!-- RIGHT: content actions; "Inhalt" sits flush at the far edge -->
         <div class="flex items-center justify-end gap-2">
           <button
             v-if="editable"
@@ -147,21 +147,9 @@
           >
             <IconSpinner v-if="exporting" class="h-3.5 w-3.5 animate-spin" />
             <IconFilePdf v-else class="h-3.5 w-3.5" />
-            <span class="hidden lg:inline">{{
+            <span class="hidden whitespace-nowrap lg:inline">{{
               exporting ? $t('Wiki.export.exporting') : $t('Wiki.export.button')
             }}</span>
-          </button>
-
-          <!-- table of contents: toggles a collapsible panel of page headings -->
-          <button
-            type="button"
-            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
-            :class="{ 'border-primary text-primary': tocOpen }"
-            :title="$t('Wiki.toc.hint')"
-            @click="tocOpen = !tocOpen"
-          >
-            <IconListBox class="h-3.5 w-3.5" />
-            <span class="hidden sm:inline">{{ $t('Wiki.toc.button') }}</span>
           </button>
 
           <!--
@@ -176,6 +164,23 @@
             @click="wiki.openImportDialog()"
           >
             <IconUpload class="h-3.5 w-3.5" />
+          </button>
+
+          <!--
+            table of contents: toggles a collapsible panel of page headings.
+            Pinned last so "Inhalt" sits flush against the very right edge.
+          -->
+          <button
+            type="button"
+            class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+            :class="{ 'border-primary text-primary': tocOpen }"
+            :title="$t('Wiki.toc.hint')"
+            @click="tocOpen = !tocOpen"
+          >
+            <IconListBox class="h-3.5 w-3.5" />
+            <span class="hidden whitespace-nowrap sm:inline">{{
+              $t('Wiki.toc.button')
+            }}</span>
           </button>
         </div>
       </div>
@@ -343,10 +348,7 @@
           </section>
 
           <!-- classification (pageType) -->
-          <section
-            v-if="editable || page.pageType"
-            class="flex flex-col gap-1"
-          >
+          <section v-if="editable || page.pageType" class="flex flex-col gap-1">
             <label class="font-medium text-surface-500 dark:text-surface-400">
               {{ $t('Wiki.info.classification') }}
             </label>
@@ -403,9 +405,7 @@
                 :key="def.key"
                 class="flex flex-col gap-1"
               >
-                <label
-                  class="text-xs text-surface-600 dark:text-surface-400"
-                >
+                <label class="text-xs text-surface-600 dark:text-surface-400">
                   {{ def.label || def.key }}
                 </label>
                 <Select
