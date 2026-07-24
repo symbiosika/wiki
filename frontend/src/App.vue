@@ -7,6 +7,18 @@ const theme = useTheme()
 
 theme.init()
 
+// Keep the browser/tab title in sync with the selected organisation, e.g.
+// "Acme Wiki". Falls back to the generic title while no organisation is
+// resolved yet (initial load, signed out).
+const DEFAULT_TITLE = 'SYMBIOSIKA WIKI'
+watch(
+  () => appStore.currentTenant?.name,
+  (name) => {
+    document.title = name ? `${name} Wiki` : DEFAULT_TITLE
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   await appStore.init()
 })
