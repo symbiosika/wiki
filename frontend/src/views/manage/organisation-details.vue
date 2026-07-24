@@ -34,8 +34,60 @@
       </template>
     </ManageHeader>
 
+    <DataTable v-if="members.length > 0" :value="members">
+      <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
+      <Column field="role" :header="$t('UserTenants.memberRole')">
+        <template #body="{ data }">
+          <div class="flex items-center gap-1.5">
+            <span>{{ $t(`UserTenants.roles.${data.role}`, data.role) }}</span>
+            <button
+              v-if="data.id !== app.state.user?.id"
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
+              :title="$t('UserTenants.changeRole')"
+              @click="openChangeRoleDialog(data)"
+            >
+              <IconPencil class="h-4 w-4" />
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column :header="$t('UserTenants.knowledgeAccess')" style="width: 200px">
+        <template #body="{ data }">
+          <SelectButton
+            :model-value="data.knowledgeAccess"
+            :options="knowledgeAccessOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            :disabled="
+              data.id === app.state.user?.id || savingAccessFor === data.id
+            "
+            @update:model-value="
+              (value: KnowledgeAccessLevel) =>
+                value && changeKnowledgeAccess(data, value)
+            "
+          />
+        </template>
+      </Column>
+      <Column header="" style="width: 80px">
+        <template #body="{ data }">
+          <div v-if="data.id !== app.state.user?.id" class="flex justify-end">
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
+              :title="$t('UserTenants.removeMember')"
+              @click="openRemoveDialog(data)"
+            >
+              <IconTrash class="h-4 w-4" />
+            </button>
+          </div>
+        </template>
+      </Column>
+    </DataTable>
+
     <!-- organisation logo -->
-    <section class="mb-8">
+    <section class="mt-8">
       <h2
         class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
       >
@@ -101,58 +153,6 @@
         @cropped="onLogoCropped"
       />
     </section>
-
-    <DataTable v-if="members.length > 0" :value="members">
-      <Column field="userEmail" :header="$t('UserTenants.memberEmail')" />
-      <Column field="role" :header="$t('UserTenants.memberRole')">
-        <template #body="{ data }">
-          <div class="flex items-center gap-1.5">
-            <span>{{ $t(`UserTenants.roles.${data.role}`, data.role) }}</span>
-            <button
-              v-if="data.id !== app.state.user?.id"
-              type="button"
-              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
-              :title="$t('UserTenants.changeRole')"
-              @click="openChangeRoleDialog(data)"
-            >
-              <IconPencil class="h-4 w-4" />
-            </button>
-          </div>
-        </template>
-      </Column>
-      <Column :header="$t('UserTenants.knowledgeAccess')" style="width: 200px">
-        <template #body="{ data }">
-          <SelectButton
-            :model-value="data.knowledgeAccess"
-            :options="knowledgeAccessOptions"
-            option-label="label"
-            option-value="value"
-            :allow-empty="false"
-            :disabled="
-              data.id === app.state.user?.id || savingAccessFor === data.id
-            "
-            @update:model-value="
-              (value: KnowledgeAccessLevel) =>
-                value && changeKnowledgeAccess(data, value)
-            "
-          />
-        </template>
-      </Column>
-      <Column header="" style="width: 80px">
-        <template #body="{ data }">
-          <div v-if="data.id !== app.state.user?.id" class="flex justify-end">
-            <button
-              type="button"
-              class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 dark:hover:bg-surface-800"
-              :title="$t('UserTenants.removeMember')"
-              @click="openRemoveDialog(data)"
-            >
-              <IconTrash class="h-4 w-4" />
-            </button>
-          </div>
-        </template>
-      </Column>
-    </DataTable>
 
     <!-- Branding / colors (admins & owners only) -->
     <section
