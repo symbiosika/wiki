@@ -254,6 +254,74 @@
       -->
       <Popover ref="infoPopoverRef" @hide="onInfoHide">
         <div class="max-h-[70vh] w-80 space-y-4 overflow-y-auto text-xs">
+          <!-- meta infos first: location, scope + authorship / timestamps -->
+          <dl class="space-y-3">
+            <div v-if="breadcrumb" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.location') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ breadcrumb }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.scope') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ scopeLabel }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.created') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.createdAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.createdBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.createdBy) }) }}
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.updated') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.updatedAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.updatedBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.updatedBy) }) }}
+              </dd>
+            </div>
+
+            <div v-if="page.verifiedAt" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-surface-500 dark:text-surface-400">
+                {{ $t('Wiki.info.verified') }}
+              </dt>
+              <dd class="text-surface-800 dark:text-surface-100">
+                {{ formatDateTime(page.verifiedAt) }}
+              </dd>
+              <dd
+                v-if="userLabel(page.verifiedBy)"
+                class="text-surface-500 dark:text-surface-400"
+              >
+                {{ $t('Wiki.info.by', { name: userLabel(page.verifiedBy) }) }}
+              </dd>
+            </div>
+          </dl>
+
+          <hr class="border-surface-200 dark:border-surface-700" />
+
           <!-- AI-generated summary (read-only) -->
           <section v-if="page.summary" class="space-y-1">
             <p class="font-medium text-surface-500 dark:text-surface-400">
@@ -347,20 +415,14 @@
                   option-label="label"
                   option-value="value"
                   class="w-full"
+                  @update:model-value="scheduleAttrSave"
                 />
                 <InputText
                   v-else
                   v-model="attrDraft[def.key]"
                   class="w-full"
                   :placeholder="$t('Wiki.attributes.valuePlaceholder')"
-                />
-              </div>
-              <div class="flex justify-end pt-1">
-                <Button
-                  :label="$t('Wiki.attributes.save')"
-                  size="small"
-                  :loading="wiki.state.saving"
-                  @click="saveAttributesDraft"
+                  @update:model-value="scheduleAttrSave"
                 />
               </div>
             </template>
@@ -382,73 +444,6 @@
               >
             </div>
           </section>
-
-          <hr class="border-surface-200 dark:border-surface-700" />
-
-          <dl class="space-y-3">
-            <div v-if="breadcrumb" class="flex flex-col gap-0.5">
-              <dt class="font-medium text-surface-500 dark:text-surface-400">
-                {{ $t('Wiki.info.location') }}
-              </dt>
-              <dd class="text-surface-800 dark:text-surface-100">
-                {{ breadcrumb }}
-              </dd>
-            </div>
-
-            <div class="flex flex-col gap-0.5">
-              <dt class="font-medium text-surface-500 dark:text-surface-400">
-                {{ $t('Wiki.info.scope') }}
-              </dt>
-              <dd class="text-surface-800 dark:text-surface-100">
-                {{ scopeLabel }}
-              </dd>
-            </div>
-
-            <div class="flex flex-col gap-0.5">
-              <dt class="font-medium text-surface-500 dark:text-surface-400">
-                {{ $t('Wiki.info.created') }}
-              </dt>
-              <dd class="text-surface-800 dark:text-surface-100">
-                {{ formatDateTime(page.createdAt) }}
-              </dd>
-              <dd
-                v-if="userLabel(page.createdBy)"
-                class="text-surface-500 dark:text-surface-400"
-              >
-                {{ $t('Wiki.info.by', { name: userLabel(page.createdBy) }) }}
-              </dd>
-            </div>
-
-            <div class="flex flex-col gap-0.5">
-              <dt class="font-medium text-surface-500 dark:text-surface-400">
-                {{ $t('Wiki.info.updated') }}
-              </dt>
-              <dd class="text-surface-800 dark:text-surface-100">
-                {{ formatDateTime(page.updatedAt) }}
-              </dd>
-              <dd
-                v-if="userLabel(page.updatedBy)"
-                class="text-surface-500 dark:text-surface-400"
-              >
-                {{ $t('Wiki.info.by', { name: userLabel(page.updatedBy) }) }}
-              </dd>
-            </div>
-
-            <div v-if="page.verifiedAt" class="flex flex-col gap-0.5">
-              <dt class="font-medium text-surface-500 dark:text-surface-400">
-                {{ $t('Wiki.info.verified') }}
-              </dt>
-              <dd class="text-surface-800 dark:text-surface-100">
-                {{ formatDateTime(page.verifiedAt) }}
-              </dd>
-              <dd
-                v-if="userLabel(page.verifiedBy)"
-                class="text-surface-500 dark:text-surface-400"
-              >
-                {{ $t('Wiki.info.by', { name: userLabel(page.verifiedBy) }) }}
-              </dd>
-            </div>
-          </dl>
         </div>
       </Popover>
     </template>
@@ -599,6 +594,7 @@ const copyMarkdown = async () => {
 
 onBeforeUnmount(() => {
   if (copiedTimer) clearTimeout(copiedTimer)
+  if (attrSaveTimer) clearTimeout(attrSaveTimer)
 })
 
 // ----- PDF export -----------------------------------------------------------
@@ -907,23 +903,18 @@ const seedAttrDraft = () => {
   attrDraft.value = draft
 }
 
-const saveAttributesDraft = async () => {
-  if (!page.value || !editable.value) return
-  try {
-    await wiki.saveAttributes(tenantId.value, page.value.id, attrDraft.value)
-    toast.add({
-      severity: 'success',
-      summary: t('Common.success'),
-      life: 2000,
-    })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: t('Common.error'),
-      detail: t('Wiki.attributes.saveError'),
-      life: 4000,
-    })
-  }
+// Tags auto-save on edit, debounced, mirroring the title/blocks behaviour. The
+// meta bar's "Speichert… / Gespeichert" indicator reflects the result; a
+// failure surfaces there (wiki.state.saveError) rather than as a toast.
+let attrSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+const scheduleAttrSave = () => {
+  if (!editable.value) return
+  if (attrSaveTimer) clearTimeout(attrSaveTimer)
+  attrSaveTimer = setTimeout(() => {
+    if (!page.value || !editable.value) return
+    void wiki.saveAttributes(tenantId.value, page.value.id, attrDraft.value)
+  }, 600)
 }
 
 // ----- meta -----------------------------------------------------------------
