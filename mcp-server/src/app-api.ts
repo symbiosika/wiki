@@ -50,19 +50,38 @@ export function fail(message: string): TextToolResult {
 }
 
 /**
- * Resolve the organisation (tenant) id for the API paths. Prefers the tenant
- * binding from the token, falls back to WIKI_TENANT_ID.
+ * Resolve the organisation (tenant) id for the API paths.
+ *
+ * The token's own `tenant` binding always wins. For OAuth access tokens that
+ * binding is chosen by the user at authorize time (sole membership, or the
+ * organisation picker), so a *missing* binding is an error — NOT a cue to fall
+ * back to WIKI_TENANT_ID. On a multi-tenant deployment that silent fallback
+ * would map the user into some other organisation, leaking the wrong org's
+ * data or failing confusingly with "User is not a member of this tenant".
+ * We fail loud and ask the user to reconnect instead.
+ *
+ * WIKI_TENANT_ID is the intended path only for framework API tokens, which are
+ * single-org by design (and already carry it via `validateApiToken`).
  */
 export function resolveTenantId(authInfo: AuthInfo | undefined): string {
   const fromToken = (authInfo?.extra as any)?.tenant as string | undefined;
-  const tenantId = fromToken || FALLBACK_TENANT_ID;
-  if (!tenantId) {
+  if (fromToken) return fromToken;
+
+  const kind = (authInfo?.extra as any)?.kind as string | undefined;
+  if (kind === "oauth") {
     throw new Error(
-      "No organisation id available: the token carries no `tenant` field and " +
-        "WIKI_TENANT_ID is not set.",
+      "This access token is not bound to an organisation. Reconnect the wiki " +
+        "connector and choose your organisation during sign-in. " +
+        "(Do not set WIKI_TENANT_ID on a multi-tenant deployment — it would " +
+        "force every token into a single organisation.)",
     );
   }
-  return tenantId;
+
+  if (FALLBACK_TENANT_ID) return FALLBACK_TENANT_ID;
+  throw new Error(
+    "No organisation id available: the token carries no `tenant` field and " +
+      "WIKI_TENANT_ID is not set.",
+  );
 }
 
 /** Build a tenant-scoped API path: /api/v1/tenant/:tenantId<suffix>. */

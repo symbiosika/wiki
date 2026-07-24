@@ -88,7 +88,15 @@ See [`.env.default`](./.env.default). Key variables:
 | `MCP_PUBLIC_URL`             | Canonical origin of this server = **token audience** (no `/mcp`) |
 | `OAUTH_ISSUER`               | Base URL of the wiki app (authorization server + API)           |
 | `OAUTH_INTROSPECTION_SECRET` | Shared secret — **must match** the backend                      |
-| `WIKI_TENANT_ID`             | Fallback organisation id if the token carries no `tenant`       |
+| `WIKI_TENANT_ID`             | Single-org fallback (see note) — **leave empty on multi-tenant** |
+
+> **`WIKI_TENANT_ID` is only for single-organisation deployments** reached via
+> framework API tokens (n8n, ElevenLabs, …). On a multi-tenant deployment leave
+> it **empty**: OAuth access tokens carry their own `tenant` binding (chosen by
+> the user at sign-in), and a global fallback would force every tenant-less
+> token into one organisation — leaking the wrong org's data or failing with
+> "User is not a member of this tenant". An OAuth token that arrives without a
+> tenant binding is treated as an error (reconnect), never silently mapped.
 
 ---
 
