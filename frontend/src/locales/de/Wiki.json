@@ -99,6 +99,12 @@
     "title": "Zusammenfassung",
     "updated": "Erstellt {date}"
   },
+  "toc": {
+    "button": "Inhalt",
+    "hint": "Inhaltsverzeichnis anzeigen",
+    "title": "Inhaltsverzeichnis",
+    "empty": "Fügen Sie Überschriften (H1, H2, H3) hinzu, um ein Inhaltsverzeichnis zu erstellen."
+  },
   "references": {
     "backlinks": "Verlinkt von",
     "outgoing": "Verweist auf",

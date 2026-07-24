@@ -152,6 +152,18 @@ export interface WikiParserCapabilities {
   modalities: WikiParserModality[]
 }
 
+/**
+ * One heading entry for the page table of contents, derived live from the
+ * editor document. `id` is the top-level block id (data-block-id) the heading
+ * carries, so the ToC can scroll straight to it.
+ */
+export interface WikiTocEntry {
+  id: string
+  /** heading level 1-3 (H1/H2/H3) */
+  level: number
+  text: string
+}
+
 /** A content block as stored by the backend */
 export interface WikiBlock {
   id?: string

@@ -99,6 +99,12 @@
     "title": "Summary",
     "updated": "Generated {date}"
   },
+  "toc": {
+    "button": "Contents",
+    "hint": "Show the table of contents",
+    "title": "Table of contents",
+    "empty": "Add headings (H1, H2, H3) to build a table of contents."
+  },
   "references": {
     "backlinks": "Linked from",
     "outgoing": "Links to",

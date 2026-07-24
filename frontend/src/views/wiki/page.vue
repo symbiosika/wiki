@@ -155,6 +155,18 @@
           }}</span>
         </button>
 
+        <!-- table of contents: toggles a collapsible panel of page headings -->
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+          :class="{ 'border-primary text-primary': tocOpen }"
+          :title="$t('Wiki.toc.hint')"
+          @click="tocOpen = !tocOpen"
+        >
+          <IconListBox class="h-3.5 w-3.5" />
+          <span class="hidden sm:inline">{{ $t('Wiki.toc.button') }}</span>
+        </button>
+
         <button
           type="button"
           class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:text-surface-600 dark:border-surface-700 dark:text-surface-300"
@@ -276,6 +288,7 @@
           :tenant-id="tenantId"
           :page-id="page.id"
           @change="onBlocksChange"
+          @toc="toc = $event"
         />
 
         <!-- page references: backlinks, outgoing links, related pages -->
@@ -285,6 +298,14 @@
           :refresh-key="`${reloadKey}:${wiki.state.lastSavedAt ?? ''}`"
         />
       </div>
+
+      <!-- collapsible table of contents (page headings) -->
+      <WikiTableOfContents
+        :open="tocOpen"
+        :headings="toc"
+        @close="tocOpen = false"
+        @navigate="navigateToHeading"
+      />
 
       <!-- talk-to-your-document assistant -->
       <DocumentAssistantPanel
@@ -430,8 +451,13 @@
 </template>
 
 <script setup lang="ts">
-import type { KnowledgeAttributeDefinition, WikiBlock } from '@/types/wiki'
+import type {
+  KnowledgeAttributeDefinition,
+  WikiBlock,
+  WikiTocEntry,
+} from '@/types/wiki'
 import IconRobot from '~icons/mdi/robot-outline'
+import IconListBox from '~icons/mdi/format-list-bulleted'
 import IconTagMultiple from '~icons/mdi/tag-multiple-outline'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
 import IconUpload from '~icons/mdi/tray-arrow-up'
@@ -450,6 +476,7 @@ import IconDraft from '~icons/mdi/file-document-edit-outline'
 import { useToast } from 'primevue/usetoast'
 import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
+import WikiTableOfContents from '@/components/wiki/WikiTableOfContents.vue'
 import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
@@ -492,6 +519,12 @@ const editorRef = ref<{
 const exporting = ref(false)
 // bumped to remount the editor after the assistant edits the page server-side
 const reloadKey = ref(0)
+
+// ----- table of contents -----------------------------------------------------
+
+// Live headings emitted by the editor, and whether the ToC panel is open.
+const toc = ref<WikiTocEntry[]>([])
+const tocOpen = ref(false)
 
 const toggleAssistant = () => {
   if (assistant.open) {
@@ -658,10 +691,10 @@ const findBlockEl = (blockId: string): HTMLElement | null => {
   const root = editorRoot()
   if (!root) return null
   return (
-    Array.from(root.children).find(
+    (Array.from(root.children).find(
       (el) => el.getAttribute('data-block-id') === blockId,
-    ) as HTMLElement | undefined
-  ) ?? null
+    ) as HTMLElement | undefined) ?? null
+  )
 }
 
 /**
@@ -717,6 +750,12 @@ const scheduleJump = () => {
     if (attempts++ < 30) setTimeout(tick, 100) // ~3s budget for the editor
   }
   tick()
+}
+
+/** Scroll to a heading clicked in the table of contents (reuses the jump). */
+const navigateToHeading = (blockId: string) => {
+  const el = findBlockEl(blockId)
+  if (el) scrollAndHighlight(el)
 }
 
 // ----- title ----------------------------------------------------------------
@@ -1011,12 +1050,20 @@ const formatDateTime = (value: string | null | undefined): string => {
 }
 @keyframes wiki-jump-pulse {
   0% {
-    background-color: color-mix(in srgb, var(--p-primary-color) 28%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--p-primary-color) 28%,
+      transparent
+    );
     box-shadow: 0 0 0 6px
       color-mix(in srgb, var(--p-primary-color) 18%, transparent);
   }
   70% {
-    background-color: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--p-primary-color) 22%,
+      transparent
+    );
     box-shadow: 0 0 0 6px
       color-mix(in srgb, var(--p-primary-color) 12%, transparent);
   }
