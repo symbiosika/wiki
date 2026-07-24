@@ -42,6 +42,21 @@
           <label
             class="text-xs font-medium text-surface-500 dark:text-surface-400"
           >
+            {{ $t('UserTenants.metadata.attrDescription') }}
+          </label>
+          <InputText
+            v-model="row.description"
+            class="w-full"
+            :placeholder="$t('UserTenants.metadata.descriptionPlaceholder')"
+          />
+          <span class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('UserTenants.metadata.descriptionHint') }}
+          </span>
+        </div>
+        <div class="flex flex-[2] flex-col gap-1">
+          <label
+            class="text-xs font-medium text-surface-500 dark:text-surface-400"
+          >
             {{ $t('UserTenants.metadata.values') }}
           </label>
           <InputText
@@ -110,6 +125,8 @@ const tenantId = computed(() => String(route.params.tenantId))
 interface AttributeRow {
   key: string
   label: string
+  /** Extractor instruction passed to the PDF parser; empty falls back to label/key. */
+  description: string
   /** Allowed values as a comma-separated string; empty means free text. */
   valuesText: string
 }
@@ -132,6 +149,8 @@ const toDefinitions = (rows: AttributeRow[]): KnowledgeAttributeDefinition[] =>
       const def: KnowledgeAttributeDefinition = { key: row.key.trim() }
       const label = row.label.trim()
       if (label) def.label = label
+      const description = row.description.trim()
+      if (description) def.description = description
       if (values.length) def.values = values
       return def
     })
@@ -143,6 +162,7 @@ const toRows = (
   (definitions ?? []).map((def) => ({
     key: def.key,
     label: def.label ?? '',
+    description: def.description ?? '',
     valuesText: (def.values ?? []).join(', '),
   }))
 
@@ -171,7 +191,12 @@ const loadMetadata = async () => {
 }
 
 const addAttribute = () => {
-  attributeRows.value.push({ key: '', label: '', valuesText: '' })
+  attributeRows.value.push({
+    key: '',
+    label: '',
+    description: '',
+    valuesText: '',
+  })
 }
 
 const removeAttribute = (index: number) => {

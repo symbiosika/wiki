@@ -101,6 +101,11 @@ export interface KnowledgeAttributeDefinition {
   /** Optional display label; falls back to the key when omitted. */
   label?: string
   /**
+   * Optional instruction handed to the PDF parser's extractor ("what exactly
+   * to extract"). Falls back to the label/key when omitted.
+   */
+  description?: string
+  /**
    * Optional closed list of allowed values. When present the value must be one
    * of these (rendered as a select); when omitted the value is free text.
    */
