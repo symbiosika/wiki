@@ -45,7 +45,7 @@ import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
 import { looksLikeMarkdown } from '@/utils/markdownPaste'
 import { renderMarkdown } from '@/utils/markdown'
 import { useWiki } from '@/stores/wiki'
-import type { WikiBlock } from '@/types/wiki'
+import type { WikiBlock, WikiTocEntry } from '@/types/wiki'
 
 const props = withDefaults(
   defineProps<{
@@ -61,6 +61,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   /** debounced: emitted with the current document as backend blocks */
   change: [blocks: WikiBlock[]]
+  /** live: the document's headings, for the table of contents */
+  toc: [headings: WikiTocEntry[]]
 }>()
 
 const { t } = useI18n()
@@ -173,8 +175,34 @@ const emitBlocks = () => {
   emit('change', editorHtmlToBlocks(editor.value.getHTML()))
 }
 
+/**
+ * Walk the document and collect its headings (H1-H3) for the table of
+ * contents. Each heading carries the top-level block id maintained by the
+ * UniqueID extension, so the ToC can scroll straight to the matching node.
+ * Headings without visible text are skipped (empty placeholder headings).
+ */
+const collectHeadings = (): WikiTocEntry[] => {
+  const ed = editor.value
+  if (!ed) return []
+  const headings: WikiTocEntry[] = []
+  ed.state.doc.descendants((node) => {
+    if (node.type.name !== 'heading') return true
+    const text = node.textContent.trim()
+    const id = node.attrs['block-id'] as string | null | undefined
+    if (text && id) {
+      headings.push({ id, level: node.attrs.level as number, text })
+    }
+    return false // headings have no nested headings to descend into
+  })
+  return headings
+}
+
+const emitToc = () => emit('toc', collectHeadings())
+
 const scheduleEmit = () => {
   pendingChanges = true
+  // the ToC tracks the document live (no debounce), the save stays debounced
+  emitToc()
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(emitBlocks, DEBOUNCE_MS)
 }
@@ -281,6 +309,7 @@ onMounted(() => {
         return true
       },
     },
+    onCreate: emitToc,
     onUpdate: scheduleEmit,
     onBlur: flush,
   })
