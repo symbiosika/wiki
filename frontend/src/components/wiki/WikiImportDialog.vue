@@ -202,6 +202,71 @@
             {{ $t('Wiki.import.pathColHint') }}
           </p>
         </div>
+
+        <!-- structured import: root-folder toggle + resulting-tree preview -->
+        <div v-if="useTreeImport" class="flex flex-col gap-2">
+          <label
+            v-if="commonRootName"
+            class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
+          >
+            <Checkbox v-model="stripCommonRoot" binary :disabled="submitting" />
+            {{ $t('Wiki.import.stripRoot', { name: commonRootName }) }}
+          </label>
+
+          <div
+            class="rounded-md border border-surface-200 dark:border-surface-700"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-surface-600 dark:text-surface-300"
+              @click="showPreview = !showPreview"
+            >
+              <span class="flex items-center gap-1.5">
+                <IconCurrent class="h-4 w-4" />
+                {{ $t('Wiki.import.previewTitle') }}
+                <span class="font-normal text-surface-400">
+                  {{
+                    $t('Wiki.import.previewCounts', {
+                      pages: importTree.pageCount,
+                      folders: importTree.folderCount,
+                    })
+                  }}
+                </span>
+              </span>
+              <IconChevron
+                class="h-4 w-4 transition-transform"
+                :class="{ 'rotate-180': showPreview }"
+              />
+            </button>
+            <div
+              v-if="showPreview"
+              class="max-h-56 overflow-y-auto border-t border-surface-200 px-2 py-1.5 dark:border-surface-700"
+            >
+              <div
+                v-for="row in previewRows"
+                :key="row.key"
+                class="flex items-center gap-1.5 py-0.5 text-xs text-surface-700 dark:text-surface-200"
+                :style="{ paddingLeft: `${row.depth * 16 + 4}px` }"
+              >
+                <component
+                  :is="row.hasContent ? IconFile : IconFolder"
+                  class="h-3.5 w-3.5 shrink-0"
+                  :class="row.hasContent ? 'text-surface-400' : 'text-primary'"
+                />
+                <span class="truncate" :title="row.title">{{ row.title }}</span>
+                <span
+                  v-if="!row.hasContent"
+                  class="text-[10px] text-surface-400"
+                >
+                  {{ $t('Wiki.import.folderTag') }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Wiki.import.treeHint') }}
+          </p>
+        </div>
       </div>
 
       <!-- url -->
@@ -353,9 +418,11 @@ import IconPersonal from '~icons/mdi/account-outline'
 import IconTeam from '~icons/mdi/account-group-outline'
 import IconOrganisation from '~icons/mdi/domain'
 import IconCurrent from '~icons/mdi/file-tree-outline'
+import IconChevron from '~icons/mdi/chevron-down'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
+import { buildImportTree, type ImportTreeNode } from '@/utils/wikiImportTree'
 import type { WikiScope, WikiParserFeatures } from '@/types/wiki'
 
 const props = defineProps<{ tenantId: string }>()
@@ -381,6 +448,12 @@ const SUPPORTED_EXTENSIONS = [
   'doc',
   'docx',
 ]
+/**
+ * Text-based types whose content we can read in the browser and send as a
+ * batch to the structured tree import. Everything else (PDF, Word) needs the
+ * server-side parser and keeps going through the per-file import job.
+ */
+const TEXT_EXTENSIONS = ['md', 'markdown', 'txt', 'html', 'htm']
 
 /**
  * Well-known parser "extra service" flags we surface as import checkboxes,
@@ -392,7 +465,10 @@ const PARSER_FLAGS = [
   { key: 'ocr', labelKey: 'Wiki.import.flags.ocr' },
   { key: 'parseImagesInDoc', labelKey: 'Wiki.import.flags.parseImagesInDoc' },
   { key: 'detectTables', labelKey: 'Wiki.import.flags.detectTables' },
-] as const satisfies readonly { key: keyof WikiParserFeatures; labelKey: string }[]
+] as const satisfies readonly {
+  key: keyof WikiParserFeatures
+  labelKey: string
+}[]
 
 type ParserFlagKey = (typeof PARSER_FLAGS)[number]['key']
 
@@ -421,6 +497,86 @@ const url = ref('')
 const title = ref('')
 const splitIntoBlocks = ref(true)
 const dragOver = ref(false)
+/** When importing a dropped folder: import its contents directly instead of
+ * wrapping them under a top-level page named after the folder. */
+const stripCommonRoot = ref(false)
+/** Whether the resulting-tree preview is expanded. */
+const showPreview = ref(true)
+
+const extensionOf = (name: string): string =>
+  name.split('.').pop()?.toLowerCase() ?? ''
+
+const isTextEntry = (entry: ImportEntry): boolean =>
+  TEXT_EXTENSIONS.includes(extensionOf(entry.file.name))
+
+/** Text-based entries (markdown / txt / html) — candidates for tree import. */
+const textEntries = computed(() => entries.value.filter(isTextEntry))
+/** Binary entries (PDF / Word) — always imported via the per-file job. */
+const binaryEntries = computed(() =>
+  entries.value.filter((e) => !isTextEntry(e)),
+)
+
+/** Path segments of an entry's additional folder path. */
+const entrySegments = (entry: ImportEntry): string[] =>
+  entry.path
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+/** Full relative path (folder + original file name) used for tree building. */
+const fullPathOf = (entry: ImportEntry): string =>
+  [...entrySegments(entry), entry.file.name].join('/')
+
+/** True once the selection is a folder / multi-file set worth importing as a
+ * structured tree (single files with no folder keep the simple job path). */
+const useTreeImport = computed(
+  () =>
+    textEntries.value.length > 0 &&
+    (textEntries.value.length > 1 ||
+      entries.value.some((e) => entrySegments(e).length > 0)),
+)
+
+/** The wrapper folder name shared by all entries, if any (drop-a-folder case). */
+const commonRootName = computed<string | null>(() => {
+  const paths = textEntries.value.map((e) => entrySegments(e))
+  const root = paths[0]?.[0]
+  if (!root) return null
+  const lower = root.toLowerCase()
+  const allShare = paths.every((segs) => segs[0]?.toLowerCase() === lower)
+  return allShare ? root : null
+})
+
+/** Reconstructed tree preview — mirrors exactly what the backend will build. */
+const importTree = computed(() =>
+  buildImportTree(
+    textEntries.value.map((e) => ({ path: fullPathOf(e) })),
+    { stripCommonRoot: stripCommonRoot.value },
+  ),
+)
+
+/** Flatten the preview tree into indented rows for rendering. */
+interface PreviewRow {
+  title: string
+  depth: number
+  hasContent: boolean
+  key: string
+}
+const previewRows = computed<PreviewRow[]>(() => {
+  const rows: PreviewRow[] = []
+  const walk = (nodes: ImportTreeNode[], depth: number) => {
+    for (const node of nodes) {
+      rows.push({
+        title: node.title,
+        depth,
+        hasContent: node.hasContent,
+        key: node.segments.join('/'),
+      })
+      if (node.children.length) walk(node.children, depth + 1)
+    }
+  }
+  walk(importTree.value.roots, 0)
+  return rows
+})
 
 // Parser pass-through options ("extra services" like OCR / table detection).
 // Which ones are offered depends on the configured parsing service; the chosen
@@ -741,13 +897,6 @@ const submitLabel = computed(() => {
 
 const importedCount = ref(0)
 
-/** Split an additional path into clean segments. */
-const pathSegments = (path: string): string[] =>
-  path
-    .split('/')
-    .map((s) => s.trim())
-    .filter(Boolean)
-
 /** Extract a human-readable message from a failed import. */
 const errorMessage = (error: unknown): string =>
   error instanceof FetcherError && error.body
@@ -790,18 +939,32 @@ const submitUrl = async () => {
   }
 }
 
+/** Folder segments for an entry, with the common wrapper stripped if the user
+ * chose to import a dropped folder's contents directly. */
+const effectiveSegments = (entry: ImportEntry): string[] => {
+  const segs = entrySegments(entry)
+  const root = commonRootName.value
+  if (
+    stripCommonRoot.value &&
+    root &&
+    segs[0]?.toLowerCase() === root.toLowerCase()
+  ) {
+    return segs.slice(1)
+  }
+  return segs
+}
+
 /**
- * Enqueue the file imports one after another, updating each row's status so
- * the user can watch progress and see per-file errors. We wait until every job
- * is created; only when they all succeed do we close. On any failure the dialog
- * stays open with the failed rows marked — pressing Import again retries just
- * those (already-created ones are skipped).
+ * Import the picked files. Markdown / text that forms a folder structure is
+ * sent as ONE structured request (`importMarkdownTree`) so the hierarchy —
+ * including collapsed folder notes — is built correctly and synchronously.
+ * Binary documents (PDF, Word) keep going through the per-file background job.
+ * On any failure the dialog stays open with the failed rows marked so pressing
+ * Import again retries just those (already-done ones are skipped).
  */
 const submitFiles = async () => {
   submitting.value = true
   importedCount.value = 0
-  // reset transient state; keep already-enqueued files as done so a retry
-  // after a partial failure doesn't import them twice
   for (const entry of entries.value) {
     if (entry.status !== 'done') {
       entry.status = 'queued'
@@ -809,8 +972,53 @@ const submitFiles = async () => {
     }
   }
 
+  // Text entries that form a folder / multi-file set take the structured path.
+  const treeSet = new Set(
+    useTreeImport.value ? textEntries.value.map((e) => e.uid) : [],
+  )
+  const jobEntries = entries.value.filter((e) => !treeSet.has(e.uid))
+  const treeEntries = entries.value.filter((e) => treeSet.has(e.uid))
+
   let failures = 0
-  for (const entry of entries.value) {
+  let treeSkipped = 0
+
+  // 1) structured markdown tree import — a single synchronous request.
+  const pendingTree = treeEntries.filter((e) => e.status !== 'done')
+  if (pendingTree.length) {
+    for (const e of pendingTree) e.status = 'uploading'
+    try {
+      const files = await Promise.all(
+        pendingTree.map(async (e) => ({
+          path: fullPathOf(e),
+          content: await e.file.text(),
+        })),
+      )
+      const result = await wiki.importMarkdownTree(
+        props.tenantId,
+        scope.value,
+        files,
+        {
+          baseParentId: baseParentId.value,
+          splitIntoBlocks: splitIntoBlocks.value,
+          postProcessorNames: postProcessorNames.value,
+          stripCommonRoot: stripCommonRoot.value,
+        },
+      )
+      treeSkipped = result.skipped.length
+      for (const e of pendingTree) e.status = 'done'
+    } catch (error) {
+      const message = errorMessage(error)
+      for (const e of pendingTree) {
+        e.status = 'error'
+        e.error = message
+      }
+      failures += pendingTree.length
+    }
+  }
+  importedCount.value += treeEntries.length
+
+  // 2) per-file background jobs for everything else (binaries, single files).
+  for (const entry of jobEntries) {
     if (entry.status === 'done') {
       importedCount.value++
       continue
@@ -820,7 +1028,7 @@ const submitFiles = async () => {
       const parentId = await wiki.ensurePagePath(
         props.tenantId,
         scope.value,
-        pathSegments(entry.path),
+        effectiveSegments(entry),
         baseParentId.value,
       )
       await wiki.importFile(props.tenantId, scope.value, entry.file, {
@@ -853,12 +1061,28 @@ const submitFiles = async () => {
   }
 
   visible.value = false
-  toast.add({
-    severity: 'info',
-    summary: t('Wiki.import.started'),
-    detail: t('Wiki.import.startedDetail'),
-    life: 5000,
-  })
+  if (jobEntries.length > 0) {
+    // background jobs were enqueued — completion surfaces in the inbox
+    toast.add({
+      severity: 'info',
+      summary: t('Wiki.import.started'),
+      detail: t('Wiki.import.startedDetail'),
+      life: 5000,
+    })
+  } else {
+    // pure structured import — pages already exist, so report immediately
+    toast.add({
+      severity: 'success',
+      summary: t('Wiki.import.treeImported', {
+        count: importTree.value.pageCount,
+      }),
+      detail:
+        treeSkipped > 0
+          ? t('Wiki.import.treeSkipped', { count: treeSkipped })
+          : undefined,
+      life: 5000,
+    })
+  }
 }
 
 const submit = async () => {
@@ -879,6 +1103,8 @@ const reset = () => {
   scopeKind.value = 'personal'
   postProcessorValue.value = ''
   dragOver.value = false
+  stripCommonRoot.value = false
+  showPreview.value = true
   submitting.value = false
   importedCount.value = 0
 }

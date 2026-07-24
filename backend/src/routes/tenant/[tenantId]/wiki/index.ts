@@ -18,6 +18,10 @@ import * as v from "valibot";
 import { validateScope } from "@framework/lib/utils/validate-scope";
 import { buildWikiTree } from "../../../../lib/wiki/tree";
 import { movePage } from "../../../../lib/wiki/move";
+import {
+  importMarkdownTree,
+  MAX_TREE_IMPORT_FILES,
+} from "../../../../lib/wiki/import-tree";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
@@ -133,6 +137,92 @@ export default function defineWikiRoutes(
         );
       }
     }
+  );
+
+  /**
+   * POST /tenant/:tenantId/wiki/import-tree
+   * Import a whole folder / repository of markdown files as a page tree in one
+   * request. The client sends every text file with its relative path; the
+   * server reconstructs the hierarchy, collapses folder notes / index files
+   * onto their folder, and creates the pages parent-first. Binary documents
+   * (PDF, Word, …) are not handled here — they keep going through the
+   * per-file `/knowledge/texts/import` job.
+   */
+  app.post(
+    `${baseRoute}/import-tree`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary:
+        "Import a folder/repository of markdown files as a wiki page tree (folder notes merged, parent-first)",
+      responses: {
+        200: {
+          description:
+            "Import summary: pages/folders created, skipped files, root page ids",
+          content: {
+            "application/json": {
+              schema: resolver(v.any()),
+            },
+          },
+        },
+      },
+    }),
+    validateScope("knowledge:write"),
+    validator("param", v.object({ tenantId: v.pipe(v.string(), v.uuid()) })),
+    validator(
+      "json",
+      v.object({
+        files: v.pipe(
+          v.array(
+            v.object({
+              path: v.pipe(v.string(), v.minLength(1)),
+              content: v.string(),
+            }),
+          ),
+          v.minLength(1),
+          v.maxLength(MAX_TREE_IMPORT_FILES),
+        ),
+        teamId: v.optional(v.pipe(v.string(), v.uuid())),
+        tenantWide: v.optional(v.boolean()),
+        baseParentId: v.optional(v.pipe(v.string(), v.uuid())),
+        splitIntoBlocks: v.optional(v.boolean()),
+        usePostProcessors: v.optional(v.array(v.string())),
+        embeddingEnabled: v.optional(v.boolean()),
+        stripCommonRoot: v.optional(v.boolean()),
+      }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("usersId");
+      try {
+        const result = await importMarkdownTree(body.files, {
+          tenantId,
+          userId,
+          teamId: body.teamId,
+          tenantWide: body.tenantWide,
+          baseParentId: body.baseParentId,
+          splitIntoBlocks: body.splitIntoBlocks,
+          usePostProcessors: body.usePostProcessors,
+          embeddingEnabled: body.embeddingEnabled,
+          stripCommonRoot: body.stripCommonRoot,
+        });
+        return c.json({ success: true, data: result });
+      } catch (error) {
+        return c.json(
+          {
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to import markdown tree",
+          },
+          400,
+        );
+      }
+    },
   );
 
   /**

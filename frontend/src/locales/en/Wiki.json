@@ -62,7 +62,14 @@
     "jobHint": "The import runs in the background. You'll be notified in your inbox when it's ready.",
     "started": "Import started",
     "startedDetail": "You'll be notified in your inbox when it's done.",
-    "error": "Import failed. Please try again."
+    "error": "Import failed. Please try again.",
+    "stripRoot": "Import contents directly (don't create folder «{name}» as its own page)",
+    "previewTitle": "Structure preview",
+    "previewCounts": "{pages} pages · {folders} folders",
+    "folderTag": "folder",
+    "treeHint": "Markdown files are imported as a page tree. Folder notes (Foo.md next to Foo/, README.md or index.md) are merged into their folder's page. Titles come from the file and folder names.",
+    "treeImported": "{count} page(s) imported",
+    "treeSkipped": "{count} file(s) skipped"
   },
   "export": {
     "button": "Export PDF",

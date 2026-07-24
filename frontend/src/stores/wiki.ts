@@ -63,6 +63,18 @@ export interface WikiImportOptions {
 /** A knowledge-ingest job returned by the import endpoints. */
 export type IngestJob = Job<KnowledgeIngestResult>
 
+/** Summary returned by the folder/repository markdown tree import. */
+export interface WikiTreeImportResult {
+  /** Number of pages created from a file's content. */
+  pagesCreated: number
+  /** Number of empty container ("folder") pages created. */
+  foldersCreated: number
+  /** Files that were not imported, with a reason. */
+  skipped: { path: string; reason: string }[]
+  /** Ids of the pages created directly at the base location. */
+  rootPageIds: string[]
+}
+
 /** Result of an image upload for a wiki page. */
 export interface WikiImageUpload {
   fileId: string
@@ -377,6 +389,48 @@ export const useWiki = defineStore('wiki', () => {
             : undefined,
       },
     )
+  }
+
+  /**
+   * Import a whole folder / repository of markdown files as a page tree in a
+   * single request. Unlike {@link importFile} (one async job per file) this
+   * runs synchronously on the server, which lets it reconstruct the hierarchy
+   * and collapse folder notes (`Foo/` + `Foo.md`, `README.md`, `index.md`)
+   * onto their folder — the async per-file path cannot, because a folder page
+   * does not exist yet when a child needs it as a parent.
+   *
+   * Only text-based files (markdown / txt / html) belong here; binary
+   * documents (PDF, Word) still go through {@link importFile}.
+   */
+  const importMarkdownTree = async (
+    tenantId: string,
+    scope: WikiScope,
+    files: { path: string; content: string }[],
+    options: {
+      baseParentId?: string
+      splitIntoBlocks?: boolean
+      postProcessorNames?: string[]
+      stripCommonRoot?: boolean
+    } = {},
+  ): Promise<WikiTreeImportResult> => {
+    const { teamId, tenantWide } = scopeFields(scope)
+    const response = await fetcher.post<{
+      success: boolean
+      data: WikiTreeImportResult
+    }>(`${api(tenantId)}/wiki/import-tree`, {
+      files,
+      teamId,
+      tenantWide,
+      baseParentId: options.baseParentId,
+      splitIntoBlocks: options.splitIntoBlocks ?? true,
+      usePostProcessors:
+        options.postProcessorNames && options.postProcessorNames.length > 0
+          ? options.postProcessorNames
+          : undefined,
+      stripCommonRoot: options.stripCommonRoot,
+    })
+    await loadTree(tenantId)
+    return response.data
   }
 
   /** Upload an image for a page; returns its auth-protected path + markdown. */
@@ -702,6 +756,7 @@ export const useWiki = defineStore('wiki', () => {
     findChildPageByTitle,
     importFile,
     importUrl,
+    importMarkdownTree,
     fetchParserCapabilities,
     uploadImage,
     saveTitle,

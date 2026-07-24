@@ -62,7 +62,14 @@
     "jobHint": "Der Import läuft im Hintergrund. Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
     "started": "Import gestartet",
     "startedDetail": "Du wirst im Posteingang benachrichtigt, sobald er fertig ist.",
-    "error": "Import fehlgeschlagen. Bitte erneut versuchen."
+    "error": "Import fehlgeschlagen. Bitte erneut versuchen.",
+    "stripRoot": "Inhalte direkt importieren (Ordner «{name}» nicht als eigene Seite anlegen)",
+    "previewTitle": "Vorschau der Struktur",
+    "previewCounts": "{pages} Seiten · {folders} Ordner",
+    "folderTag": "Ordner",
+    "treeHint": "Markdown-Dateien werden als Seitenbaum importiert. Ordner-Notizen (Foo.md neben Foo/, README.md oder index.md) werden mit der jeweiligen Ordnerseite zusammengeführt. Titel ergeben sich aus den Datei- und Ordnernamen.",
+    "treeImported": "{count} Seite(n) importiert",
+    "treeSkipped": "{count} Datei(en) übersprungen"
   },
   "export": {
     "button": "PDF-Export",
