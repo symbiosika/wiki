@@ -7,10 +7,10 @@ import type { EmailTemplateFunction } from "@framework/types";
  * `store/email-templates.ts`) and are registered in `src/index.ts` via
  * `defineServer({ emailTemplates: { ... } })`.
  *
- * Design goals: keep every mail clean and simple – a centred logo, one clear
- * heading, a short line of text and a single prominent button. No coloured
- * background, no heavy card/header/footer chrome. Content stays bilingual
- * (German first, a compact English block below).
+ * Design goals: keep every mail clean and simple – the app name as a centred
+ * wordmark, one clear heading, a short line of text and a single prominent
+ * button. No coloured background, no heavy card/header/footer chrome. Content
+ * stays bilingual (German first, a compact English block below).
  */
 
 // Email validation caps subjects at 100 characters – keep them short.
@@ -29,8 +29,10 @@ interface EmailSection {
 
 interface RenderEmailOptions {
   appName: string;
+  /** @deprecated No longer rendered – the app name is shown as a text wordmark. */
   logoUrl?: string;
-  baseUrl: string;
+  /** @deprecated No longer used – kept for backwards compatibility with callers. */
+  baseUrl?: string;
   /** Primary language block (rendered prominently). */
   de: EmailSection;
   /** Secondary language block (rendered smaller / muted below). */
@@ -67,19 +69,14 @@ function paragraphsHtml(paragraphs: string[], color: string, size: string) {
  */
 function renderEmail({
   appName,
-  logoUrl,
-  baseUrl,
   de,
   en,
   button,
   code,
 }: RenderEmailOptions): string {
-  // Fall back to the app favicon/wordmark so the mail always carries a logo.
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const resolvedLogo = logoUrl ?? `${normalizedBase}/favicon.png`;
-
-  const logoHtml = resolvedLogo
-    ? `<img src="${resolvedLogo}" alt="${appName}" width="76" style="max-width: 76px; max-height: 76px; height: auto; margin: 0 auto 28px; display: block;" />`
+  // Show the app name as a text wordmark instead of an image logo.
+  const logoHtml = appName
+    ? `<p style="margin: 0 auto 28px; font-size: 22px; font-weight: 700; color: ${COLOR.text}; letter-spacing: -0.2px;">${appName}</p>`
     : "";
 
   const codeHtml = code
