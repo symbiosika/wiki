@@ -6,12 +6,12 @@ import { describe, test, expect } from "bun:test";
 import { ok, fail, resolveTenantId, tenantPath } from "./app-api.ts";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 
-const auth = (tenant?: string): AuthInfo =>
+const auth = (tenant?: string, kind?: string): AuthInfo =>
   ({
     token: "t",
     clientId: "c",
     scopes: [],
-    extra: { sub: "u", tenant },
+    extra: { sub: "u", tenant, ...(kind ? { kind } : {}) },
   }) as AuthInfo;
 
 describe("ok()", () => {
@@ -48,6 +48,14 @@ describe("resolveTenantId()", () => {
 
   test("throws when no tenant is available", () => {
     expect(() => resolveTenantId(auth(undefined))).toThrow();
+  });
+
+  test("an OAuth token without a tenant binding does not fall back", () => {
+    // Even if WIKI_TENANT_ID were set, an OAuth token missing its tenant
+    // binding must fail loud (reconnect) rather than be mapped elsewhere.
+    expect(() => resolveTenantId(auth(undefined, "oauth"))).toThrow(
+      /not bound to an organisation/,
+    );
   });
 });
 

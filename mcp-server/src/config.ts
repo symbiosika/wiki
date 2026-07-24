@@ -30,13 +30,21 @@ export const INTROSPECTION_SECRET =
  */
 export const FALLBACK_TENANT_ID = process.env.WIKI_TENANT_ID || "";
 
-/** Scopes this resource server advertises in its metadata. */
+/**
+ * Scopes this resource server advertises in its metadata. Clients (e.g.
+ * claude.ai) request exactly what is advertised here, so every scope the wiki
+ * tools rely on MUST be listed — `user:read` powers `list_organisations`
+ * (GET /api/v1/user/tenants), which 403s with "Missing required scope:
+ * user:read" if it is omitted. Keep this in sync with the backend's
+ * `dcrDefaultScopes`.
+ */
 export const SCOPES_SUPPORTED = [
   "openid",
   "profile",
   "email",
   "knowledge:read",
   "knowledge:write",
+  "user:read",
 ];
 
 /** Path of the protected-resource metadata (RFC 9728). */
