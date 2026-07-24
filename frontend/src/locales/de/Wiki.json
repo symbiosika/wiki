@@ -179,6 +179,7 @@
   "switchTenant": "Organisation wechseln",
   "collapseSidebar": "Seitenleiste ausblenden",
   "expandSidebar": "Seitenleiste einblenden",
+  "resizeSidebar": "Breite der Seitenleiste anpassen",
   "expandActions": "Weitere Aktionen einblenden",
   "collapseActions": "Weitere Aktionen ausblenden"
 }

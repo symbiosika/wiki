@@ -59,6 +59,7 @@ declare module 'vue' {
     WikiReferences: typeof import('./components/wiki/WikiReferences.vue')['default']
     WikiSidebar: typeof import('./components/wiki/WikiSidebar.vue')['default']
     WikiSidebarSection: typeof import('./components/wiki/WikiSidebarSection.vue')['default']
+    WikiTableOfContents: typeof import('./components/wiki/WikiTableOfContents.vue')['default']
     WikiTreeItem: typeof import('./components/wiki/WikiTreeItem.vue')['default']
   }
 }

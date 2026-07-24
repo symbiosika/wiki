@@ -11,6 +11,8 @@ declare global {
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
   const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
+  const SIDEBAR_MAX_WIDTH: typeof import('./stores/layout').SIDEBAR_MAX_WIDTH
+  const SIDEBAR_MIN_WIDTH: typeof import('./stores/layout').SIDEBAR_MIN_WIDTH
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
   const applyBrandColors: typeof import('./utils/brandColor').applyBrandColors
   const applyTheme: typeof import('./utils/theme').applyTheme
@@ -179,7 +181,7 @@ declare global {
   export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { BrandColors } from './utils/brandColor'

@@ -179,6 +179,7 @@
   "switchTenant": "Switch organisation",
   "collapseSidebar": "Hide sidebar",
   "expandSidebar": "Show sidebar",
+  "resizeSidebar": "Resize sidebar",
   "expandActions": "Show more actions",
   "collapseActions": "Hide more actions"
 }
