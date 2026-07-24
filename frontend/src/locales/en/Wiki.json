@@ -87,6 +87,9 @@
   "info": {
     "button": "Info",
     "hint": "Show document details",
+    "classification": "Classification",
+    "status": "Status",
+    "location": "Location",
     "scope": "Scope",
     "created": "Created",
     "updated": "Last edited",

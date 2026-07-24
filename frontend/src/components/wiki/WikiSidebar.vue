@@ -349,7 +349,7 @@
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
-import IconChat from '~icons/mdi/robot-happy-outline'
+import IconChat from '~icons/mdi/message-text-outline'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconLogout from '~icons/mdi/logout'
