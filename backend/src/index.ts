@@ -8,6 +8,7 @@ import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
+import defineAppInfoRoutes from "./routes/public/app-info";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { aiTestJobHandler } from "./lib/ai-tests/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
@@ -75,6 +76,16 @@ const server = defineServer({
   // cross-tenant leakage) and needs no registry mutation on CRUD; the built
   // processor is tenant-safe (loads the agent scoped to the importing tenant).
   customPostProcessorResolvers: [agentPostProcessorResolver],
+  // Public, unauthenticated routes. Used by the static auth pages in ./public,
+  // which need the app name before a user is signed in.
+  customHonoApps: [
+    {
+      baseRoute: "",
+      app: (app) => {
+        defineAppInfoRoutes(app);
+      },
+    },
+  ],
   customHonoAppsWithAuth: [
     {
       baseRoute: "",
