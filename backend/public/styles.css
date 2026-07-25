@@ -6,42 +6,66 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 
 /* ── CSS Variables ───────────────────────────────────────────────────────── */
 :root {
-  --p-primary-400: #60a5fa;
-  --p-primary-500: #3b82f6;
-  --p-primary-600: #2563eb;
-  --p-primary-700: #1d4ed8;
+  /* Tell the browser both schemes are supported so form controls, scrollbars
+     and autofill follow the OS setting instead of forcing a light look. */
+  color-scheme: light dark;
+
+  /* Neutral grey ramp – no colour cast, so the static auth pages stay neutral
+     regardless of the app's primary colour. */
   --p-surface-0:   #ffffff;
-  --p-surface-50:  #f6f8fc;
-  --p-surface-100: #eef2f9;
-  --p-surface-200: #e2e8f2;
-  --p-surface-300: #cbd5e6;
-  --p-surface-400: #94a3b8;
-  --p-surface-500: #64748b;
-  --p-surface-600: #475569;
-  --p-surface-700: #334155;
-  --p-surface-800: #1c2740;
-  --p-surface-900: #0d1526;
-  --p-surface-950: #060a14;
+  --p-surface-50:  #fafafa;
+  --p-surface-100: #f4f4f5;
+  --p-surface-200: #e4e4e7;
+  --p-surface-300: #d4d4d8;
+  --p-surface-400: #a1a1aa;
+  --p-surface-500: #71717a;
+  --p-surface-600: #52525b;
+  --p-surface-700: #3f3f46;
+  --p-surface-800: #27272a;
+  --p-surface-900: #18181b;
+  --p-surface-950: #09090b;
+
+  /* Accent: plain black in light mode, plain white in dark mode. */
+  --accent:          #18181b;
+  --accent-hover:    #000000;
+  --accent-contrast: #ffffff;
+  --accent-ring:     rgba(0, 0, 0, 0.16);
+
+  /* Kept as aliases so older inline styles referencing the primary ramp stay
+     in line with the neutral accent instead of falling back to blue. */
+  --p-primary-400: var(--accent);
+  --p-primary-500: var(--accent);
+  --p-primary-600: var(--accent-hover);
+  --p-primary-700: var(--accent-hover);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent:          #fafafa;
+    --accent-hover:    #ffffff;
+    --accent-contrast: #09090b;
+    --accent-ring:     rgba(255, 255, 255, 0.22);
+  }
 }
 
 /* ── Base body ───────────────────────────────────────────────────────────── */
 body {
   background-color: var(--p-surface-50);
   background-image:
-    radial-gradient(60rem 60rem at 100% 0%, color-mix(in srgb, var(--p-primary-500) 9%, transparent), transparent 60%),
-    radial-gradient(50rem 50rem at 0% 100%, color-mix(in srgb, var(--p-primary-500) 7%, transparent), transparent 55%);
+    radial-gradient(60rem 60rem at 100% 0%, rgba(0, 0, 0, 0.05), transparent 60%),
+    radial-gradient(50rem 50rem at 0% 100%, rgba(0, 0, 0, 0.04), transparent 55%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: var(--p-surface-900);
+    background-color: var(--p-surface-950);
     background-image:
-      radial-gradient(65rem 65rem at 100% -10%, color-mix(in srgb, var(--p-primary-500) 26%, transparent), transparent 55%),
-      radial-gradient(55rem 55rem at -10% 110%, color-mix(in srgb, var(--p-primary-700) 24%, transparent), transparent 55%),
-      linear-gradient(to right, color-mix(in srgb, var(--p-primary-400) 6%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--p-primary-400) 6%, transparent) 1px, transparent 1px);
+      radial-gradient(65rem 65rem at 100% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
+      radial-gradient(55rem 55rem at -10% 110%, rgba(255, 255, 255, 0.05), transparent 55%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 52px 52px, 52px 52px;
     background-attachment: fixed;
   }
@@ -52,6 +76,7 @@ body {
 .flex           { display: flex; }
 .flex-1         { flex: 1 1 0%; }
 .block          { display: block; }
+.inline-block   { display: inline-block; }
 .items-center   { align-items: center; }
 .justify-center { justify-content: center; }
 .justify-between{ justify-content: space-between; }
@@ -59,7 +84,6 @@ body {
 
 /* ── Sizing ──────────────────────────────────────────────────────────────── */
 .w-full  { width: 100%; }
-.w-48    { width: 12rem; }
 .max-w-md{ max-width: 28rem; }
 
 /* ── Padding ─────────────────────────────────────────────────────────────── */
@@ -100,12 +124,64 @@ body {
 .font-medium { font-weight: 500; }
 .underline { text-decoration: underline; }
 
-.text-primary { color: var(--p-surface-800); }
+.text-primary { color: var(--p-surface-900); }
 .text-muted   { color: var(--p-surface-500); }
 
 @media (prefers-color-scheme: dark) {
-  .text-primary { color: var(--p-surface-100); }
+  .text-primary { color: var(--p-surface-50); }
   .text-muted   { color: var(--p-surface-400); }
+}
+
+/* Inline text link / link-styled button */
+.link {
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-muted {
+  color: var(--p-surface-500);
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+@media (prefers-color-scheme: dark) {
+  .link-muted { color: var(--p-surface-400); }
+}
+
+/* ── Brand (logo + app name) ─────────────────────────────────────────────── */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brand-logo {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.6rem;
+  object-fit: contain;
+}
+
+/* Filled by /app-info.js from the public app-info endpoint. Hidden while
+   empty so a failed request leaves no gap. */
+.brand-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--p-surface-600);
+}
+.brand-name:empty { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .brand-name { color: var(--p-surface-300); }
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
@@ -113,19 +189,15 @@ body {
   background: var(--p-surface-0);
   border: 1px solid var(--p-surface-200);
   border-radius: 0.85rem;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--p-primary-500) 8%, transparent),
-    0 20px 45px -12px color-mix(in srgb, var(--p-primary-500) 28%, transparent);
+  box-shadow: 0 20px 45px -18px rgba(0, 0, 0, 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
   .card {
-    background: color-mix(in srgb, var(--p-surface-900) 80%, transparent);
-    border-color: color-mix(in srgb, var(--p-primary-500) 22%, transparent);
+    background: color-mix(in srgb, var(--p-surface-900) 88%, transparent);
+    border-color: var(--p-surface-800);
     backdrop-filter: blur(12px);
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--p-primary-500) 18%, transparent),
-      0 24px 60px -12px color-mix(in srgb, var(--p-primary-500) 45%, transparent);
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
   }
 }
 
@@ -148,68 +220,119 @@ label {
   border: 1px solid var(--p-surface-300);
   border-radius: 0.375rem;
   background: var(--p-surface-0);
-  color: var(--p-surface-800);
+  color: var(--p-surface-900);
+  caret-color: var(--p-surface-900);
   font-size: 0.875rem;
-  transition: all 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
+
+.input::placeholder { color: var(--p-surface-400); opacity: 1; }
+
+/* Chrome paints its own background on autofilled fields; the inset shadow
+   keeps our background and the text colour readable in both schemes. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--p-surface-900);
+  -webkit-box-shadow: 0 0 0 1000px var(--p-surface-0) inset;
+  box-shadow: 0 0 0 1000px var(--p-surface-0) inset;
+}
+
+/* A disabled or read-only field (e.g. the address fixed by an invitation
+   link) must stay readable – never light text on a light background. */
+.input:disabled,
+.input[readonly] {
+  background: var(--p-surface-100);
+  color: var(--p-surface-600);
+  -webkit-text-fill-color: var(--p-surface-600);
+  opacity: 1;
+}
+.input[readonly] { cursor: not-allowed; }
 
 @media (prefers-color-scheme: dark) {
   .input {
     border-color: var(--p-surface-700);
     background: var(--p-surface-900);
-    color: var(--p-surface-0);
+    color: var(--p-surface-50);
+    caret-color: var(--p-surface-50);
+  }
+
+  .input::placeholder { color: var(--p-surface-500); }
+
+  .input:-webkit-autofill,
+  .input:-webkit-autofill:hover,
+  .input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--p-surface-50);
+    -webkit-box-shadow: 0 0 0 1000px var(--p-surface-900) inset;
+    box-shadow: 0 0 0 1000px var(--p-surface-900) inset;
+  }
+
+  .input:disabled,
+  .input[readonly] {
+    background: var(--p-surface-800);
+    color: var(--p-surface-200);
+    -webkit-text-fill-color: var(--p-surface-200);
+    border-color: var(--p-surface-700);
   }
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--p-primary-500);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-500) 22%, transparent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   padding: 0.625rem 1rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s;
   cursor: pointer;
   border: none;
+  text-decoration: none;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--p-primary-500), var(--p-primary-600));
-  color: white;
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--p-primary-600), var(--p-primary-700));
-  box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--p-primary-500) 60%, transparent);
+  background: var(--accent-hover);
+  box-shadow: 0 8px 24px -8px var(--accent-ring);
 }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.btn-secondary { background: var(--p-surface-200); color: var(--p-surface-800); }
+.btn-secondary { background: var(--p-surface-200); color: var(--p-surface-900); }
 @media (prefers-color-scheme: dark) {
-  .btn-secondary { background: var(--p-surface-700); color: var(--p-surface-0); }
+  .btn-secondary { background: var(--p-surface-800); color: var(--p-surface-50); }
 }
 .btn-secondary:hover:not(:disabled) { background: var(--p-surface-300); }
 @media (prefers-color-scheme: dark) {
-  .btn-secondary:hover:not(:disabled) { background: var(--p-surface-600); }
+  .btn-secondary:hover:not(:disabled) { background: var(--p-surface-700); }
 }
 .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Inline/auto-width variant used on non-full-width buttons */
-.btn-inline { width: auto; margin-top: 1rem; }
+.btn-inline { display: inline-flex; width: auto; margin-top: 1rem; }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────── */
 .spinner {
   border: 3px solid var(--p-surface-200);
-  border-top: 3px solid var(--p-primary-500);
+  border-top: 3px solid var(--accent);
   border-radius: 50%;
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .spinner { border-color: var(--p-surface-700); border-top-color: var(--accent); }
 }
 
 @keyframes spin {
@@ -233,7 +356,7 @@ label {
 
 .toast.success { background-color: #10b981; color: white; }
 .toast.error   { background-color: #ef4444; color: white; }
-.toast.info    { background-color: var(--p-primary-500); color: white; }
+.toast.info    { background-color: var(--accent); color: var(--accent-contrast); }
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
@@ -281,8 +404,8 @@ label {
 }
 
 .tab-btn.active {
-  border-bottom-color: var(--p-primary-500);
-  color: var(--p-primary-500);
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 
 .tab-btn:not(.active) { color: var(--p-surface-500); }

@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Anmeldung - Symbiosika Wiki</title>
+    <!-- The app name is appended by /app-info.js (public /api/v1/app-info) -->
+    <title>Anmeldung</title>
     <link rel="icon" href="/favicon.png" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app-info.js" defer></script>
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
@@ -13,7 +15,10 @@
         <!-- Login card -->
         <div id="email-form" class="card p-8">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -55,8 +60,7 @@
               <button
                 type="button"
                 id="change-email-btn"
-                class="ml-1 underline cursor-pointer"
-                style="color: var(--p-primary-500); background: none; border: none; padding: 0; font-size: inherit;"
+                class="link ml-1"
               >
                 ändern
               </button>
@@ -97,7 +101,10 @@
         <!-- Token Verification (Loading) -->
         <div id="verification" class="card p-8 hidden">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -456,8 +463,8 @@
             emailInput.value = email;
             emailInput.readOnly = true;
             emailInput.setAttribute('aria-readonly', 'true');
-            emailInput.style.background = 'var(--p-surface-100)';
-            emailInput.style.cursor = 'not-allowed';
+            // Styling comes from `.input[readonly]` in styles.css – inline
+            // colours here would break in dark mode.
           }
           // The address is fixed by the invitation link – hide "ändern"
           if (changeEmailBtn) {
