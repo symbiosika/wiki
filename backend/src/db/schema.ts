@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   uuid,
   text,
+  varchar,
   boolean,
   integer,
   real,
@@ -10,6 +11,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  check,
   customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -629,3 +631,291 @@ export type AiTestQuestionSelect = typeof aiTestQuestions.$inferSelect;
 export type AiTestQuestionInsert = typeof aiTestQuestions.$inferInsert;
 export type AiTestRunSelect = typeof aiTestRuns.$inferSelect;
 export type AiTestResultSelect = typeof aiTestResults.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Idea boards
+//
+// A free-form pinboard: cards are plain text notes placed anywhere on a
+// canvas (x/y), the way a physical wall of sticky notes works. There are no
+// sections/columns — visual structure comes from placement plus standalone
+// "heading" cards, so nothing has to be modelled twice when someone
+// rearranges the wall.
+//
+// Cards live in their own rows (not in a page's markdown) because a board is
+// worked on by several people at once: every note is an independently
+// editable cell, and two people moving two cards never touch the same row.
+//
+// A board optionally hangs off a wiki page (`pageId`) and cards can point at
+// wiki pages or at each other (`idea_board_card_links`), which is the bridge
+// between "loose idea" and "documented knowledge".
+//
+// Note: only the wiki page hierarchy (knowledge_text) is indexed for search
+// and embeddings. Cards are NOT full-text searchable on their own — mirroring
+// a board into a wiki page is what makes it findable (see lib/idea-boards).
+// ---------------------------------------------------------------------------
+
+/**
+ * "note"    — a sticky note
+ * "heading" — a standalone caption used to label a region of the canvas
+ */
+export const IDEA_CARD_KINDS = ["note", "heading"] as const;
+export type IdeaCardKind = (typeof IDEA_CARD_KINDS)[number];
+
+/** How a card relates to another card or to a wiki page. */
+export const IDEA_LINK_TYPES = [
+  "relates",
+  "duplicate",
+  "answers",
+  "blocks",
+] as const;
+export type IdeaLinkType = (typeof IDEA_LINK_TYPES)[number];
+
+export type IdeaBoardSettings = {
+  /** show the author label on cards */
+  showAuthors?: boolean;
+  /** frozen board — no new cards or comments */
+  locked?: boolean;
+  /** canvas background */
+  background?: "grid" | "plain";
+};
+
+export const ideaBoards = pgBaseTable(
+  "idea_boards",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    /** visibility — mirrors knowledge_text: team-scoped or tenant-wide */
+    teamId: uuid("team_id"),
+    tenantWide: boolean("tenant_wide").notNull().default(false),
+    /**
+     * optional wiki page this board belongs to. No FK: knowledge_text lives in
+     * the framework schema, which is a separate migration set — the reference
+     * is resolved (and tolerated as dangling) in the lib layer.
+     */
+    pageId: uuid("page_id"),
+    settings: jsonb("settings")
+      .$type<IdeaBoardSettings>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idea_boards_tenant_idx").on(table.tenantId),
+    index("idea_boards_page_idx").on(table.pageId),
+  ],
+);
+
+export const ideaBoardCards = pgBaseTable(
+  "idea_board_cards",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => ideaBoards.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /** one of IDEA_CARD_KINDS */
+    kind: text("kind").notNull().default("note"),
+    text: text("text").notNull().default(""),
+    /** author initials/name at write time — survives the user being deleted */
+    authorLabel: text("author_label"),
+    createdBy: uuid("created_by"),
+    /** palette key, not a hex value — theming stays in the frontend */
+    color: text("color"),
+    /** free placement on the canvas, in px at zoom 1 */
+    x: integer("x").notNull().default(0),
+    y: integer("y").notNull().default(0),
+    width: integer("width").notNull().default(220),
+    /** null = height grows with the text */
+    height: integer("height"),
+    /**
+     * stacking order as a fractional-index key (see
+     * framework/src/lib/utils/fractional-index.ts) — bringing a card to the
+     * front is a single-row update, never a renumbering of the whole board.
+     */
+    z: varchar("z", { length: 64 }).notNull(),
+    /** optional link card → wiki page (e.g. the page this card became) */
+    pageId: uuid("page_id"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idea_board_cards_board_idx").on(table.boardId),
+    index("idea_board_cards_tenant_idx").on(table.tenantId),
+    uniqueIndex("idea_board_cards_z_idx").on(table.boardId, table.z),
+  ],
+);
+
+/**
+ * Comments on a card, one row per comment, each attributed to a user. A user
+ * may comment more than once; only the author (or the board creator) may
+ * edit/delete a comment.
+ */
+export const ideaBoardCardComments = pgBaseTable(
+  "idea_board_card_comments",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    cardId: uuid("card_id")
+      .notNull()
+      .references(() => ideaBoardCards.id, { onDelete: "cascade" }),
+    /**
+     * denormalized so every comment of a board loads in ONE query on the
+     * board index — that is why there is no comment counter on the card that
+     * could drift out of sync.
+     */
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => ideaBoards.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    text: text("text").notNull(),
+    createdBy: uuid("created_by"),
+    authorLabel: text("author_label"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idea_board_card_comments_card_idx").on(
+      table.cardId,
+      table.createdAt,
+    ),
+    index("idea_board_card_comments_board_idx").on(table.boardId),
+  ],
+);
+
+/**
+ * Rudimentary relations: card → card, or card → wiki page. Exactly one of
+ * `targetCardId` / `targetPageId` is set (enforced by a CHECK constraint in
+ * the migration). `targetPageTitle` is a snapshot so a link stays readable
+ * after its target page is deleted — the same trick knowledge_text_link uses.
+ */
+export const ideaBoardCardLinks = pgBaseTable(
+  "idea_board_card_links",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    boardId: uuid("board_id")
+      .notNull()
+      .references(() => ideaBoards.id, { onDelete: "cascade" }),
+    sourceCardId: uuid("source_card_id")
+      .notNull()
+      .references(() => ideaBoardCards.id, { onDelete: "cascade" }),
+    targetCardId: uuid("target_card_id").references(() => ideaBoardCards.id, {
+      onDelete: "cascade",
+    }),
+    targetPageId: uuid("target_page_id"),
+    targetPageTitle: text("target_page_title"),
+    /** one of IDEA_LINK_TYPES */
+    type: text("type").notNull().default("relates"),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idea_board_card_links_source_idx").on(table.sourceCardId),
+    index("idea_board_card_links_target_idx").on(table.targetCardId),
+    index("idea_board_card_links_board_idx").on(table.boardId),
+    // Exactly one target. Without this a row could point at both a card and a
+    // page, or at nothing at all, and every reader would have to guess.
+    check(
+      "idea_board_card_links_one_target",
+      sql`(${table.targetCardId} IS NULL) <> (${table.targetPageId} IS NULL)`,
+    ),
+    // A card can't be linked to itself.
+    check(
+      "idea_board_card_links_no_self",
+      sql`${table.targetCardId} IS NULL OR ${table.targetCardId} <> ${table.sourceCardId}`,
+    ),
+    // Two partial indexes instead of one composite: in a plain unique index
+    // NULL != NULL, so (source, NULL, page, type) rows would never collide and
+    // the same link could be inserted repeatedly. Restricting each index to the
+    // rows where its target column is set sidesteps the NULL semantics.
+    uniqueIndex("idea_board_card_links_card_unique_idx")
+      .on(table.sourceCardId, table.targetCardId, table.type)
+      .where(sql`${table.targetCardId} IS NOT NULL`),
+    uniqueIndex("idea_board_card_links_page_unique_idx")
+      .on(table.sourceCardId, table.targetPageId, table.type)
+      .where(sql`${table.targetPageId} IS NOT NULL`),
+  ],
+);
+
+export const ideaBoardsRelations = relations(ideaBoards, ({ many }) => ({
+  cards: many(ideaBoardCards),
+  comments: many(ideaBoardCardComments),
+  links: many(ideaBoardCardLinks),
+}));
+
+export const ideaBoardCardsRelations = relations(
+  ideaBoardCards,
+  ({ one, many }) => ({
+    board: one(ideaBoards, {
+      fields: [ideaBoardCards.boardId],
+      references: [ideaBoards.id],
+    }),
+    comments: many(ideaBoardCardComments),
+  }),
+);
+
+export const ideaBoardCardCommentsRelations = relations(
+  ideaBoardCardComments,
+  ({ one }) => ({
+    card: one(ideaBoardCards, {
+      fields: [ideaBoardCardComments.cardId],
+      references: [ideaBoardCards.id],
+    }),
+  }),
+);
+
+export const ideaBoardSelectSchema = createSelectSchema(ideaBoards);
+export const ideaBoardInsertSchema = createInsertSchema(ideaBoards);
+export const ideaBoardUpdateSchema = createUpdateSchema(ideaBoards);
+
+export const ideaBoardCardSelectSchema = createSelectSchema(ideaBoardCards);
+export const ideaBoardCardInsertSchema = createInsertSchema(ideaBoardCards);
+export const ideaBoardCardUpdateSchema = createUpdateSchema(ideaBoardCards);
+
+export const ideaBoardCardCommentSelectSchema = createSelectSchema(
+  ideaBoardCardComments,
+);
+export const ideaBoardCardCommentInsertSchema = createInsertSchema(
+  ideaBoardCardComments,
+);
+
+export const ideaBoardCardLinkSelectSchema =
+  createSelectSchema(ideaBoardCardLinks);
+export const ideaBoardCardLinkInsertSchema =
+  createInsertSchema(ideaBoardCardLinks);
+
+export type IdeaBoardSelect = typeof ideaBoards.$inferSelect;
+export type IdeaBoardInsert = typeof ideaBoards.$inferInsert;
+export type IdeaBoardCardSelect = typeof ideaBoardCards.$inferSelect;
+export type IdeaBoardCardInsert = typeof ideaBoardCards.$inferInsert;
+export type IdeaBoardCardCommentSelect =
+  typeof ideaBoardCardComments.$inferSelect;
+export type IdeaBoardCardCommentInsert =
+  typeof ideaBoardCardComments.$inferInsert;
+export type IdeaBoardCardLinkSelect = typeof ideaBoardCardLinks.$inferSelect;
+export type IdeaBoardCardLinkInsert = typeof ideaBoardCardLinks.$inferInsert;

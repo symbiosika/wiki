@@ -5,6 +5,7 @@ import defineWikiRoutes from "./routes/tenant/[tenantId]/wiki";
 import defineProtocolRoutes from "./routes/tenant/[tenantId]/protocol";
 import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-assistant";
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
+import defineIdeaBoardRoutes from "./routes/tenant/[tenantId]/idea-boards";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
@@ -95,6 +96,7 @@ const server = defineServer({
         defineProtocolRoutes(app);
         defineDocumentAssistantRoutes(app);
         defineUrlImportRoutes(app);
+        defineIdeaBoardRoutes(app);
         definePostProcessingAgentRoutes(app);
         defineAiTestRoutes(app);
         defineOrganisationLogoRoutes(app);

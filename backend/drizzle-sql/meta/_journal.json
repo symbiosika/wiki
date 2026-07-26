@@ -36,6 +36,13 @@
       "when": 1784820227406,
       "tag": "0004_quick_mockingbird",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785094597071,
+      "tag": "0005_foamy_epoch",
+      "breakpoints": true
     }
   ]
 }
