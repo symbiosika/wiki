@@ -2,6 +2,23 @@
 
 A vue SPA without SSR.
 
+## tests (fast — always run them)
+
+Vitest with the `happy-dom` environment. Specs are `src/**/*.spec.ts`,
+co-located with the code they test. No setup, no server, no DB needed —
+the whole suite runs in a few seconds.
+
+```bash
+bun run test              # whole suite (~3s)
+bun run test src/utils/date.spec.ts   # one file
+bun run test:watch        # watch mode
+bun run type-check        # vue-tsc over the project
+```
+
+Pure logic (utils, editor helpers, parsers) belongs in a spec. Add one for
+every non-trivial function you write, and run the suite plus `type-check`
+before reporting a frontend change as done.
+
 ## styling
 
 Tailwind CSS v4 is used. The global styles are in `src/assets/base.css`.
