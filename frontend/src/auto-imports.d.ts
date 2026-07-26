@@ -10,6 +10,7 @@ declare global {
   const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const IDEA_CARD_COLORS: typeof import('./types/ideaBoards').IDEA_CARD_COLORS
   const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
   const SIDEBAR_MAX_WIDTH: typeof import('./stores/layout').SIDEBAR_MAX_WIDTH
   const SIDEBAR_MIN_WIDTH: typeof import('./stores/layout').SIDEBAR_MIN_WIDTH
@@ -20,6 +21,9 @@ declare global {
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
+  const canvasSizeFor: typeof import('./utils/ideaBoards').canvasSizeFor
+  const cardInitials: typeof import('./utils/ideaBoards').cardInitials
+  const cardLabel: typeof import('./utils/ideaBoards').cardLabel
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
   const computed: typeof import('vue').computed
@@ -53,6 +57,7 @@ declare global {
   const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
+  const nextCardSpot: typeof import('./utils/ideaBoards').nextCardSpot
   const nextTick: typeof import('vue').nextTick
   const normalizeHex: typeof import('./utils/brandColor').normalizeHex
   const onActivated: typeof import('vue').onActivated
@@ -92,6 +97,7 @@ declare global {
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
+  const sortCardsByStack: typeof import('./utils/ideaBoards').sortCardsByStack
   const splitSubPath: typeof import('./utils/urlImportLines').splitSubPath
   const storeTheme: typeof import('./utils/theme').storeTheme
   const toRaw: typeof import('vue').toRaw
@@ -114,6 +120,7 @@ declare global {
   const useDocumentAssistant: typeof import('./stores/documentAssistant').useDocumentAssistant
   const useI18n: typeof import('vue-i18n').useI18n
   const useId: typeof import('vue').useId
+  const useIdeaBoards: typeof import('./stores/ideaBoards').useIdeaBoards
   const useKnowledgeConfig: typeof import('./stores/knowledgeConfig').useKnowledgeConfig
   const useLayout: typeof import('./stores/layout').useLayout
   const useLink: typeof import('vue-router').useLink
@@ -165,6 +172,9 @@ declare global {
   // @ts-ignore
   export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
   import('./types/aiTests')
+  // @ts-ignore
+  export type { IdeaCardKind, IdeaLinkType, IdeaBoardSettings, IdeaBoard, IdeaCard, IdeaCardComment, IdeaCardLink, IdeaBoardDetail, IdeaBoardInput, IdeaCardInput, IdeaCardLinkInput, IdeaCardColor } from './types/ideaBoards'
+  import('./types/ideaBoards')
   // @ts-ignore
   export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
   import('./types/notifications')

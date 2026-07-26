@@ -238,6 +238,24 @@
           {{ $t('Wiki.noPagesYet') }}
         </p>
       </WikiSidebarSection>
+
+      <!--
+        Idea boards live next to the page tree rather than in the footer icon
+        bar, which is already full — and they are content, not an account action.
+      -->
+      <button
+        type="button"
+        class="mt-4 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors lg:py-1.5"
+        :class="
+          isIdeaBoardsActive
+            ? 'bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-0'
+            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+        "
+        @click="gotoIdeaBoards"
+      >
+        <IconBoard class="h-4 w-4 shrink-0" />
+        <span class="truncate">{{ $t('IdeaBoards.menu') }}</span>
+      </button>
     </nav>
 
     <!--
@@ -349,6 +367,7 @@
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
+import IconBoard from '~icons/mdi/view-dashboard-outline'
 import IconChat from '~icons/mdi/message-text-outline'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
@@ -601,6 +620,14 @@ const isNotificationsActive = computed(
 
 const gotoNotifications = () => {
   router.push({ name: 'Notifications', params: { tenantId: tenantId.value } })
+}
+
+const isIdeaBoardsActive = computed(() =>
+  String(route.name ?? '').startsWith('IdeaBoard'),
+)
+
+const gotoIdeaBoards = () => {
+  router.push({ name: 'IdeaBoards', params: { tenantId: tenantId.value } })
 }
 
 // open invitations are surfaced as a badge on the manage button

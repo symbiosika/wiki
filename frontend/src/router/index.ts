@@ -26,6 +26,16 @@ const router = createRouter({
           component: () => import('../views/wiki/page.vue'),
         },
         {
+          path: 'tenant/:tenantId/idea-boards',
+          name: 'IdeaBoards',
+          component: () => import('../views/idea-boards/index.vue'),
+        },
+        {
+          path: 'tenant/:tenantId/idea-boards/:boardId',
+          name: 'IdeaBoard',
+          component: () => import('../views/idea-boards/board.vue'),
+        },
+        {
           path: 'tenant/:tenantId/manage/organisations',
           name: 'Tenants',
           component: () => import('../views/manage/organisations.vue'),
