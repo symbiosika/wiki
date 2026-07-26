@@ -1,0 +1,34 @@
+# Keeps the build context small (node_modules alone is ~1 GB) and prevents local
+# state from leaking into an image.
+#
+# NOTE: the production build (./Dockerfile) copies a `dist/` directory that
+# GitHub Actions assembles in the repository root from the build artifacts — it
+# must NOT be ignored here.
+
+**/node_modules
+**/.git
+.github
+
+# local dev state
+backend/dev-db
+backend/logs
+backend/tmp
+backend/dist
+backend/static/upload
+frontend/dist
+mcp-server/dist
+
+# secrets / local config
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.prod.example
+!**/.env.default
+!**/.env.required-variables
+backend/jwt-keys.generated.env
+
+# editor / scratch
+.vscode
+.claude
+scratchpad
+tmp

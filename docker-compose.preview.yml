@@ -1,0 +1,56 @@
+# Preview compose file for the Symbiosika Wiki.
+#
+# A single all-in-one container (embedded PGlite database + backend + frontend)
+# for slim preview deployments and local smoke tests. No external Postgres, no
+# secrets to prepare — the container generates and persists its own on first
+# start.
+#
+# Usage:
+#   docker compose -f docker-compose.preview.yml up --build
+#   open http://localhost:3000
+#
+# Log in via magic link: the login mail is printed to the container log
+# (SMTP_HOST=console.localhost), so `docker compose logs -f` shows the link.
+#
+# Reset a preview to a clean state:
+#   docker compose -f docker-compose.preview.yml down -v
+name: ${PROJECT_NAME:-wiki-preview}
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.preview
+    image: ${PREVIEW_IMAGE:-wiki-preview:latest}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      # Public URL of the preview. Also the OAuth2 issuer, so it must match the
+      # address the browser actually uses.
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      APP_NAME: ${APP_NAME:-Symbiosika Wiki (Preview)}
+
+      # --- AI (optional) ---
+      # Without a provider all LLM features are no-ops; the wiki itself works.
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-mistralai/mistral-large}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+
+      # --- Email (optional) ---
+      # Default: magic links and invites are printed to the container log.
+      SMTP_HOST: ${SMTP_HOST:-console.localhost}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_DEFAULT_SENDER: ${SMTP_DEFAULT_SENDER:-noreply@preview.local}
+    volumes:
+      # Database, generated secrets and local uploads.
+      - preview_data:/data
+
+volumes:
+  preview_data:
+    driver: local
