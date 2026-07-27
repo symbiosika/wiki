@@ -1,0 +1,19 @@
+{
+  "tabTitle": "Agent instructions",
+  "title": "Agent instructions",
+  "tabDescription": "Instructions handed to every AI agent that connects to {tenant} via MCP. They are loaded once at the start of a session — use them to explain what lives where, which areas are authoritative, naming conventions and house rules.",
+  "content": "Instructions",
+  "contentHint": "Markdown is supported. Keep it short and factual — every agent session reads it in full.",
+  "placeholder": "e.g.\n# About this wiki\n- The handbook under \"Company\" is authoritative for processes.\n- Always cite the page title you took an answer from.\n- Product specs live under \"Products\" and are only valid when status is \"verified\".",
+  "charCount": "{count} / {max} characters",
+  "save": "Save",
+  "saved": "Agent instructions saved",
+  "saveError": "Failed to save the agent instructions",
+  "loadError": "Failed to load the agent instructions",
+  "remove": "Delete instructions",
+  "removeConfirm": "Delete the agent instructions for this organisation? Agents will then start their sessions without a briefing.",
+  "removed": "Agent instructions deleted",
+  "removeError": "Failed to delete the agent instructions",
+  "lastSaved": "Last saved: {date}",
+  "notConfigured": "No agent instructions configured yet"
+}

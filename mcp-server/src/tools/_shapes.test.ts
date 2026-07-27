@@ -50,7 +50,6 @@ const fullRow = {
   ownerTeamId: null,
   validUntil: null,
   supersedesId: null,
-  isAgentInstructions: false,
 };
 
 describe("stripEmpty()", () => {
@@ -147,12 +146,15 @@ describe("composite shapes", () => {
       metrics: { totalPages: 2 },
       topLevel: [fullRow],
       recentChanges: [fullRow],
-      agentInstructions: { id: "i", title: "Regeln", content: "…" },
+      agentInstructions: { content: "…", updatedAt: "2026-07-01T00:00:00Z" },
     });
     expect(o.metrics).toEqual({ totalPages: 2 });
     expect((o.topLevel as any[])[0].summaryContentHash).toBeUndefined();
     expect((o.recentChanges as any[])[0].id).toBe("p1");
-    expect(o.agentInstructions).toEqual({ id: "i", title: "Regeln", content: "…" });
+    expect(o.agentInstructions).toEqual({
+      content: "…",
+      updatedAt: "2026-07-01T00:00:00Z",
+    });
   });
 
   test("slimBatchRows surfaces text as content", () => {

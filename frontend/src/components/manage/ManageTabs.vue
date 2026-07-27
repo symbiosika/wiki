@@ -29,6 +29,7 @@ const tabs = computed(() => [
   { label: t('UserTeams.tabTitle'), routeName: 'Teams' },
   { label: t('Chat.config.tabTitle'), routeName: 'ChatAgent' },
   { label: t('UserTenants.metadata.tabTitle'), routeName: 'DocumentTags' },
+  { label: t('AgentInstructions.tabTitle'), routeName: 'AgentInstructions' },
   {
     label: t('PostProcessingAgents.tabTitle'),
     routeName: 'PostProcessingAgents',

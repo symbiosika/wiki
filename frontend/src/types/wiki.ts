@@ -147,6 +147,19 @@ export interface WikiKnowledgeConfig {
 }
 
 /**
+ * The organisation's agent instructions, as returned by
+ * GET/PUT /knowledge/texts/agent-instructions.
+ *
+ * Per-organisation configuration (one row, not a wiki page) handed to every
+ * MCP client as part of the wiki overview.
+ */
+export interface AgentInstructions {
+  content: string
+  updatedAt: string
+  updatedBy: string | null
+}
+
+/**
  * Per-modality "extra service" flags the configured parsing service advertises
  * via its capabilities. Any flag defaults to `false` when absent. Mirrors the
  * framework `ServiceModality.features` shape (camelCase).
