@@ -37,5 +37,8 @@ echo "[session-start] installing backend dependencies"
 echo "[session-start] installing frontend dependencies"
 (cd frontend && bun install)
 
+echo "[session-start] installing frontend-public dependencies"
+(cd frontend-public && bun install)
+
 echo "[session-start] installing mcp-server dependencies"
 (cd mcp-server && bun install)

@@ -66,6 +66,7 @@ jobs:
             app:
               - 'backend/**'
               - 'frontend/**'
+              - 'frontend-public/**'
               - 'Dockerfile'
               - '.github/workflows/build.yml'
             mcp:
@@ -101,6 +102,45 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend
           path: frontend/dist
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # PUBLIC FRONTEND – the read-only documentation site.
+  #
+  # Built separately from the authenticated SPA because it ships to a different
+  # place: the backend serves ./static behind a login and ./public to everyone,
+  # so this bundle goes into public/docs and the SPA into static/app.
+  # ---------------------------------------------------------------------------
+  build-frontend-public:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.app == 'true' || needs.detect-changes.outputs.force == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: frontend-public
+        run: bun install
+
+      - name: Test
+        working-directory: frontend-public
+        run: bun run test
+
+      - name: Build public frontend
+        working-directory: frontend-public
+        run: bun run build
+
+      - name: Upload public frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend-public
+          path: frontend-public/dist
           retention-days: 1
 
   # ---------------------------------------------------------------------------
@@ -165,7 +205,7 @@ jobs:
   # MAIN APP IMAGE – backend bundle + bundled frontend, via the root Dockerfile.
   # ---------------------------------------------------------------------------
   build-docker-app:
-    needs: [detect-changes, build-backend, build-frontend]
+    needs: [detect-changes, build-backend, build-frontend, build-frontend-public]
     if: needs.detect-changes.outputs.app == 'true' || needs.detect-changes.outputs.force == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -184,10 +224,20 @@ jobs:
           name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend
           path: frontend_artifact
 
-      - name: Merge frontend into dist
+      - name: Download public frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend-public
+          path: frontend_public_artifact
+
+      - name: Merge frontends into dist
         run: |
+          # authenticated SPA -> static/ (served behind authOrRedirectToLogin)
           mkdir -p dist/static
           cp -r frontend_artifact/static/* dist/static/
+          # documentation site -> public/ (served to everyone, no auth)
+          mkdir -p dist/public
+          cp -r frontend_public_artifact/public/* dist/public/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

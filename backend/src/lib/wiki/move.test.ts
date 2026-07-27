@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   initTests,
   TEST_ORGANISATION_1,
@@ -15,11 +15,23 @@ const TENANT = TEST_ORGANISATION_1.id;
 const OWNER = TEST_ORG1_USER_1.id;
 const context = { tenantId: TENANT, userId: OWNER };
 
-const deleteTestPages = () =>
-  getDb().delete(knowledgeText).where(eq(knowledgeText.tenantId, TENANT));
+/**
+ * Ids created by this file, so cleanup removes exactly those.
+ *
+ * A blanket delete of the tenant's pages would be simpler, but cleanup here is
+ * fire-and-forget (see below) and TEST_ORGANISATION_1 is shared with every
+ * other suite — a stray tenant-wide delete can land while the next file is
+ * building its fixtures.
+ */
+const created: string[] = [];
 
-const page = async (title: string, parentId?: string) =>
-  await createKnowledgeText({
+const deleteTestPages = () =>
+  created.length > 0
+    ? getDb().delete(knowledgeText).where(inArray(knowledgeText.id, created))
+    : Promise.resolve();
+
+const page = async (title: string, parentId?: string) => {
+  const row = await createKnowledgeText({
     title,
     text: `${title} content`,
     tenantId: TENANT,
@@ -27,6 +39,9 @@ const page = async (title: string, parentId?: string) =>
     tenantWide: true,
     parentId,
   });
+  created.push(row.id);
+  return row;
+};
 
 const isPublic = async (id: string): Promise<boolean> => {
   const rows = await getDb()
@@ -46,11 +61,13 @@ const isPublic = async (id: string): Promise<boolean> => {
 describe("movePage — public visibility propagation", () => {
   beforeAll(async () => {
     await initTests();
-    await deleteTestPages();
   });
 
-  afterAll(async () => {
-    await deleteTestPages();
+  // Fire and forget cleanup (Bun runtime limitation — see the backend-testing
+  // skill); scoped to this file's own rows, so a late delete cannot disturb
+  // another suite.
+  afterAll(() => {
+    deleteTestPages().then(() => {});
   });
 
   test("moving an internal subtree under a published parent publishes it", async () => {

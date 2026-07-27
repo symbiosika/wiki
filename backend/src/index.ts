@@ -15,6 +15,17 @@ import { aiTestJobHandler } from "./lib/ai-tests/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
 import { websocket } from "./lib/ws/bun-ws";
 import * as emailTemplates from "./lib/email-templates";
+import {
+  isPublicWikiEnabled,
+  publicWikiStaticExclusions,
+} from "./lib/wiki/public-flag";
+
+/**
+ * Operator switch for the public documentation surface (PUBLIC_WIKI_ENABLED).
+ * Read once here so the API routes and the static bundle can never disagree
+ * about whether the feature is on — see ./lib/wiki/public-flag.
+ */
+const publicWikiEnabled = isPublicWikiEnabled();
 
 const server = defineServer({
   port: 3000,
@@ -27,6 +38,10 @@ const server = defineServer({
   magicLoginVerifyUrl: "/magic-login-verify.html",
   staticPublicDataPath: "./public",
   staticPrivateDataPath: "./static",
+  // With the public documentation switched off, the bundle stays in the image
+  // but stops answering — otherwise a dead page would remain reachable,
+  // reporting that the API is unavailable.
+  staticPublicExclude: publicWikiStaticExclusions(),
   // activate additional parameters for PDF parsing
   enablePdfParserExtraction: true,
 
@@ -88,7 +103,11 @@ const server = defineServer({
         // published (knowledgeText.publicMode / publicEffective). Deliberately
         // registered here rather than in customHonoAppsWithAuth — see
         // ./routes/public/wiki for why that is safe.
-        definePublicWikiRoutes(app);
+        //
+        // Not registering them at all is the real off switch: unregistered
+        // routes fall into Hono's 404 and give away nothing about having
+        // existed.
+        if (publicWikiEnabled) definePublicWikiRoutes(app);
       },
     },
   ],
