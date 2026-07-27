@@ -1,13 +1,18 @@
 <script setup lang="ts">
 /**
- * Documentation chrome: header with the organisation name, search and theme
- * switch; sidebar with the published tree; content area for the routed view.
+ * Documentation chrome: header with the organisation and the theme switch,
+ * sidebar with search + published tree, content area for the routed view.
+ *
+ * Search lives in the sidebar rather than the header, matching the
+ * authenticated wiki: results take the tree's place while a query is typed, so
+ * the content area keeps showing the page you are reading.
  */
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { logoUrl } from '../api'
 import { loadOrganisation, overviewState } from '../store'
 import PageTree from '../components/PageTree.vue'
+import SidebarSearch from '../components/SidebarSearch.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import {
   MAX_WIDTH,
@@ -20,7 +25,6 @@ import {
 } from '../sidebarWidth'
 
 const route = useRoute()
-const router = useRouter()
 
 const slug = computed(() => String(route.params.slug ?? ''))
 const activePageId = computed(() =>
@@ -47,20 +51,8 @@ watch(
   { immediate: true },
 )
 
-const query = ref('')
-watch(
-  () => route.query.q,
-  (q) => {
-    if (typeof q === 'string') query.value = q
-  },
-  { immediate: true },
-)
-
-const submitSearch = () => {
-  const q = query.value.trim()
-  if (!q) return
-  router.push({ name: 'search', params: { slug: slug.value }, query: { q } })
-}
+/** Tenant id for the search call; empty until the slug resolves. */
+const tenantId = computed(() => overviewState.organisation?.id ?? '')
 
 /** open on mobile, always visible from `lg` up */
 const navOpen = ref(false)
@@ -114,30 +106,16 @@ watch(() => route.fullPath, () => (navOpen.value = false))
           </span>
         </RouterLink>
 
-        <form
-          class="ml-auto w-full max-w-sm"
-          role="search"
-          @submit.prevent="submitSearch"
-        >
-          <input
-            v-model="query"
-            type="search"
-            placeholder="Suchen …"
-            aria-label="Dokumentation durchsuchen"
-            class="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-page)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-accent)]"
-          />
-        </form>
-
-        <ThemeToggle />
+        <ThemeToggle class="ml-auto" />
       </div>
     </header>
 
     <div class="mx-auto flex max-w-6xl px-4">
       <aside
-        class="shrink-0 py-6 lg:block"
+        class="shrink-0 py-6 lg:sticky lg:top-[57px] lg:block lg:max-h-[calc(100vh-57px)]"
         :class="navOpen ? 'block' : 'hidden'"
         :style="{ width: `${sidebarWidth}px` }"
-        aria-label="Seiten"
+        aria-label="Seiten und Suche"
       >
         <p v-if="overviewState.loading" class="text-sm text-[var(--color-ink-muted)]">
           Wird geladen …
@@ -158,16 +136,21 @@ watch(() => route.fullPath, () => (navOpen.value = false))
           Es sind noch keine Seiten veröffentlicht.
         </p>
 
-        <nav v-else class="space-y-6">
-          <section v-for="section in overviewState.overview.sections" :key="section.id">
-            <h2
-              class="mb-1 text-xs font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase"
+        <SidebarSearch v-else :slug="slug" :tenant-id="tenantId">
+          <nav class="space-y-6">
+            <section
+              v-for="section in overviewState.overview.sections"
+              :key="section.id"
             >
-              {{ section.name }}
-            </h2>
-            <PageTree :nodes="section.pages" :slug="slug" :active-id="activePageId" />
-          </section>
-        </nav>
+              <h2
+                class="mb-1 text-xs font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase"
+              >
+                {{ section.name }}
+              </h2>
+              <PageTree :nodes="section.pages" :slug="slug" :active-id="activePageId" />
+            </section>
+          </nav>
+        </SidebarSearch>
       </aside>
 
       <!--

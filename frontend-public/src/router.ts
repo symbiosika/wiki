@@ -32,11 +32,6 @@ const routes: RouteRecordRaw[] = [
         name: 'page',
         component: () => import('./views/PageView.vue'),
       },
-      {
-        path: 'search',
-        name: 'search',
-        component: () => import('./views/SearchView.vue'),
-      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

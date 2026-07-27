@@ -62,6 +62,12 @@ Standardpalette zurück.
 verschiebbar (Tastatur: Pfeil links/rechts, Doppelklick setzt zurück). Die
 Breite wird pro Browser gemerkt.
 
+**Suche.** Sitzt in der Sidebar über dem Baum, wie im Haupt-Frontend: solange
+etwas eingegeben ist, treten die Treffer an die Stelle des Baums, der
+Inhaltsbereich zeigt weiter die gelesene Seite. Eine eigene Suchseite gibt es
+deshalb nicht. Anfragen sind entprellt und die vorherige wird abgebrochen — der
+semantische Teil der Suche erzeugt pro Anfrage ein Embedding.
+
 ## Inhalte
 
 `src/markdown.ts` macht drei Dinge über reines Markdown hinaus:
