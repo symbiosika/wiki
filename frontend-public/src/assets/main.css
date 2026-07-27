@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+
+/*
+ * Documentation typography and theme.
+ *
+ * Page content is rendered from markdown into a single `v-html` block, so the
+ * element styles live here rather than as utility classes on the markup.
+ * Deliberately restrained: this is a docs site, not the app UI.
+ *
+ * Dark mode follows the `.app-dark` class on <html> rather than the media
+ * query, matching the authenticated app (frontend/src/assets/base.css) so a
+ * visitor can override the OS in both. src/theme.ts sets the class.
+ */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+/*
+ * One set of semantic tokens, redefined for dark. The stylesheet and the
+ * components both reference only these, so the two appearances cannot drift.
+ */
+:root {
+  --color-page: white;
+  --color-ink: oklch(0.25 0.01 250);
+  --color-ink-muted: oklch(0.52 0.015 250);
+  /*
+   * The accent falls back to the neutral blue unless the organisation set a
+   * brand colour; src/brand.ts writes --brand-accent-* with one legible
+   * variant per appearance (see there for why the raw colour is not used).
+   */
+  --color-accent: var(--brand-accent-light, oklch(0.55 0.15 250));
+  --color-line: oklch(0.92 0.005 250);
+  --color-surface: oklch(0.985 0.002 250);
+  --color-hover: oklch(0.965 0.003 250);
+  color-scheme: light;
+}
+
+:root.app-dark {
+  --color-page: oklch(0.18 0.01 250);
+  --color-ink: oklch(0.93 0.005 250);
+  --color-ink-muted: oklch(0.68 0.012 250);
+  --color-accent: var(--brand-accent-dark, oklch(0.75 0.13 250));
+  --color-line: oklch(0.31 0.012 250);
+  --color-surface: oklch(0.23 0.012 250);
+  --color-hover: oklch(0.26 0.014 250);
+  /* native controls: scrollbars, and the search field's clear button */
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  /*
+   * Reserve the scrollbar gutter permanently.
+   *
+   * Header and content are both centred in a `max-w-6xl` container, so their
+   * position depends on the viewport width. Without this, navigating between a
+   * short and a long page adds or removes the document scrollbar and shifts
+   * the entire layout — including the sidebar — sideways by its width. The
+   * brief "Wird geladen …" placeholder makes it happen on nearly every page
+   * change, so it reads as the page twitching.
+   *
+   * Unsupported in older Safari, which simply keeps today's behaviour.
+   */
+  scrollbar-gutter: stable;
+}
+
+body {
+  color: var(--color-ink);
+  background: var(--color-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+.prose-doc {
+  line-height: 1.7;
+}
+.prose-doc > * + * {
+  margin-top: 1rem;
+}
+.prose-doc h1,
+.prose-doc h2,
+.prose-doc h3,
+.prose-doc h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2rem;
+  scroll-margin-top: 5rem;
+}
+.prose-doc h1 { font-size: 1.875rem; }
+.prose-doc h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--color-line);
+  padding-bottom: 0.35rem;
+}
+.prose-doc h3 { font-size: 1.25rem; }
+.prose-doc h4 { font-size: 1.05rem; }
+.prose-doc a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-doc a:hover { text-decoration-thickness: 2px; }
+.prose-doc ul,
+.prose-doc ol {
+  padding-left: 1.5rem;
+}
+.prose-doc ul { list-style: disc; }
+.prose-doc ol { list-style: decimal; }
+.prose-doc li + li { margin-top: 0.25rem; }
+.prose-doc code {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.875em;
+}
+.prose-doc pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+.prose-doc pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+.prose-doc blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 1rem;
+  color: var(--color-ink-muted);
+}
+.prose-doc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+}
+.prose-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.prose-doc th,
+.prose-doc td {
+  border: 1px solid var(--color-line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.prose-doc th {
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.prose-doc hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+/* A wiki link whose target is not published — plain text, not a dead link. */
+.prose-doc .wiki-link-missing {
+  color: inherit;
+}

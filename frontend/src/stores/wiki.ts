@@ -425,7 +425,11 @@ export const useWiki = defineStore('wiki', () => {
   const savePageMeta = async (
     tenantId: string,
     pageId: string,
-    patch: { pageType?: string | null; status?: string | null },
+    patch: {
+      pageType?: string | null
+      status?: string | null
+      publicMode?: 'public' | 'excluded' | null
+    },
     verifiedByUserId?: string,
   ) => {
     const body: Record<string, unknown> = { tenantId, ...patch }
@@ -454,8 +458,24 @@ export const useWiki = defineStore('wiki', () => {
           state.value.page.verifiedAt = updated.verifiedAt
           state.value.page.verifiedBy = updated.verifiedBy
         }
+        if ('publicMode' in patch) {
+          state.value.page.publicMode = patch.publicMode ?? null
+        }
       }
       state.value.lastSavedAt = new Date().toISOString()
+
+      // Publishing inherits down the tree, so this one page is never the whole
+      // change: descendants flip with it. Reload the tree (and the page, whose
+      // own resolved flag the response cannot be relied on to carry) so every
+      // globe marker reflects what is actually public now.
+      if ('publicMode' in patch) {
+        await Promise.all([
+          loadTree(tenantId),
+          state.value.page?.id === pageId
+            ? loadPage(tenantId, pageId)
+            : Promise.resolve(),
+        ])
+      }
     } catch (error) {
       state.value.saveError =
         error instanceof Error ? error.message : 'Failed to save page metadata'
