@@ -37,7 +37,7 @@ import { TableKit } from '@tiptap/extension-table'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage } from './wikiImage'
-import { WikiLink, type WikiLinkAttrs } from './wikiLink'
+import { WikiLink, embedWikiLinkMarkers, type WikiLinkAttrs } from './wikiLink'
 import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
@@ -338,7 +338,11 @@ const insertMarkdown = (markdown: string) => {
   if (!editor.value || !markdown.trim()) return
   const html = renderMarkdown(markdown)
   if (!html) return
-  editor.value.chain().focus().insertContent(html).run()
+  // `[[Target]]` in the pasted markdown becomes a real page reference
+  const template = document.createElement('template')
+  template.innerHTML = html
+  embedWikiLinkMarkers(template.content)
+  editor.value.chain().focus().insertContent(template.innerHTML).run()
 }
 
 defineExpose({ flush, getBlocks, insertMarkdown })

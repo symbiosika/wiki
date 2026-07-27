@@ -146,6 +146,12 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
   muss **eindeutig** vorkommen. Immer zuerst `read_page_content`, dann ersetzen.
   Bei mehrfachen Vorkommen `replaceAll: true`. Ein `409` heißt: String fehlt oder
   ist mehrdeutig → neu lesen und präziser matchen.
+- **Verweise setzen:** `[[Seitentitel]]` (oder `[[Seitentitel|Anzeigetext]]`)
+  einfach in den Text schreiben — in `create_page`, `append_to_page` und
+  `edit_page_content` gleichermaßen. Daraus wird ein echter, klickbarer
+  Seitenverweis; zeigt er auf eine noch nicht existierende Seite, bleibt er als
+  Phantom-Link stehen und rastet ein, sobald die Seite angelegt wird. Nicht
+  escapen und keine Backslashes setzen.
 - **Löschen:** `edit_page_content` mit leerem `newString`. Ein dadurch leer
   gewordener Block wird sauber entfernt (kein leerer Platzhalter), und ein
   `oldString`, der mehrere Blöcke umspannt (wörtlich aus `read_page_content`

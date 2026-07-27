@@ -52,7 +52,10 @@ its oldString must match exactly and unambiguously. To delete text, edit with
 an empty newString; a block left empty is removed cleanly (no blank leftover),
 and an oldString copied straight from read_page_content that covers several
 blocks (including the blank lines between them) removes them all at once.
-create_page defaults to a
+Link pages by writing [[Page Title]] (or [[Page Title|shown text]]) straight
+into the text of any write tool — it becomes a real, clickable reference (a
+phantom link that snaps into place once the target exists); never escape the
+brackets. create_page defaults to a
 private personal page; set teamId or organisation:true deliberately. Curate
 with update_page facets (pageType/status from get_wiki_config, validUntil,
 supersedesId). Confirm with the user before delete_page or before publishing

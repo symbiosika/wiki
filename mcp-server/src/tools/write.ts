@@ -172,7 +172,9 @@ export function registerWriteTools(mcp: any): void {
         "note, log entry or new section: no reading first, no string " +
         "matching, no edit conflicts. A blank line separates the appended " +
         "text by default (override with `separator` on plain-text pages; " +
-        "block pages always add the text as a new block). Returns only " +
+        "block pages always add the text as a new block). Link other pages " +
+        "with [[Page Title]] / [[Page Title|shown text]] — written as-is, " +
+        "never escaped. Returns only " +
         "counters (appendedChars, totalChars), not the full content.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
@@ -210,7 +212,9 @@ export function registerWriteTools(mcp: any): void {
         "empty `newString`: on block pages a block left empty is removed cleanly " +
         "(no empty placeholder), and an `oldString` that spans several blocks " +
         "(copy it verbatim, including the blank lines between them) removes them " +
-        "all at once. Returns the number of replacements and the new content. " +
+        "all at once. `newString` may contain [[Page Title]] references " +
+        "(write them plainly, never escaped) — they become real page links. " +
+        "Returns the number of replacements and the new content. " +
         "Fails (409) if the string is missing or ambiguous. For adding at the " +
         "end, `append_to_page` is simpler and safer.",
       inputSchema: z.object({

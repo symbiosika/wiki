@@ -4,7 +4,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import Code from '@tiptap/extension-code'
-import { WikiLink, wikiLinkMarker } from './wikiLink'
+import { WikiLink, embedWikiLinkMarkers, wikiLinkMarker } from './wikiLink'
 
 /** Minimal editor with the Code mark present, to exercise WikiLink. */
 const makeEditor = (content: string) =>
@@ -79,5 +79,52 @@ describe('WikiLink node', () => {
     const targets = [...editor.getHTML().matchAll(re)].map((m) => m[1])
     expect(targets).toContain('Team Handbook')
     editor.destroy()
+  })
+})
+
+describe('embedWikiLinkMarkers', () => {
+  /** Run the conversion over an html fragment and return the result. */
+  const embed = (html: string): string => {
+    const template = document.createElement('template')
+    template.innerHTML = html
+    embedWikiLinkMarkers(template.content)
+    return template.innerHTML
+  }
+
+  test('turns a plain marker (e.g. written by an agent) into a reference', () => {
+    const html = embed('<p>Siehe [[03.03 Errichter]] hier</p>')
+    expect(html).toContain('data-wiki-link="03.03 Errichter"')
+    expect(html).toContain('[[03.03 Errichter]]')
+    expect(html).toContain('Siehe ')
+    expect(html).toContain(' hier')
+  })
+
+  test('keeps the alias', () => {
+    const html = embed('<p>[[Home Office|working from home]]</p>')
+    expect(html).toContain('data-wiki-link="Home Office"')
+    expect(html).toContain('data-wiki-alias="working from home"')
+  })
+
+  test('is idempotent and leaves code/pre alone', () => {
+    const once = embed('<p>a [[Target]] b</p>')
+    expect(embed(once)).toBe(once)
+    const code = '<pre><code>list[[0]]</code></pre>'
+    expect(embed(code)).toBe(code)
+  })
+
+  test('heals an escaped marker from an older escaped text cache', () => {
+    const html = embed('<p>siehe \\[\\[Systemhaus\\]\\] hier</p>')
+    expect(html).toContain('data-wiki-link="Systemhaus"')
+    expect(html).not.toContain('\\[')
+  })
+
+  test('text without markers is untouched', () => {
+    const html = '<p>plain paragraph</p>'
+    expect(embed(html)).toBe(html)
+  })
+
+  test('a converted marker parses back into a wikiLink node', () => {
+    const editor = makeEditor(embed('<p>See [[Onboarding]]</p>'))
+    expect(editor.getJSON().content?.[0]?.content?.[1]?.type).toBe('wikiLink')
   })
 })

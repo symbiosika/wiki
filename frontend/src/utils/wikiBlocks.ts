@@ -9,6 +9,7 @@
  */
 import { marked } from 'marked'
 import type { WikiBlock } from '@/types/wiki'
+import { embedWikiLinkMarkers } from '@/components/editor/wikiLink'
 
 marked.setOptions({ gfm: true, breaks: false })
 
@@ -18,6 +19,18 @@ const BLOCK_ID_ATTR = 'data-block-id'
 const parseFragment = (html: string): HTMLElement[] => {
   const template = document.createElement('template')
   template.innerHTML = html
+  return Array.from(template.content.children) as HTMLElement[]
+}
+
+/**
+ * Parse a fragment on its way INTO the editor: bare `[[Target]]` markers (from
+ * a markdown block, or written by an agent through the API/MCP tools) become
+ * real page references first.
+ */
+const parseFragmentForEditor = (html: string): HTMLElement[] => {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  embedWikiLinkMarkers(template.content)
   return Array.from(template.content.children) as HTMLElement[]
 }
 
@@ -36,7 +49,7 @@ export const blocksToEditorHtml = (blocks: WikiBlock[]): string => {
       block.type === 'markdown'
         ? (marked.parse(block.content) as string)
         : block.content
-    const elements = parseFragment(raw)
+    const elements = parseFragmentForEditor(raw)
     if (elements.length === 0) continue
     if (block.id && !elements[0]!.hasAttribute(BLOCK_ID_ATTR)) {
       elements[0]!.setAttribute(BLOCK_ID_ATTR, block.id)
