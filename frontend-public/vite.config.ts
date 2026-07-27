@@ -11,6 +11,11 @@ import tailwindcss from '@tailwindcss/vite'
  * defineServer). The authenticated SPA therefore builds into `static/app`,
  * and this one builds into `public/docs` so it is reachable without a login.
  *
+ * `public/` is the serving root, not part of the URL — the bundle deployed to
+ * `<backend>/public/docs/` answers at `/docs/`, which is what `base` says. The
+ * build output mirrors the deployed directory layout so CI can copy
+ * `dist/public/*` into the container's `public/` verbatim.
+ *
  * Hash routing (see src/router.ts) is the other half of that: static file
  * serving has no SPA fallback, so a deep link like /docs/page/<id> would 404.
  * The authenticated app solves it the same way.
