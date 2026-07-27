@@ -150,10 +150,14 @@ export default function defineUrlImportRoutes(
       const { tenantId, jobId } = c.req.valid("param");
       const job = await getImportJob({ organisationId: tenantId }, jobId);
       if (!job) throw new HTTPException(404, { message: "Job not found" });
-      const [urls, runs] = await Promise.all([
-        listJobUrls(jobId),
-        listJobRuns(jobId),
-      ]);
+      // Sequential on purpose. Both reads are single indexed lookups, so the
+      // parallelism bought nothing — but running them concurrently breaks
+      // against the PGlite test database: it serves every pooled connection
+      // from one session, so two in-flight queries overwrite each other's
+      // unnamed prepared statement ("bind message supplies N parameters, but
+      // prepared statement requires M").
+      const urls = await listJobUrls(jobId);
+      const runs = await listJobRuns(jobId);
       return c.json({ job, urls, runs });
     },
   );
