@@ -18,11 +18,6 @@ import { getKnowledgeTextById } from "@framework/lib/knowledge/knowledge-texts";
 import { searchKnowledgeTexts } from "@framework/lib/knowledge/knowledge-text-search";
 import type { KnowledgeTextSearchResult } from "@framework/lib/knowledge/knowledge-text-search";
 import { getTeamsByOrganisation } from "@framework/lib/usermanagement/teams";
-import {
-  extractKnowledgeFileIds,
-  KNOWLEDGE_FILES_BUCKET,
-} from "@framework/lib/knowledge/knowledge-text-files";
-import { getFileFromDb } from "@framework/lib/storage/db";
 import { buildTreeFromRows, type WikiTreeNode } from "./tree";
 
 /** A group of published pages, presented like a space in the wiki UI. */
@@ -205,45 +200,6 @@ export const searchPublicWiki = async (
   return results.map(toPublicHit);
 };
 
-/** `<uuid>.<ext>` — the filename shape produced by the image upload. */
-const FILENAME_PATTERN =
-  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.[a-z0-9]{1,8}$/i;
-
-/**
- * An image embedded in a published page.
- *
- * Mirrors the authenticated `getWikiPageImage`, and keeps BOTH of its checks —
- * they are load-bearing here for different reasons:
- *
- *   1. the page must be published, and
- *   2. the page's content must actually reference this file.
- *
- * The second check is what stops this from becoming a read primitive for the
- * whole tenant bucket: `getFileFromDb` scopes only by bucket + tenant, so
- * without it any file could be fetched by guessing its uuid via a single
- * published page.
- */
-export const getPublicWikiPageImage = async (
-  tenantId: string,
-  pageId: string,
-  filename: string
-): Promise<File> => {
-  const match = FILENAME_PATTERN.exec(filename);
-  if (!match) {
-    throw new Error("Invalid image filename");
-  }
-  const fileId = match[1]!.toLowerCase();
-
-  // Visibility: throws unless the page is published.
-  const page = await getKnowledgeTextById(pageId, {
-    tenantId,
-    publicOnly: true,
-  });
-
-  const referencedIds = extractKnowledgeFileIds(page.text ?? "");
-  if (!referencedIds.includes(fileId)) {
-    throw new Error("Image not found or access denied");
-  }
-
-  return getFileFromDb(filename, KNOWLEDGE_FILES_BUCKET, tenantId);
-};
+// The public image read lives next to its authenticated twin in ./images, so
+// the filename and reference checks that guard both exist exactly once.
+export { getPublicWikiPageImage } from "./images";
