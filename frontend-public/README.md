@@ -25,14 +25,30 @@ nicht, und diese App tut es folglich auch nicht.
 
 ## Routing
 
-Hash-Routen (`#/<tenantId>/page/<pageId>`), wie im Haupt-Frontend. Grund:
+Hash-Routen (`#/<slug>/page/<pageId>`), wie im Haupt-Frontend. Grund:
 Die Bundles werden als statische Dateien ohne SPA-Fallback ausgeliefert, ein
 History-Deep-Link würde beim Neuladen 404 liefern.
 
-Die Organisation steht in der URL, weil die öffentliche API mandantenfähig ist.
-Eine Installation, die genau eine Organisation zeigt, kann später einen
-hübscheren Einstieg davorsetzen — das ist reines Routing und berührt die
-Sichtbarkeitsregeln nicht.
+Die Organisation steht als lesbarer Slug in der URL (`#/acme-gmbh/…`). Slugs
+werden serverseitig aus dem Organisationsnamen abgeleitet, nicht gespeichert —
+die Auflösung ist deshalb eine Suche (`GET …/public/wiki/by-slug/:slug`) und
+ein Slug wandert, wenn eine Organisation umbenannt wird. Kanonisch bleibt die
+Tenant-ID; der Slug ist nur der Einstieg.
+
+Seiten behalten ihre ID: Titel sind weder eindeutig noch stabil, ein
+titelbasierter Seiten-Slug würde bei jeder Umbenennung Links brechen.
+
+Ohne Organisation in der URL zeigt der Einstieg die veröffentlichenden
+Organisationen; gibt es genau eine (der Normalfall), wird direkt
+weitergeleitet. Eine ID muss niemand eingeben.
+
+## Erscheinungsbild
+
+Hell/Dunkel folgt standardmäßig dem Betriebssystem und lässt sich über den
+Schalter im Header auf hell oder dunkel festlegen. Umgesetzt über die
+`.app-dark`-Klasse auf `<html>` und denselben localStorage-Schlüssel wie das
+Haupt-Frontend (`wiki:theme`) — beide Apps laufen auf derselben Origin, die
+Wahl gilt also für beide.
 
 ## Inhalte
 

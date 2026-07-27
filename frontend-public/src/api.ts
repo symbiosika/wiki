@@ -32,7 +32,15 @@ export interface WikiSection {
   pages: WikiTreeNode[]
 }
 
+export interface PublicOrganisation {
+  id: string
+  name: string
+  /** Readable identifier used in this app's URLs. */
+  slug: string
+}
+
 export interface WikiOverview {
+  organisation: PublicOrganisation | null
   sections: WikiSection[]
   pageCount: number
 }
@@ -84,6 +92,30 @@ const request = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
 
 export const fetchOverview = (tenantId: string, signal?: AbortSignal) =>
   request<WikiOverview>(`${API_BASE}/${tenantId}/overview`, signal)
+
+/**
+ * Resolve a readable slug from the URL to an organisation.
+ *
+ * Slugs are derived from organisation names server-side rather than stored, so
+ * this is a search. A 404 means no PUBLISHING organisation matches — an
+ * organisation that has published nothing is not resolvable at all.
+ */
+export const resolveOrganisation = (slug: string, signal?: AbortSignal) =>
+  request<PublicOrganisation>(
+    `${API_BASE}/by-slug/${encodeURIComponent(slug)}`,
+    signal,
+  )
+
+/** Organisations that have published something; drives the entry page. */
+export const fetchOrganisations = async (
+  signal?: AbortSignal,
+): Promise<PublicOrganisation[]> => {
+  const result = await request<{ organisations: PublicOrganisation[] }>(
+    `${API_BASE}/organisations`,
+    signal,
+  )
+  return result.organisations
+}
 
 export const fetchPage = (tenantId: string, pageId: string, signal?: AbortSignal) =>
   request<WikiPage>(`${API_BASE}/${tenantId}/pages/${pageId}`, signal)

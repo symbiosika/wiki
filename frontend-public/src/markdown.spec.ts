@@ -3,7 +3,8 @@ import { renderMarkdown, markdownToText, pageHref } from './markdown'
 
 const TENANT = '11111111-1111-1111-1111-111111111111'
 const PAGE = '22222222-2222-2222-2222-222222222222'
-const opts = { tenantId: TENANT, pageId: PAGE }
+const SLUG = 'acme-gmbh'
+const opts = { tenantId: TENANT, slug: SLUG, pageId: PAGE }
 
 describe('renderMarkdown — sanitizing', () => {
   it('strips script tags', () => {
@@ -66,7 +67,7 @@ describe('renderMarkdown — wiki links', () => {
       ...opts,
       resolveLink,
     })
-    expect(html).toContain(pageHref(TENANT, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))
+    expect(html).toContain(pageHref(SLUG, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))
     expect(html).toContain('Published Page')
   })
 
@@ -75,7 +76,7 @@ describe('renderMarkdown — wiki links', () => {
       ...opts,
       resolveLink,
     })
-    expect(html).toContain(pageHref(TENANT, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))
+    expect(html).toContain(pageHref(SLUG, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))
     // no leftover code span around the resolved link
     expect(html).not.toContain('<code>[[')
   })

@@ -18,7 +18,89 @@ import { getKnowledgeTextById } from "@framework/lib/knowledge/knowledge-texts";
 import { searchKnowledgeTexts } from "@framework/lib/knowledge/knowledge-text-search";
 import type { KnowledgeTextSearchResult } from "@framework/lib/knowledge/knowledge-text-search";
 import { getTeamsByOrganisation } from "@framework/lib/usermanagement/teams";
+import { getDb } from "@framework/lib/db/db-connection";
+import { knowledgeText } from "@framework/lib/db/schema/knowledge";
+import { tenants } from "@framework/lib/db/schema/users";
+import { and, eq, isNull, inArray } from "drizzle-orm";
 import { buildTreeFromRows, type WikiTreeNode } from "./tree";
+import { slugifyOrganisationName } from "./slug";
+
+/** An organisation as an anonymous visitor sees it. */
+export interface PublicOrganisation {
+  id: string
+  name: string
+  slug: string
+}
+
+/**
+ * Every organisation that has published at least one page.
+ *
+ * The "at least one page" condition is the access rule, not an optimisation:
+ * without it this would enumerate every tenant on the installation. An
+ * organisation appears here only after it has deliberately published something,
+ * at which point its name is public by its own choice — the same trade-off the
+ * overview already makes for team names.
+ */
+export const listPublicOrganisations = async (): Promise<
+  PublicOrganisation[]
+> => {
+  const rows = await getDb()
+    .selectDistinct({ id: tenants.id, name: tenants.name })
+    .from(tenants)
+    .innerJoin(knowledgeText, eq(knowledgeText.tenantId, tenants.id))
+    .where(
+      and(
+        eq(knowledgeText.publicEffective, true),
+        eq(knowledgeText.hidden, false),
+        isNull(knowledgeText.deletedAt)
+      )
+    );
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      slug: slugifyOrganisationName(row.name),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+/**
+ * Resolve a URL slug to a published organisation, or null.
+ *
+ * Slugs are derived from names rather than stored, so two names can produce the
+ * same slug ("Acme AG" and "Acme-AG"). When that happens the oldest match wins
+ * — an arbitrary but stable rule, so a link does not start pointing somewhere
+ * else the moment a similarly named organisation publishes.
+ */
+export const resolvePublicOrganisation = async (
+  slug: string
+): Promise<PublicOrganisation | null> => {
+  const wanted = slugifyOrganisationName(slug);
+  if (!wanted) return null;
+
+  const candidates = (await listPublicOrganisations()).filter(
+    (organisation) => organisation.slug === wanted
+  );
+  if (candidates.length <= 1) return candidates[0] ?? null;
+
+  const oldest = await getDb()
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(
+      inArray(
+        tenants.id,
+        candidates.map((organisation) => organisation.id)
+      )
+    )
+    .orderBy(tenants.createdAt)
+    .limit(1);
+
+  return (
+    candidates.find((organisation) => organisation.id === oldest[0]?.id) ??
+    candidates[0]!
+  );
+};
 
 /** A group of published pages, presented like a space in the wiki UI. */
 export interface PublicWikiSection {
@@ -33,6 +115,12 @@ export interface PublicWikiSection {
 }
 
 export interface PublicWikiOverview {
+  /**
+   * The organisation this documentation belongs to, so a reader (and the
+   * document title) can name it without a second request. Null when the tenant
+   * row cannot be read.
+   */
+  organisation: PublicOrganisation | null;
   /** Groups that contain at least one published page. Never empty groups. */
   sections: PublicWikiSection[];
   /** Total number of published pages across all groups. */
@@ -99,7 +187,20 @@ export const buildPublicWikiOverview = async (
     });
   }
 
-  return { sections, pageCount: pages.length };
+  const tenant = await getDb()
+    .select({ id: tenants.id, name: tenants.name })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId));
+
+  const organisation = tenant[0]
+    ? {
+        id: tenant[0].id,
+        name: tenant[0].name,
+        slug: slugifyOrganisationName(tenant[0].name),
+      }
+    : null;
+
+  return { organisation, sections, pageCount: pages.length };
 };
 
 /** Fields of a published page that are safe to hand to an anonymous reader. */

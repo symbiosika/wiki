@@ -1,18 +1,41 @@
 @import 'tailwindcss';
 
 /*
- * Documentation typography.
+ * Documentation typography and theme.
  *
  * Page content is rendered from markdown into a single `v-html` block, so the
  * element styles live here rather than as utility classes on the markup.
  * Deliberately restrained: this is a docs site, not the app UI.
+ *
+ * Dark mode follows the `.app-dark` class on <html> rather than the media
+ * query, matching the authenticated app (frontend/src/assets/base.css) so a
+ * visitor can override the OS in both. src/theme.ts sets the class.
  */
-@theme {
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+/*
+ * One set of semantic tokens, redefined for dark. The stylesheet and the
+ * components both reference only these, so the two appearances cannot drift.
+ */
+:root {
+  --color-page: white;
   --color-ink: oklch(0.25 0.01 250);
   --color-ink-muted: oklch(0.52 0.015 250);
   --color-accent: oklch(0.55 0.15 250);
   --color-line: oklch(0.92 0.005 250);
   --color-surface: oklch(0.985 0.002 250);
+  color-scheme: light;
+}
+
+:root.app-dark {
+  --color-page: oklch(0.18 0.01 250);
+  --color-ink: oklch(0.93 0.005 250);
+  --color-ink-muted: oklch(0.68 0.012 250);
+  --color-accent: oklch(0.75 0.13 250);
+  --color-line: oklch(0.31 0.012 250);
+  --color-surface: oklch(0.23 0.012 250);
+  /* native controls: scrollbars, and the search field's clear button */
+  color-scheme: dark;
 }
 
 html {
@@ -21,7 +44,7 @@ html {
 
 body {
   color: var(--color-ink);
-  background: white;
+  background: var(--color-page);
   -webkit-font-smoothing: antialiased;
 }
 

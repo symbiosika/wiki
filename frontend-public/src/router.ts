@@ -5,12 +5,12 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-rou
  *
  * The backend serves this bundle as plain static files with no SPA fallback,
  * so a history-mode deep link such as /docs/page/<id> would 404 on reload.
- * Hash routes keep every URL shareable without needing a server-side rewrite.
+ * Hash routes keep every URL shareable without a server-side rewrite.
  *
- * The tenant is part of the route because the public API is multi-tenant
- * (/api/v1/public/wiki/:tenantId/...). A deployment that serves exactly one
- * organisation can front this with a nicer URL later; that is a routing
- * concern and does not touch how visibility is decided.
+ * Organisations appear as a readable slug derived from their name
+ * (`#/acme-gmbh/…`), resolved to a tenant id through the public API. Pages keep
+ * their id: titles are neither unique nor stable, so a title-based page slug
+ * would break links on every rename.
  */
 const routes: RouteRecordRaw[] = [
   {
@@ -19,7 +19,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/StartView.vue'),
   },
   {
-    path: '/:tenantId',
+    path: '/:slug',
     component: () => import('./views/DocsLayout.vue'),
     children: [
       {

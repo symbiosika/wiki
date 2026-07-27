@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
 import {
   initTests,
@@ -26,8 +26,20 @@ const OWNER = TEST_ORG1_USER_1.id;
 let app: SymbiosikaFrameworkHonoApp;
 let teamId: string;
 
+/**
+ * Ids created by this file, so cleanup removes exactly those.
+ *
+ * A blanket delete of the tenant's pages would be simpler, but cleanup here is
+ * fire-and-forget (see below) and TEST_ORGANISATION_1 is shared with every
+ * other suite — a stray tenant-wide delete can land while the next file is
+ * building its fixtures.
+ */
+const created: string[] = [];
+
 const deleteTestPages = () =>
-  getDb().delete(knowledgeText).where(eq(knowledgeText.tenantId, TENANT));
+  created.length > 0
+    ? getDb().delete(knowledgeText).where(inArray(knowledgeText.id, created))
+    : Promise.resolve();
 
 const publish = (id: string) =>
   setKnowledgeTextPublicMode(id, "public", { tenantId: TENANT, userId: OWNER });
@@ -48,8 +60,6 @@ describe("Public Wiki Routes", () => {
 
     app = new Hono();
     definePublicWikiRoutes(app);
-
-    await deleteTestPages();
 
     const team = await testing_createTeamAndAddUsers(TENANT, [
       OWNER,
@@ -108,6 +118,14 @@ describe("Public Wiki Routes", () => {
     });
     teamInternalPage = teamPage.id;
 
+    created.push(
+      publishedRoot,
+      publishedChild,
+      excludedChild,
+      internalPage,
+      teamInternalPage
+    );
+
     await publish(publishedRoot);
     await setKnowledgeTextPublicMode(excludedChild, "excluded", {
       tenantId: TENANT,
@@ -115,9 +133,13 @@ describe("Public Wiki Routes", () => {
     });
   });
 
-  afterAll(async () => {
-    await deleteTestPages();
-    await testing_deleteTeam([teamId]);
+  // Fire and forget cleanup (Bun runtime limitation — see the backend-testing
+  // skill); scoped to this file's own rows, so a late delete cannot disturb
+  // another suite.
+  afterAll(() => {
+    deleteTestPages()
+      .then(() => testing_deleteTeam([teamId]))
+      .then(() => {});
   });
 
   describe("no authentication is required", () => {
@@ -258,6 +280,82 @@ describe("Public Wiki Routes", () => {
       );
       expect(response.status).toBe(200);
       expect(response.jsonResponse.hits.length).toBeLessThanOrEqual(25);
+    });
+  });
+
+  describe("organisation lookup by slug", () => {
+    const SLUG = "test-organisation-1"; // from TEST_ORGANISATION_1.name
+
+    test("resolves a slug to the organisation", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/by-slug/${SLUG}`,
+        undefined
+      );
+      expect(response.status).toBe(200);
+      expect(response.jsonResponse.id).toBe(TENANT);
+      expect(response.jsonResponse.slug).toBe(SLUG);
+      expect(response.jsonResponse.name).toBe(TEST_ORGANISATION_1.name);
+    });
+
+    test("accepts a slug that differs only in case or padding", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/by-slug/${SLUG.toUpperCase()}`,
+        undefined
+      );
+      expect(response.status).toBe(200);
+      expect(response.jsonResponse.id).toBe(TENANT);
+    });
+
+    test("an unknown slug returns 404", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/by-slug/no-such-organisation`,
+        undefined
+      );
+      expect(response.status).toBe(404);
+    });
+
+    test("an organisation without published pages is not resolvable", async () => {
+      // TEST_ORGANISATION_2 exists but publishes nothing, so its very
+      // existence must not be confirmable through this endpoint
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/by-slug/test-organisation-2`,
+        undefined
+      );
+      expect(response.status).toBe(404);
+    });
+
+    test("the list contains publishing organisations only", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/organisations`,
+        undefined
+      );
+      expect(response.status).toBe(200);
+
+      const ids = response.jsonResponse.organisations.map(
+        (o: { id: string }) => o.id
+      );
+      expect(ids).toContain(TENANT);
+      expect(ids).not.toContain(TEST_ORGANISATION_2.id);
+      expect(response.textResponse).not.toContain(TEST_ORGANISATION_2.name);
+    });
+
+    test("the overview names the organisation", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/${TENANT}/overview`,
+        undefined
+      );
+      expect(response.status).toBe(200);
+      expect(response.jsonResponse.organisation.id).toBe(TENANT);
+      expect(response.jsonResponse.organisation.name).toBe(
+        TEST_ORGANISATION_1.name
+      );
+      expect(response.jsonResponse.organisation.slug).toBe(SLUG);
     });
   });
 

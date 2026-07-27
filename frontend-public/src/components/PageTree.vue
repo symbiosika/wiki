@@ -23,7 +23,8 @@ interface TreeNode {
 
 const props = defineProps<{
   nodes: readonly TreeNode[]
-  tenantId: string
+  /** Organisation slug, for building page links. */
+  slug: string
   activeId: string | null
   depth?: number
 }>()
@@ -83,7 +84,7 @@ const toggle = (node: TreeNode) => {
         <span v-else class="size-3 shrink-0" aria-hidden="true" />
 
         <RouterLink
-          :to="`/${tenantId}/page/${node.id}`"
+          :to="`/${slug}/page/${node.id}`"
           class="rounded px-1 py-0.5 text-sm leading-snug hover:bg-[var(--color-surface)]"
           :class="
             node.id === activeId
@@ -98,7 +99,7 @@ const toggle = (node: TreeNode) => {
       <PageTree
         v-if="node.children.length > 0 && isOpen(node)"
         :nodes="node.children"
-        :tenant-id="tenantId"
+        :slug="slug"
         :active-id="activeId"
         :depth="depth + 1"
       />

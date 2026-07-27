@@ -39,6 +39,8 @@ import {
   getPublicWikiPage,
   searchPublicWiki,
   getPublicWikiPageImage,
+  listPublicOrganisations,
+  resolvePublicOrganisation,
 } from "../../../lib/wiki/public";
 import log from "@framework/lib/log";
 
@@ -67,6 +69,80 @@ export default function definePublicWikiRoutes(
   API_BASE_PATH: string = ""
 ) {
   const baseRoute = `${API_BASE_PATH}/public/wiki/:tenantId`;
+
+  /**
+   * GET /public/wiki/organisations
+   *
+   * Every organisation that has published at least one page. Lets the
+   * documentation site offer an entry point without asking a visitor for a
+   * tenant id.
+   *
+   * Registered before the `:tenantId` routes: those validate the parameter as
+   * a UUID, so "organisations" could never match them, but keeping the literal
+   * paths first makes that independent of validation order.
+   */
+  app.get(
+    `${API_BASE_PATH}/public/wiki/organisations`,
+    describeRoute({
+      tags: ["public-wiki"],
+      summary: "Organisations that have published pages",
+      responses: {
+        200: {
+          description: "The published organisations",
+          content: { "application/json": { schema: resolver(v.any()) } },
+        },
+      },
+    }),
+    async (c) => {
+      try {
+        const organisations = await listPublicOrganisations();
+        return c.json({ organisations }, 200, {
+          "Cache-Control": "public, max-age=60",
+        });
+      } catch (error) {
+        log.debug(`Public wiki: organisation list unavailable: ${error}`);
+        return c.json({ organisations: [] }, 200);
+      }
+    }
+  );
+
+  /**
+   * GET /public/wiki/by-slug/:slug
+   *
+   * Resolve a readable organisation slug to its tenant id. Slugs are derived
+   * from organisation names rather than stored, so this is a search, not a
+   * lookup — see lib/wiki/slug.ts.
+   */
+  app.get(
+    `${API_BASE_PATH}/public/wiki/by-slug/:slug`,
+    validator(
+      "param",
+      v.object({ slug: v.pipe(v.string(), v.minLength(1), v.maxLength(200)) })
+    ),
+    describeRoute({
+      tags: ["public-wiki"],
+      summary: "Resolve an organisation slug",
+      responses: {
+        200: {
+          description: "The organisation",
+          content: { "application/json": { schema: resolver(v.any()) } },
+        },
+        404: { description: "No published organisation matches this slug" },
+      },
+    }),
+    async (c) => {
+      const { slug } = c.req.valid("param");
+      try {
+        const organisation = await resolvePublicOrganisation(slug);
+        if (!organisation) return notFound(c, "no match", `slug ${slug}`);
+        return c.json(organisation, 200, {
+          "Cache-Control": "public, max-age=60",
+        });
+      } catch (error) {
+        return notFound(c, error, `slug ${slug}`);
+      }
+    }
+  );
 
   /**
    * GET /public/wiki/:tenantId/overview

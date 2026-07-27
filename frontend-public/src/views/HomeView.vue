@@ -9,13 +9,20 @@ import { useRoute } from 'vue-router'
 import { overviewState } from '../store'
 
 const route = useRoute()
-const tenantId = computed(() => String(route.params.tenantId ?? ''))
+const slug = computed(() => String(route.params.slug ?? ''))
 const overview = computed(() => overviewState.overview)
+
+/** The organisation names the page; "Dokumentation" alone says nothing. */
+const heading = computed(() =>
+  overviewState.organisation
+    ? `${overviewState.organisation.name} Dokumentation`
+    : 'Dokumentation',
+)
 </script>
 
 <template>
   <div>
-    <h1 class="text-3xl font-semibold">Dokumentation</h1>
+    <h1 class="text-3xl font-semibold">{{ heading }}</h1>
 
     <p v-if="overviewState.loading" class="mt-4 text-[var(--color-ink-muted)]">
       Wird geladen …
@@ -40,7 +47,7 @@ const overview = computed(() => overviewState.overview)
         <ul class="mt-3 grid gap-3 sm:grid-cols-2">
           <li v-for="page in section.pages" :key="page.id">
             <RouterLink
-              :to="`/${tenantId}/page/${page.id}`"
+              :to="`/${slug}/page/${page.id}`"
               class="block rounded-lg border border-[var(--color-line)] px-4 py-3 transition-colors hover:border-[var(--color-accent)]"
             >
               <span class="font-medium">{{ page.title }}</span>

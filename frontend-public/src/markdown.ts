@@ -62,7 +62,13 @@ const KNOWLEDGE_IMAGE = /\/files\/db\/knowledge\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/
 const WIKI_LINK = /^\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]$/
 
 export interface RenderOptions {
+  /**
+   * Tenant id — the API's identifier, used for image URLs. Distinct from
+   * `slug`, which is what appears in this app's routes.
+   */
   tenantId: string
+  /** Organisation slug, for building links to other pages. */
+  slug: string
   /** Page the content belongs to — image authorization is per page. */
   pageId: string
   /** Resolve a wiki-link target title to a published page id, or null. */
@@ -70,8 +76,8 @@ export interface RenderOptions {
 }
 
 /** Route for a page in this app (hash routing — see router.ts). */
-export const pageHref = (tenantId: string, pageId: string) =>
-  `#/${tenantId}/page/${pageId}`
+export const pageHref = (slug: string, pageId: string) =>
+  `#/${slug}/page/${pageId}`
 
 /**
  * Replace a `[[Target]]` marker with an anchor when the target is published,
@@ -89,7 +95,7 @@ const renderWikiLink = (raw: string, options: RenderOptions): string | null => {
 
   const targetId = options.resolveLink?.(target) ?? null
   if (!targetId) return `<span class="wiki-link-missing">${escaped}</span>`
-  return `<a href="${pageHref(options.tenantId, targetId)}">${escaped}</a>`
+  return `<a href="${pageHref(options.slug, targetId)}">${escaped}</a>`
 }
 
 /**

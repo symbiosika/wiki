@@ -1,22 +1,37 @@
 <script setup lang="ts">
 /**
- * Documentation chrome: header with search, sidebar with the published tree,
- * content area for the routed view.
+ * Documentation chrome: header with the organisation name, search and theme
+ * switch; sidebar with the published tree; content area for the routed view.
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { loadOverview, overviewState } from '../store'
+import { loadOrganisation, overviewState } from '../store'
 import PageTree from '../components/PageTree.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const tenantId = computed(() => String(route.params.tenantId ?? ''))
+const slug = computed(() => String(route.params.slug ?? ''))
 const activePageId = computed(() =>
   typeof route.params.pageId === 'string' ? route.params.pageId : null,
 )
 
-watch(tenantId, (id) => id && loadOverview(id), { immediate: true })
+const organisationName = computed(
+  () => overviewState.organisation?.name ?? '',
+)
+
+watch(slug, (value) => value && loadOrganisation(value), { immediate: true })
+
+// The organisation belongs in the tab title too — several open documentation
+// tabs are otherwise indistinguishable.
+watch(
+  organisationName,
+  (name) => {
+    document.title = name ? `${name} — Dokumentation` : 'Dokumentation'
+  },
+  { immediate: true },
+)
 
 const query = ref('')
 watch(
@@ -30,7 +45,7 @@ watch(
 const submitSearch = () => {
   const q = query.value.trim()
   if (!q) return
-  router.push({ name: 'search', params: { tenantId: tenantId.value }, query: { q } })
+  router.push({ name: 'search', params: { slug: slug.value }, query: { q } })
 }
 
 /** open on mobile, always visible from `lg` up */
@@ -41,7 +56,7 @@ watch(() => route.fullPath, () => (navOpen.value = false))
 <template>
   <div class="min-h-screen">
     <header
-      class="sticky top-0 z-20 border-b border-[var(--color-line)] bg-white/90 backdrop-blur"
+      class="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-page)]/90 backdrop-blur"
     >
       <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         <button
@@ -61,19 +76,34 @@ watch(() => route.fullPath, () => (navOpen.value = false))
           </svg>
         </button>
 
-        <RouterLink :to="`/${tenantId}`" class="font-semibold whitespace-nowrap">
-          Dokumentation
+        <RouterLink :to="`/${slug}`" class="min-w-0 truncate font-semibold">
+          <!--
+            Organisation first, then the generic word: on a shared installation
+            the name is what tells two documentation sites apart. It is absent
+            for the moment before the overview resolves, hence the v-if rather
+            than a placeholder that would shift the layout.
+          -->
+          <span v-if="organisationName">{{ organisationName }} </span
+          ><span class="font-normal text-[var(--color-ink-muted)]"
+            >Dokumentation</span
+          >
         </RouterLink>
 
-        <form class="ml-auto w-full max-w-sm" role="search" @submit.prevent="submitSearch">
+        <form
+          class="ml-auto w-full max-w-sm"
+          role="search"
+          @submit.prevent="submitSearch"
+        >
           <input
             v-model="query"
             type="search"
             placeholder="Suchen …"
             aria-label="Dokumentation durchsuchen"
-            class="w-full rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-accent)]"
+            class="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-page)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-accent)]"
           />
         </form>
+
+        <ThemeToggle />
       </div>
     </header>
 
@@ -85,6 +115,12 @@ watch(() => route.fullPath, () => (navOpen.value = false))
       >
         <p v-if="overviewState.loading" class="text-sm text-[var(--color-ink-muted)]">
           Wird geladen …
+        </p>
+        <p
+          v-else-if="overviewState.notFound"
+          class="text-sm text-[var(--color-ink-muted)]"
+        >
+          Diese Organisation gibt es nicht.
         </p>
         <p v-else-if="overviewState.error" class="text-sm text-[var(--color-ink-muted)]">
           {{ overviewState.error }}
@@ -103,11 +139,7 @@ watch(() => route.fullPath, () => (navOpen.value = false))
             >
               {{ section.name }}
             </h2>
-            <PageTree
-              :nodes="section.pages"
-              :tenant-id="tenantId"
-              :active-id="activePageId"
-            />
+            <PageTree :nodes="section.pages" :slug="slug" :active-id="activePageId" />
           </section>
         </nav>
       </aside>

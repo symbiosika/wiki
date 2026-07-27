@@ -9,10 +9,10 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchPage, type WikiPage } from '../api'
 import { renderMarkdown } from '../markdown'
-import { resolvePageByTitle } from '../store'
+import { overviewState, resolvePageByTitle, tenantId } from '../store'
 
 const route = useRoute()
-const tenantId = computed(() => String(route.params.tenantId ?? ''))
+const slug = computed(() => String(route.params.slug ?? ''))
 const pageId = computed(() => String(route.params.pageId ?? ''))
 
 const page = ref<WikiPage | null>(null)
@@ -22,7 +22,9 @@ const error = ref<string | null>(null)
 let inFlight: AbortController | null = null
 
 watch(
-  [tenantId, pageId],
+  // The tenant id arrives asynchronously (the slug is resolved first), so the
+  // watcher has to react to it as well as to the route.
+  [() => overviewState.organisation?.id ?? null, pageId],
   async ([tenant, id]) => {
     if (!tenant || !id) return
     inFlight?.abort()
@@ -47,7 +49,8 @@ watch(
 const html = computed(() =>
   page.value
     ? renderMarkdown(page.value.text, {
-        tenantId: tenantId.value,
+        tenantId: tenantId() ?? '',
+        slug: slug.value,
         pageId: page.value.id,
         resolveLink: resolvePageByTitle,
       })
@@ -80,7 +83,7 @@ watch(
     <div v-else-if="error">
       <h1 class="text-2xl font-semibold">Nicht verfügbar</h1>
       <p class="mt-2 text-[var(--color-ink-muted)]">{{ error }}</p>
-      <RouterLink :to="`/${tenantId}`" class="mt-4 inline-block text-[var(--color-accent)]">
+      <RouterLink :to="`/${slug}`" class="mt-4 inline-block text-[var(--color-accent)]">
         Zur Übersicht
       </RouterLink>
     </div>

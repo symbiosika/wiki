@@ -9,9 +9,12 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { search, type SearchHit } from '../api'
+import { overviewState } from '../store'
 
 const route = useRoute()
-const tenantId = computed(() => String(route.params.tenantId ?? ''))
+const slug = computed(() => String(route.params.slug ?? ''))
+// Resolved asynchronously from the slug — searching has to wait for it.
+const tenantId = computed(() => overviewState.organisation?.id ?? '')
 const query = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
 
 const hits = ref<SearchHit[]>([])
@@ -85,7 +88,7 @@ onBeforeUnmount(() => {
         class="border-b border-[var(--color-line)] pb-4 last:border-0"
       >
         <RouterLink
-          :to="`/${tenantId}/page/${hit.id}`"
+          :to="`/${slug}/page/${hit.id}`"
           class="font-medium text-[var(--color-accent)]"
         >
           {{ hit.title }}
