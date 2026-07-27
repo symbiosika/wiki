@@ -105,6 +105,21 @@
               <IconInfo class="h-3.5 w-3.5" />
               <span>{{ $t('Wiki.info.button') }}</span>
             </button>
+
+            <!--
+              published marker: icon-only, shown on every page that is
+              reachable without a login (whether published directly or through
+              an ancestor). Deliberately not a button — publishing is changed
+              in the Info popover; this only makes the state impossible to miss.
+            -->
+            <span
+              v-if="isPublic"
+              class="flex items-center rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
+              :title="$t('Wiki.public.chipHint')"
+              :aria-label="$t('Wiki.public.chipHint')"
+            >
+              <IconGlobe class="h-3.5 w-3.5" />
+            </span>
           </div>
 
           <!-- RIGHT: content actions; "Inhalt" sits flush at the far edge -->
@@ -399,6 +414,30 @@
             />
           </section>
 
+          <!--
+            public publishing. Read-only for viewers, editable for editors.
+            The hint below the select spells out the consequence, because the
+            effect is not local: publishing takes the whole subtree with it,
+            and a page can already be public through an ancestor without
+            carrying an intent of its own.
+          -->
+          <section class="flex flex-col gap-1">
+            <label class="font-medium text-surface-500 dark:text-surface-400">
+              {{ $t('Wiki.public.title') }}
+            </label>
+            <Select
+              v-model="publicModeModel"
+              :options="publicModeOptions"
+              option-label="label"
+              option-value="value"
+              :disabled="!editable"
+              class="w-full"
+            />
+            <p class="text-surface-400 dark:text-surface-500">
+              {{ publicModeHint }}
+            </p>
+          </section>
+
           <!-- per-organisation metadata (document tags) -->
           <section
             v-if="attributeDefinitions.length || attributeChips.length"
@@ -476,6 +515,7 @@ import IconSpinner from '~icons/mdi/loading'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconInfo from '~icons/mdi/information-outline'
+import IconGlobe from '~icons/mdi/earth'
 import { useToast } from 'primevue/usetoast'
 import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
@@ -852,6 +892,50 @@ const statusModel = computed<string | null>({
   get: () => page.value?.status ?? null,
   set: (value) => void setStatus(value),
 })
+
+// ----- public publishing ----------------------------------------------------
+// Three-valued on purpose: "inherit" is not the same as "internal". A page
+// below a published parent inherits public visibility, and "excluded" is the
+// only way to opt a single page (and its subtree) back out.
+
+type PublicMode = 'public' | 'excluded' | null
+
+/** `null` cannot be a Select option value, so inherit travels as a string. */
+const INHERIT = 'inherit'
+
+const publicModeOptions = computed(() => [
+  { label: t('Wiki.public.inherit'), value: INHERIT },
+  { label: t('Wiki.public.public'), value: 'public' },
+  { label: t('Wiki.public.excluded'), value: 'excluded' },
+])
+
+const setPublicMode = async (value: PublicMode) => {
+  if (!page.value || !editable.value) return
+  await wiki.savePageMeta(tenantId.value, page.value.id, { publicMode: value })
+}
+
+const publicModeModel = computed<string>({
+  get: () => page.value?.publicMode ?? INHERIT,
+  set: (value) =>
+    void setPublicMode(value === INHERIT ? null : (value as PublicMode)),
+})
+
+/**
+ * What the current setting actually means for this page. The interesting case
+ * is "inherit": whether that ends up public depends on an ancestor, so the
+ * resolved flag is the only honest thing to show.
+ */
+const publicModeHint = computed(() => {
+  const mode = page.value?.publicMode ?? null
+  if (mode === 'public') return t('Wiki.public.hintPublic')
+  if (mode === 'excluded') return t('Wiki.public.hintExcluded')
+  return page.value?.publicEffective
+    ? t('Wiki.public.hintInheritedPublic')
+    : t('Wiki.public.hintInheritedInternal')
+})
+
+/** True when this page is reachable in the public documentation site. */
+const isPublic = computed(() => page.value?.publicEffective === true)
 
 // ----- per-organisation metadata (attributes / tags) ------------------------
 // Edited inside the Info popover; the draft is seeded when that popover opens
