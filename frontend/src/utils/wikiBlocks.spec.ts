@@ -100,6 +100,24 @@ describe('editorHtmlToBlocks', () => {
   })
 })
 
+describe('page references in loaded blocks', () => {
+  test('a markdown block written by an agent becomes a real reference', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: 'Siehe [[03.03 Errichter]].' },
+    ])
+    expect(html).toContain('data-wiki-link="03.03 Errichter"')
+  })
+
+  test('saving it back stores the canonical form (no bare marker text)', () => {
+    const blocks = editorHtmlToBlocks(
+      blocksToEditorHtml([
+        { id: 'b1', type: 'html', content: '<p>Siehe [[Onboarding]].</p>' },
+      ]),
+    )
+    expect(blocks[0]!.content).toContain('data-wiki-link="Onboarding"')
+  })
+})
+
 describe('blocksAreEqual', () => {
   const a: WikiBlock[] = [{ id: '1', type: 'html', content: '<p>x</p>' }]
 
