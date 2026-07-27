@@ -183,7 +183,13 @@ watch(() => route.fullPath, () => (navOpen.value = false))
         />
       </div>
 
-      <main class="min-w-0 flex-1 py-8 lg:pl-4">
+      <!--
+        The min-height keeps the content column from collapsing to a single
+        line while a page loads. Together with `scrollbar-gutter` on <html>
+        that stops navigation from visibly resizing the layout; on its own it
+        also avoids the vertical lurch of the page shrinking and growing again.
+      -->
+      <main class="min-h-[70vh] min-w-0 flex-1 py-8 lg:pl-4">
         <RouterView />
       </main>
     </div>

@@ -47,6 +47,19 @@
 
 html {
   scroll-behavior: smooth;
+  /*
+   * Reserve the scrollbar gutter permanently.
+   *
+   * Header and content are both centred in a `max-w-6xl` container, so their
+   * position depends on the viewport width. Without this, navigating between a
+   * short and a long page adds or removes the document scrollbar and shifts
+   * the entire layout — including the sidebar — sideways by its width. The
+   * brief "Wird geladen …" placeholder makes it happen on nearly every page
+   * change, so it reads as the page twitching.
+   *
+   * Unsupported in older Safari, which simply keeps today's behaviour.
+   */
+  scrollbar-gutter: stable;
 }
 
 body {
