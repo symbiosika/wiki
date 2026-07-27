@@ -126,6 +126,22 @@ export interface WikiKnowledgeConfig {
 }
 
 /**
+ * The organisation's agent instructions, as returned by
+ * GET/PUT /knowledge/texts/agent-instructions.
+ *
+ * Stored on a hidden wiki page (so it never shows up in the tree, search or
+ * recent changes) and handed to every MCP client in the wiki overview. The
+ * page is created on first save, so the admin UI only ever deals with content.
+ */
+export interface AgentInstructions {
+  id: string
+  title: string
+  content: string
+  updatedAt: string
+  updatedBy: string | null
+}
+
+/**
  * Per-modality "extra service" flags the configured parsing service advertises
  * via its capabilities. Any flag defaults to `false` when absent. Mirrors the
  * framework `ServiceModality.features` shape (camelCase).
