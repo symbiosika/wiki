@@ -70,6 +70,62 @@ Login lokal ohne SMTP: `SMTP_HOST=console.localhost` (Default) schreibt
 Magic-Link-Mails nach `backend/logs/email/`. Testuser anlegen:
 `bash backend/framework/.scripts/testuser.sh http://localhost:3000`.
 
+## Preview-Container (alles in einem)
+
+[`Dockerfile.preview`](./Dockerfile.preview) baut ein einziges Image mit
+**PGlite + Backend + Frontend** – keine externe Datenbank, keine Secrets, kein
+Compose-Verbund. Gedacht für schlanke Preview-Deployments (PR-Previews, Demos,
+schneller Smoke-Test); für Produktion bleibt [`Dockerfile`](./Dockerfile) +
+[`docker-compose.prod.yml`](./docker-compose.prod.yml) zuständig.
+
+```bash
+git submodule update --init --recursive     # framework muss ausgecheckt sein
+
+docker build -f Dockerfile.preview -t wiki-preview .
+docker run --rm -p 3000:3000 -v wiki_preview:/data wiki-preview
+# oder:
+docker compose -f docker-compose.preview.yml up --build
+```
+
+Danach `http://localhost:3000` öffnen. Login per Magic-Link: die Mail landet
+wegen `SMTP_HOST=console.localhost` im Container-Log
+(`docker logs -f <container>`), der Link ist direkt anklickbar.
+
+Was der Container beim Start macht
+([`.docker/preview-entrypoint.sh`](./.docker/preview-entrypoint.sh)):
+
+1. **Secrets** (AES, JWT, OAuth-Introspection) beim ersten Start erzeugen und
+   in `/data/secrets.env` (0600) ablegen – danach wiederverwenden, damit
+   Sessions und verschlüsselte Tenant-Secrets Neustarts überleben. Von außen
+   gesetzte Variablen haben immer Vorrang.
+2. **PGlite** starten: eingebettete Postgres inkl. `pgvector`, über
+   pglite-socket auf `127.0.0.1:5432`. Es läuft dasselbe Skript wie bei
+   `bun run db:local`.
+3. **Migrationen** (`framework:migrate` + `app:migrate`) wie im Prod-Image.
+4. **App** starten (`bun ./dist/index.js`), bei SIGTERM wird die Datenbank
+   sauber geschlossen.
+
+Alles Zustandsbehaftete liegt unter `/data` (Datenbank, Secrets, lokale
+Uploads). Volume mounten = Preview überlebt Neustarts, Volume weglassen =
+Wegwerf-Instanz, die bei jedem Start frisch beginnt.
+
+Nützliche Env-Variablen:
+
+| Variable | Default | Bedeutung |
+| --- | --- | --- |
+| `BASE_URL` | `http://localhost:3000` | Öffentliche URL = OAuth2-Issuer, muss zur Browser-Adresse passen |
+| `APP_NAME` | `Symbiosika Wiki (Preview)` | Anzeigename (Mails, OAuth-Metadaten) |
+| `PREVIEW_DATA_DIR` | `/data` | Ablage für DB, Secrets, Uploads |
+| `PREVIEW_EMBEDDED_DB` | `auto` | `false` = externe Postgres über `POSTGRES_*` nutzen |
+| `PREVIEW_SKIP_MIGRATIONS` | `false` | Migrationen beim Start überspringen |
+| `AI_PROVIDER`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY` | – | optional; ohne Keys sind die KI-Features No-ops |
+| `SMTP_*` | Console-Modus | echten SMTP-Server statt Container-Log verwenden |
+
+Grenzen: PGlite ist eine dateibasierte Single-Process-Datenbank (deshalb
+`POSTGRES_CONNECTION_POOL_SIZE=1`) und der Container hält App und Datenbank im
+selben Prozessbaum – gut für eine Preview-Instanz, nicht für echte Last oder
+echte Daten.
+
 ## Tests
 
 ```bash
