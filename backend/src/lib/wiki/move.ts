@@ -26,6 +26,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@framework/lib/db/db-connection";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { checkKnowledgeTextWritePermission } from "@framework/lib/knowledge/knowledge-texts";
+import { propagatePublicEffectiveSafe } from "@framework/lib/knowledge/knowledge-text-public";
 import { assignPositions } from "@framework/lib/utils/fractional-index";
 
 /** The access "section" a page belongs to (personal / a team / organisation). */
@@ -168,12 +169,14 @@ export const movePage = async (
     ids.map((id) => ({ position: currentPosition.get(id) ?? null }))
   );
 
+  const reParented = (page.parentId ?? null) !== newParentId;
+
   let writes = 0;
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i]!;
     const nextPosition = positions[i]!;
     const positionChanged = (currentPosition.get(id) ?? null) !== nextPosition;
-    const parentChanged = id === pageId && (page.parentId ?? null) !== newParentId;
+    const parentChanged = id === pageId && reParented;
     if (!positionChanged && !parentChanged) continue;
 
     await db
@@ -185,6 +188,16 @@ export const movePage = async (
       )
       .where(and(eq(knowledgeText.id, id), eq(knowledgeText.tenantId, tenantId)));
     writes++;
+  }
+
+  // Re-parenting can change whether the moved subtree is publicly published:
+  // dropping an internal branch under a published parent publishes it, and
+  // pulling a branch out of one un-publishes it. Because this function writes
+  // `parentId` directly instead of going through updateKnowledgeText, the
+  // propagation that normally rides along there has to be triggered here.
+  // A pure reorder (no parent change) cannot affect publishing.
+  if (reParented) {
+    await propagatePublicEffectiveSafe(pageId, tenantId);
   }
 
   return writes;

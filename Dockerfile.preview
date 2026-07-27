@@ -1,0 +1,159 @@
+# syntax=docker/dockerfile:1
+#
+# ALL-IN-ONE PREVIEW IMAGE
+# ============================================================================
+# One container that contains everything needed to run the wiki:
+#
+#   * PGlite   – embedded Postgres (with pgvector), served over the Postgres
+#                wire protocol on 127.0.0.1:5432 inside the container. No
+#                external database, no docker-compose dependency.
+#   * backend  – the same bundled Bun server as the production image
+#                (see ./Dockerfile), built from source instead of from a
+#                GitHub Actions artifact.
+#   * frontend – the Vue SPA, built and served by the backend under
+#                /static/app (exactly like production).
+#
+# Intended for slim preview / review deployments (PR previews, demos, local
+# smoke tests) — NOT for production. PGlite is a single-process, file-backed
+# database: fine for one preview instance, not for real load or real data.
+#
+# Build (from the repository root, submodule must be checked out):
+#   git submodule update --init --recursive
+#   docker build -f Dockerfile.preview -t wiki-preview .
+#
+# Run:
+#   docker run --rm -p 3000:3000 -v wiki_preview_data:/data wiki-preview
+#
+# Everything stateful (database, generated secrets, uploads) lives in /data —
+# mount a volume to keep a preview across restarts, or leave it out for a
+# throwaway instance that resets on every start.
+# ============================================================================
+
+
+# ---------------------------------------------------------------------------
+# 1) FRONTEND – build the static SPA assets (output: dist/static/app)
+# ---------------------------------------------------------------------------
+FROM oven/bun:1 AS frontend-build
+WORKDIR /build/frontend
+
+# Dependencies first so the (slow) install layer is cached independently of
+# source changes.
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY frontend/ ./
+
+# `bun run build` = type-check + vite build. Previews only need the bundle, and
+# type checking is covered by CI, so use build-only to keep the image fast.
+RUN bun run build-only
+
+
+# ---------------------------------------------------------------------------
+# 2) BACKEND – bundle the server and assemble the same runtime layout the
+#    production image expects (see .github/workflows/build.yml → "Prepare
+#    artifact"). Keeping the layouts identical means the preview container
+#    exercises the same paths as production.
+# ---------------------------------------------------------------------------
+FROM oven/bun:1 AS backend-build
+WORKDIR /build/backend
+
+COPY backend/package.json backend/bun.lock ./
+RUN bun install --frozen-lockfile
+
+# The framework is a git submodule; it must be checked out in the build context.
+COPY backend/ ./
+
+RUN bun run build
+
+# Assemble /out exactly like the CI artifact:
+#   dist/                 bundled server
+#   static/, public/      served assets (static/app comes from the SPA build)
+#   drizzle-sql/, framework/drizzle-sql/, *.config.ts, src/db/
+#                         everything `drizzle-kit migrate` needs at runtime
+#   package.json          provides the migrate scripts run by the entrypoint
+RUN set -eux; \
+    mkdir -p /out/dist /out/static /out/public /out/drizzle-sql /out/framework/drizzle-sql /out/src/db; \
+    cp -r dist/* /out/dist/; \
+    cp -r static/* /out/static/ 2>/dev/null || true; \
+    cp -r public/* /out/public/ 2>/dev/null || true; \
+    cp drizzle.config.ts /out/; \
+    cp -r drizzle-sql/* /out/drizzle-sql/; \
+    cp framework/drizzle.config.ts /out/framework/; \
+    cp -r framework/drizzle-sql/* /out/framework/drizzle-sql/; \
+    cp -r src/db/* /out/src/db/; \
+    cp package.json /out/
+
+COPY --from=frontend-build /build/frontend/dist/static/app /out/static/app
+
+
+# ---------------------------------------------------------------------------
+# 3) PREVIEW RUNTIME – app + embedded database in a single container
+# ---------------------------------------------------------------------------
+FROM oven/bun:1 AS preview
+
+# drizzle-kit runs at container start (DB migrations) and is not part of the
+# bundled app, so install it globally. NODE_PATH lets the drizzle config files
+# (which `import { defineConfig } from "drizzle-kit"`) resolve it from the
+# global install at runtime — the artifact itself carries no node_modules.
+ENV BUN_INSTALL=/root/.bun
+ENV NODE_PATH=/root/.bun/install/global/node_modules
+RUN bun i -g drizzle-orm pg drizzle-kit
+
+# Embedded database. Kept in its own directory with a real node_modules so the
+# PGlite WASM packages resolve without relying on NODE_PATH. Versions mirror
+# backend/package.json devDependencies — the same stack `bun run db:local` uses
+# for local development.
+WORKDIR /opt/pglite
+RUN echo '{"name":"preview-pglite","private":true}' > package.json \
+ && bun add @electric-sql/pglite@^0.5.2 \
+            @electric-sql/pglite-pgvector@^0.0.3 \
+            @electric-sql/pglite-socket@^0.2.2
+
+# The database server itself is the framework's local dev script — one
+# implementation for `bun run db:local` and for this container.
+COPY backend/framework/.scripts/local-db-server.ts /opt/pglite/db-server.ts
+
+COPY .docker/preview-generate-secrets.ts .docker/preview-wait-for-db.ts /opt/preview/
+COPY .docker/preview-entrypoint.sh /usr/local/bin/preview-entrypoint.sh
+RUN chmod +x /usr/local/bin/preview-entrypoint.sh
+
+WORKDIR /usr/src/app
+COPY --from=backend-build /out ./
+
+# Defaults that make the container work with zero configuration. Every value
+# can be overridden with `docker run -e` / compose `environment:`.
+#
+# The POSTGRES_USER / _PASSWORD / _DB defaults are set by the entrypoint instead
+# — PGlite ignores authentication, and a dummy password in ENV only trips up
+# image scanners.
+ENV PREVIEW_DATA_DIR=/data \
+    # --- Database: the embedded PGlite instance on localhost ---
+    POSTGRES_HOST=127.0.0.1 \
+    POSTGRES_PORT=5432 \
+    # PGlite executes one query at a time and does not tolerate interleaved
+    # parallel queries — a pool of 1 is the documented setting for it (README).
+    POSTGRES_CONNECTION_POOL_SIZE=1 \
+    # --- App ---
+    BASE_URL=http://localhost:3000 \
+    APP_NAME="Symbiosika Wiki (Preview)" \
+    # Log to stdout only (docker logs); no rotating files in the container.
+    WRITE_DEBUG_FILES=false \
+    CRON_LOG=true \
+    # --- Email: log magic links / invites to stdout instead of sending ---
+    SMTP_HOST=console.localhost \
+    SMTP_DEBUG=true \
+    SMTP_DEFAULT_SENDER=noreply@preview.local
+
+# Database, generated secrets and local uploads.
+VOLUME ["/data"]
+
+EXPOSE 3000
+
+# Public liveness probe (framework route, registered outside the API basePath).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD bun -e "const r = await fetch('http://127.0.0.1:3000/health'); process.exit(r.ok ? 0 : 1)"
+
+# The entrypoint bootstraps secrets, starts PGlite, runs both migration sets and
+# then launches the CMD (as a child, so the database can shut down cleanly).
+ENTRYPOINT ["/usr/local/bin/preview-entrypoint.sh"]
+CMD ["bun", "./dist/index.js"]

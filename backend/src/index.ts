@@ -9,6 +9,7 @@ import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-pro
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
 import defineAppInfoRoutes from "./routes/public/app-info";
+import definePublicWikiRoutes from "./routes/public/wiki";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { aiTestJobHandler } from "./lib/ai-tests/runner";
 import { agentPostProcessorResolver } from "./lib/post-processing-agents/processor";
@@ -83,6 +84,11 @@ const server = defineServer({
       baseRoute: "",
       app: (app) => {
         defineAppInfoRoutes(app);
+        // Unauthenticated, read-only view of pages a tenant explicitly
+        // published (knowledgeText.publicMode / publicEffective). Deliberately
+        // registered here rather than in customHonoAppsWithAuth — see
+        // ./routes/public/wiki for why that is safe.
+        definePublicWikiRoutes(app);
       },
     },
   ],
