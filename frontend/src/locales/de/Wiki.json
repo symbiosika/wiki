@@ -96,6 +96,17 @@
     "verified": "Geprüft",
     "by": "von {name}"
   },
+  "public": {
+    "title": "Öffentlich",
+    "inherit": "Von übergeordneter Seite erben",
+    "public": "Öffentlich freigeben",
+    "excluded": "Von Freigabe ausnehmen",
+    "hintPublic": "Diese Seite und alle Unterseiten sind ohne Login abrufbar.",
+    "hintExcluded": "Diese Seite und ihre Unterseiten bleiben intern, auch wenn eine übergeordnete Seite freigegeben ist.",
+    "hintInheritedPublic": "Ohne Login abrufbar, weil eine übergeordnete Seite freigegeben ist.",
+    "hintInheritedInternal": "Nur intern sichtbar.",
+    "chipHint": "Öffentlich abrufbar"
+  },
   "summary": {
     "button": "Zusammenfassung",
     "hint": "KI-generierte Seitenzusammenfassung anzeigen",

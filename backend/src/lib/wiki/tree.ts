@@ -27,6 +27,13 @@ export interface WikiTreeNode {
   userId: string | null;
   tenantWide: boolean;
   updatedAt: string;
+  /**
+   * Resolved public-visibility flag (framework knowledge-text-public.ts).
+   * Surfaced so the sidebar can mark which pages are reachable without a
+   * login — inheritance means a page can be public without carrying an own
+   * intent, so this cannot be derived client-side.
+   */
+  publicEffective: boolean;
   children: WikiTreeNode[];
 }
 
@@ -53,6 +60,7 @@ const toNode = (row: KnowledgeTextListRow): WikiTreeNode => ({
   userId: row.userId ?? null,
   tenantWide: row.tenantWide ?? false,
   updatedAt: row.updatedAt,
+  publicEffective: row.publicEffective ?? false,
   children: [],
 });
 

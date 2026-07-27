@@ -96,6 +96,17 @@
     "verified": "Verified",
     "by": "by {name}"
   },
+  "public": {
+    "title": "Public",
+    "inherit": "Inherit from parent page",
+    "public": "Publish publicly",
+    "excluded": "Exclude from publishing",
+    "hintPublic": "This page and all its sub-pages are readable without a login.",
+    "hintExcluded": "This page and its sub-pages stay internal, even when a parent page is published.",
+    "hintInheritedPublic": "Readable without a login because a parent page is published.",
+    "hintInheritedInternal": "Visible internally only.",
+    "chipHint": "Publicly readable"
+  },
   "summary": {
     "button": "Summary",
     "hint": "Show the AI-generated page summary",

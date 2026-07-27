@@ -12,6 +12,13 @@ export interface WikiTreeNode {
   userId: string | null
   tenantWide: boolean
   updatedAt: string
+  /**
+   * Resolved public-visibility flag: true when this page is reachable in the
+   * public documentation site. Derived server-side from `publicMode` along the
+   * parent chain, so a page can be public without carrying an own intent.
+   * Drives the globe marker in the tree.
+   */
+  publicEffective: boolean
   children: WikiTreeNode[]
 }
 
@@ -67,6 +74,20 @@ export interface WikiPage {
   pageType: string | null
   /** Trust signal, e.g. "draft" | "verified" | "outdated". */
   status: string | null
+  // --- public publishing (see framework knowledge-text-public.ts) ---
+  /**
+   * Explicit publishing intent set by a person:
+   *   "public"    publish this page and everything below it
+   *   "excluded"  keep it internal even below a published parent
+   *   null        inherit from the parent (the default)
+   */
+  publicMode: 'public' | 'excluded' | null
+  /**
+   * Resolved result of that intent along the parent chain — the value the
+   * public API actually filters on. Read-only here; the server derives it and
+   * ignores any client-supplied value.
+   */
+  publicEffective: boolean
   /** Set when `status` transitions to "verified": when and by whom. */
   verifiedAt: string | null
   verifiedBy: string | null
@@ -123,6 +144,19 @@ export interface WikiKnowledgeConfig {
   pageTypes: string[]
   statuses: string[]
   attributes: KnowledgeAttributeDefinition[]
+}
+
+/**
+ * The organisation's agent instructions, as returned by
+ * GET/PUT /knowledge/texts/agent-instructions.
+ *
+ * Per-organisation configuration (one row, not a wiki page) handed to every
+ * MCP client as part of the wiki overview.
+ */
+export interface AgentInstructions {
+  content: string
+  updatedAt: string
+  updatedBy: string | null
 }
 
 /**

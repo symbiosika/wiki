@@ -56,6 +56,11 @@ const router = createRouter({
           component: () => import('../views/manage/document-tags.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/agent-instructions',
+          name: 'AgentInstructions',
+          component: () => import('../views/manage/agent-instructions.vue'),
+        },
+        {
           path: 'tenant/:tenantId/manage/post-processing-agents',
           name: 'PostProcessingAgents',
           component: () => import('../views/manage/post-processing-agents.vue'),
