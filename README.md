@@ -13,6 +13,13 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
   To-do-Listen) und einklappbarem Seitenbaum
   (Persönlich / Teams / Organisation) plus Organisations-/Team-/
   Einladungsverwaltung.
+- **Öffentliche Doku-Seite** (`frontend-public/`): schlanke, read-only
+  Zweitansicht für veröffentlichte Seiten — ohne Login, ohne Editor. Sie liest
+  ausschließlich die öffentliche API (`/api/v1/public/wiki/:tenantId/…`) und
+  zeigt nur, was über `publicMode` freigegeben wurde. Ausgeliefert unter
+  `/docs/` aus `backend/public/` (das Haupt-Frontend liegt dagegen hinter dem
+  Login unter `/static/app/`). Siehe
+  [`frontend-public/README.md`](./frontend-public/README.md).
 - **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
   den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
   Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
@@ -59,6 +66,11 @@ bun run dev           # Terminal 2: API auf http://localhost:3000
 cd ../frontend
 bun install
 bun run dev           # http://localhost:5173/static/app/
+
+# Öffentliche Doku-Seite (optional)
+cd ../frontend-public
+bun install
+bun run dev           # http://localhost:5174/docs/
 ```
 
 Hinweis für die lokale PGlite-DB: in `backend/.env`

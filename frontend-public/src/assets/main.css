@@ -1,0 +1,118 @@
+@import 'tailwindcss';
+
+/*
+ * Documentation typography.
+ *
+ * Page content is rendered from markdown into a single `v-html` block, so the
+ * element styles live here rather than as utility classes on the markup.
+ * Deliberately restrained: this is a docs site, not the app UI.
+ */
+@theme {
+  --color-ink: oklch(0.25 0.01 250);
+  --color-ink-muted: oklch(0.52 0.015 250);
+  --color-accent: oklch(0.55 0.15 250);
+  --color-line: oklch(0.92 0.005 250);
+  --color-surface: oklch(0.985 0.002 250);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--color-ink);
+  background: white;
+  -webkit-font-smoothing: antialiased;
+}
+
+.prose-doc {
+  line-height: 1.7;
+}
+.prose-doc > * + * {
+  margin-top: 1rem;
+}
+.prose-doc h1,
+.prose-doc h2,
+.prose-doc h3,
+.prose-doc h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2rem;
+  scroll-margin-top: 5rem;
+}
+.prose-doc h1 { font-size: 1.875rem; }
+.prose-doc h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--color-line);
+  padding-bottom: 0.35rem;
+}
+.prose-doc h3 { font-size: 1.25rem; }
+.prose-doc h4 { font-size: 1.05rem; }
+.prose-doc a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-doc a:hover { text-decoration-thickness: 2px; }
+.prose-doc ul,
+.prose-doc ol {
+  padding-left: 1.5rem;
+}
+.prose-doc ul { list-style: disc; }
+.prose-doc ol { list-style: decimal; }
+.prose-doc li + li { margin-top: 0.25rem; }
+.prose-doc code {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.875em;
+}
+.prose-doc pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+.prose-doc pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+.prose-doc blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 1rem;
+  color: var(--color-ink-muted);
+}
+.prose-doc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+}
+.prose-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.prose-doc th,
+.prose-doc td {
+  border: 1px solid var(--color-line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.prose-doc th {
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.prose-doc hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+/* A wiki link whose target is not published — plain text, not a dead link. */
+.prose-doc .wiki-link-missing {
+  color: inherit;
+}

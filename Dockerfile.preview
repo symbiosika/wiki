@@ -12,6 +12,8 @@
 #                GitHub Actions artifact.
 #   * frontend – the Vue SPA, built and served by the backend under
 #                /static/app (exactly like production).
+#   * docs     – the read-only public documentation site, served under /docs
+#                without authentication (see frontend-public/).
 #
 # Intended for slim preview / review deployments (PR previews, demos, local
 # smoke tests) — NOT for production. PGlite is a single-process, file-backed
@@ -45,6 +47,23 @@ COPY frontend/ ./
 
 # `bun run build` = type-check + vite build. Previews only need the bundle, and
 # type checking is covered by CI, so use build-only to keep the image fast.
+RUN bun run build-only
+
+
+# ---------------------------------------------------------------------------
+# 1b) PUBLIC FRONTEND – the documentation site (output: dist/public/docs)
+#
+# Separate from the SPA because it is served from a different root: the backend
+# puts ./static behind a login and hands out ./public to everyone.
+# ---------------------------------------------------------------------------
+FROM oven/bun:1 AS frontend-public-build
+WORKDIR /build/frontend-public
+
+COPY frontend-public/package.json frontend-public/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY frontend-public/ ./
+
 RUN bun run build-only
 
 
@@ -84,6 +103,7 @@ RUN set -eux; \
     cp package.json /out/
 
 COPY --from=frontend-build /build/frontend/dist/static/app /out/static/app
+COPY --from=frontend-public-build /build/frontend-public/dist/public/docs /out/public/docs
 
 
 # ---------------------------------------------------------------------------
