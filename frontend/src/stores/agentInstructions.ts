@@ -6,9 +6,7 @@ import type { AgentInstructions } from '@/types/wiki'
  * The organisation's agent instructions — the briefing every MCP client is
  * handed at the start of a session (see `get_wiki_overview`).
  *
- * Behind the scenes these live on a hidden wiki page, but the API hides that:
- * a single GET/PUT pair, and the page is created on first save. This store is
- * an uncached read/write pair for the administration area, matching
+ * An uncached read/write pair for the administration area, matching
  * `knowledgeConfig`.
  */
 const api = (tenantId: string) =>
@@ -31,7 +29,7 @@ export const useAgentInstructions = defineStore('agentInstructions', () => {
     }
   }
 
-  /** Creates the page on first call, updates it afterwards. */
+  /** Upsert: creates the row on first call, replaces the content afterwards. */
   const save = async (
     tenantId: string,
     content: string,

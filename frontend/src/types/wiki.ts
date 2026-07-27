@@ -129,13 +129,10 @@ export interface WikiKnowledgeConfig {
  * The organisation's agent instructions, as returned by
  * GET/PUT /knowledge/texts/agent-instructions.
  *
- * Stored on a hidden wiki page (so it never shows up in the tree, search or
- * recent changes) and handed to every MCP client in the wiki overview. The
- * page is created on first save, so the admin UI only ever deals with content.
+ * Per-organisation configuration (one row, not a wiki page) handed to every
+ * MCP client as part of the wiki overview.
  */
 export interface AgentInstructions {
-  id: string
-  title: string
   content: string
   updatedAt: string
   updatedBy: string | null
