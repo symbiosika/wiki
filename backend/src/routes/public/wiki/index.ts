@@ -42,6 +42,7 @@ import {
   listPublicOrganisations,
   resolvePublicOrganisation,
 } from "../../../lib/wiki/public";
+import { getOrganisationLogo } from "../../../lib/organisation-logo/store";
 import log from "@framework/lib/log";
 
 /** Longest accepted search query — bounds the work an anonymous caller buys. */
@@ -175,6 +176,49 @@ export default function definePublicWikiRoutes(
         });
       } catch (error) {
         return notFound(c, error, "overview");
+      }
+    }
+  );
+
+  /**
+   * GET /public/wiki/:tenantId/logo
+   *
+   * The organisation's logo, for the documentation header.
+   *
+   * Gated on the organisation having published something — the same rule as
+   * the lookup endpoints. Without it, a 200 here would confirm that a given
+   * tenant id exists, which nothing else on the public surface does.
+   */
+  app.get(
+    `${baseRoute}/logo`,
+    validator("param", tenantParam),
+    describeRoute({
+      tags: ["public-wiki"],
+      summary: "Logo of a publishing organisation",
+      responses: {
+        200: { description: "The logo image" },
+        404: { description: "No logo, or the organisation publishes nothing" },
+      },
+    }),
+    async (c) => {
+      const { tenantId } = c.req.valid("param");
+      try {
+        const organisations = await listPublicOrganisations();
+        if (!organisations.some((o) => o.id === tenantId)) {
+          return notFound(c, "not publishing", `logo ${tenantId}`);
+        }
+
+        const { file, contentType } = await getOrganisationLogo(tenantId);
+        return new Response(file, {
+          headers: {
+            "Content-Type": contentType || "application/octet-stream",
+            // the URL carries a ?v=<updatedAt> cache buster, so this can be
+            // cached hard without pinning a replaced logo
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      } catch (error) {
+        return notFound(c, error, `logo ${tenantId}`);
       }
     }
   );

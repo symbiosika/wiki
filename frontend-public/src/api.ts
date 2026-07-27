@@ -37,6 +37,11 @@ export interface PublicOrganisation {
   name: string
   /** Readable identifier used in this app's URLs. */
   slug: string
+  hasLogo: boolean
+  /** Timestamp used as a cache buster on the logo URL. */
+  logoUpdatedAt: string | null
+  /** Primary brand colour as `#rrggbb`, or null for the default palette. */
+  brandColor: string | null
 }
 
 export interface WikiOverview {
@@ -132,6 +137,17 @@ export const search = async (
   )
   return result.hits
 }
+
+/**
+ * URL of the organisation logo. The `v` parameter is the stored update
+ * timestamp, so a replaced logo is not served from a stale cache.
+ */
+export const logoUrl = (organisation: PublicOrganisation): string | null =>
+  organisation.hasLogo
+    ? `${API_BASE}/${organisation.id}/logo?v=${encodeURIComponent(
+        organisation.logoUpdatedAt ?? '',
+      )}`
+    : null
 
 /** URL of an image embedded in a published page. */
 export const imageUrl = (tenantId: string, pageId: string, filename: string) =>

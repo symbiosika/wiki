@@ -5,9 +5,19 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { logoUrl } from '../api'
 import { loadOrganisation, overviewState } from '../store'
 import PageTree from '../components/PageTree.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import {
+  MAX_WIDTH,
+  MIN_WIDTH,
+  isDragging,
+  nudgeSidebarWidth,
+  resetSidebarWidth,
+  sidebarWidth,
+  startSidebarDrag,
+} from '../sidebarWidth'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +29,10 @@ const activePageId = computed(() =>
 
 const organisationName = computed(
   () => overviewState.organisation?.name ?? '',
+)
+
+const logoSrc = computed(() =>
+  overviewState.organisation ? logoUrl(overviewState.organisation) : null,
 )
 
 watch(slug, (value) => value && loadOrganisation(value), { immediate: true })
@@ -54,7 +68,7 @@ watch(() => route.fullPath, () => (navOpen.value = false))
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen" :class="isDragging ? 'select-none' : ''">
     <header
       class="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-page)]/90 backdrop-blur"
     >
@@ -76,17 +90,28 @@ watch(() => route.fullPath, () => (navOpen.value = false))
           </svg>
         </button>
 
-        <RouterLink :to="`/${slug}`" class="min-w-0 truncate font-semibold">
-          <!--
-            Organisation first, then the generic word: on a shared installation
-            the name is what tells two documentation sites apart. It is absent
-            for the moment before the overview resolves, hence the v-if rather
-            than a placeholder that would shift the layout.
-          -->
-          <span v-if="organisationName">{{ organisationName }} </span
-          ><span class="font-normal text-[var(--color-ink-muted)]"
-            >Dokumentation</span
-          >
+        <!--
+          Organisation first, then the generic word: on a shared installation
+          the name is what tells two documentation sites apart.
+
+          `gap-2` supplies the spacing rather than whitespace between the two
+          spans — Vue's template compiler condenses whitespace between elements
+          across a newline, which silently glued the two words together.
+        -->
+        <RouterLink
+          :to="`/${slug}`"
+          class="flex min-w-0 items-center gap-2 font-semibold"
+        >
+          <img
+            v-if="logoSrc"
+            :src="logoSrc"
+            :alt="organisationName"
+            class="h-7 w-auto max-w-[10rem] shrink-0 object-contain"
+          />
+          <span v-if="organisationName" class="truncate">{{ organisationName }}</span>
+          <span class="hidden font-normal text-[var(--color-ink-muted)] sm:inline">
+            Dokumentation
+          </span>
         </RouterLink>
 
         <form
@@ -107,10 +132,11 @@ watch(() => route.fullPath, () => (navOpen.value = false))
       </div>
     </header>
 
-    <div class="mx-auto flex max-w-6xl gap-8 px-4">
+    <div class="mx-auto flex max-w-6xl px-4">
       <aside
-        class="w-64 shrink-0 py-6 lg:block"
+        class="shrink-0 py-6 lg:block"
         :class="navOpen ? 'block' : 'hidden'"
+        :style="{ width: `${sidebarWidth}px` }"
         aria-label="Seiten"
       >
         <p v-if="overviewState.loading" class="text-sm text-[var(--color-ink-muted)]">
@@ -144,7 +170,37 @@ watch(() => route.fullPath, () => (navOpen.value = false))
         </nav>
       </aside>
 
-      <main class="min-w-0 flex-1 py-8">
+      <!--
+        Resize handle. A wide hit area with a hairline drawn inside it, so the
+        grab target is comfortable without a thick visible divider. Focusable
+        and arrow-key operable, because a drag-only control is unusable without
+        a mouse; double-click restores the default.
+      -->
+      <div
+        class="group hidden w-4 shrink-0 cursor-col-resize touch-none items-stretch justify-center lg:flex"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-valuenow="sidebarWidth"
+        :aria-valuemin="MIN_WIDTH"
+        :aria-valuemax="MAX_WIDTH"
+        aria-label="Breite der Navigation"
+        tabindex="0"
+        @pointerdown.prevent="startSidebarDrag($event, sidebarWidth)"
+        @dblclick="resetSidebarWidth()"
+        @keydown.left.prevent="nudgeSidebarWidth(-16)"
+        @keydown.right.prevent="nudgeSidebarWidth(16)"
+      >
+        <span
+          class="my-6 w-px rounded-full transition-colors"
+          :class="
+            isDragging
+              ? 'bg-[var(--color-accent)]'
+              : 'bg-[var(--color-line)] group-hover:bg-[var(--color-accent)] group-focus:bg-[var(--color-accent)]'
+          "
+        />
+      </div>
+
+      <main class="min-w-0 flex-1 py-8 lg:pl-4">
         <RouterView />
       </main>
     </div>

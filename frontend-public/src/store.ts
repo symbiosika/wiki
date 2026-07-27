@@ -10,6 +10,7 @@
  * beyond loading it, so Pinia would only add ceremony.
  */
 import { reactive, readonly } from 'vue'
+import { applyBrandColor } from './brand'
 import {
   fetchOverview,
   resolveOrganisation,
@@ -52,6 +53,9 @@ const indexTree = (nodes: WikiTreeNode[]) => {
 }
 
 const reset = (slug: string) => {
+  // Drop the previous organisation's colour immediately; keeping it while the
+  // next one resolves would show one organisation's branding on another's page.
+  applyBrandColor(null)
   state.slug = slug
   state.organisation = null
   state.overview = null
@@ -73,6 +77,9 @@ export const loadOrganisation = async (slug: string): Promise<void> => {
   try {
     const organisation = await resolveOrganisation(slug)
     state.organisation = organisation
+    // as early as possible, so the page is not briefly painted in the default
+    // palette before the tree arrives
+    applyBrandColor(organisation.brandColor)
 
     const overview = await fetchOverview(organisation.id)
     state.overview = overview

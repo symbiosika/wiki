@@ -4,6 +4,10 @@
  *
  * The branch containing the current page is expanded on load and stays open
  * while the visitor moves around inside it.
+ *
+ * The whole row is the link, with the twisty as a separate control on top of
+ * it. That way the easy-to-hit target does the common thing (open the page)
+ * and only the small deliberate target folds the branch.
  */
 import { computed, ref, watch } from 'vue'
 
@@ -46,6 +50,7 @@ watch(
     for (const node of props.nodes) {
       if (containsActive(node)) opened.value.add(node.id)
     }
+    opened.value = new Set(opened.value)
   },
   { immediate: true },
 )
@@ -61,39 +66,68 @@ const toggle = (node: TreeNode) => {
 </script>
 
 <template>
-  <ul :class="depth === 0 ? '' : 'ml-3 border-l border-[var(--color-line)] pl-2'">
-    <li v-for="node in nodes" :key="node.id" class="py-0.5">
-      <div class="flex items-start gap-1">
+  <ul
+    :class="
+      depth === 0
+        ? ''
+        : 'ml-[11px] border-l border-[var(--color-line)] pl-1.5'
+    "
+  >
+    <li v-for="node in nodes" :key="node.id">
+      <div
+        class="group relative flex items-stretch rounded-md transition-colors"
+        :class="
+          node.id === activeId
+            ? 'bg-[var(--color-surface)]'
+            : 'hover:bg-[var(--color-hover)]'
+        "
+      >
+        <!-- twisty; a placeholder keeps leaf titles aligned with parents -->
         <button
           v-if="node.children.length > 0"
           type="button"
-          class="mt-1 shrink-0 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-          :aria-label="isOpen(node) ? 'Zuklappen' : 'Aufklappen'"
+          class="flex w-6 shrink-0 items-center justify-center rounded-l-md text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+          :aria-label="isOpen(node) ? 'Unterseiten zuklappen' : 'Unterseiten aufklappen'"
           :aria-expanded="isOpen(node)"
           @click="toggle(node)"
         >
           <svg
-            class="size-3 transition-transform"
+            class="size-3 transition-transform duration-150"
             :class="isOpen(node) ? 'rotate-90' : ''"
             viewBox="0 0 12 12"
             aria-hidden="true"
           >
-            <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M4 2l4 4-4 4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
         </button>
-        <span v-else class="size-3 shrink-0" aria-hidden="true" />
+        <span v-else class="w-6 shrink-0" aria-hidden="true" />
 
         <RouterLink
           :to="`/${slug}/page/${node.id}`"
-          class="rounded px-1 py-0.5 text-sm leading-snug hover:bg-[var(--color-surface)]"
+          class="min-w-0 flex-1 truncate py-1.5 pr-2 text-sm leading-snug"
           :class="
             node.id === activeId
-              ? 'font-semibold text-[var(--color-accent)]'
+              ? 'font-medium text-[var(--color-accent)]'
               : 'text-[var(--color-ink)]'
           "
+          :title="node.title"
         >
           {{ node.title }}
         </RouterLink>
+
+        <!-- active marker, drawn over the parent's indent guide -->
+        <span
+          v-if="node.id === activeId"
+          class="absolute inset-y-1 -left-[7px] w-0.5 rounded-full bg-[var(--color-accent)]"
+          aria-hidden="true"
+        />
       </div>
 
       <PageTree

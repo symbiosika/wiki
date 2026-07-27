@@ -50,6 +50,18 @@ Schalter im Header auf hell oder dunkel festlegen. Umgesetzt über die
 Haupt-Frontend (`wiki:theme`) — beide Apps laufen auf derselben Origin, die
 Wahl gilt also für beide.
 
+**Branding.** Logo und Primärfarbe kommen aus derselben Quelle wie im
+Haupt-Frontend (Logo-Tabelle bzw. `tenant_settings` key `branding`), damit eine
+veröffentlichte Seite aussieht wie das Wiki, aus dem sie stammt. Die Farbe wird
+nicht roh übernommen: `src/brand.ts` leitet pro Erscheinungsbild eine lesbare
+Variante ab — eine für Weiß gewählte Markenfarbe ist auf dem dunklen
+Hintergrund sonst unlesbar und umgekehrt. Ungültige Werte fallen auf die
+Standardpalette zurück.
+
+**Navigationsbreite.** Der Baum ist per Griff zwischen Sidebar und Inhalt
+verschiebbar (Tastatur: Pfeil links/rechts, Doppelklick setzt zurück). Die
+Breite wird pro Browser gemerkt.
+
 ## Inhalte
 
 `src/markdown.ts` macht drei Dinge über reines Markdown hinaus:

@@ -21,9 +21,15 @@
   --color-page: white;
   --color-ink: oklch(0.25 0.01 250);
   --color-ink-muted: oklch(0.52 0.015 250);
-  --color-accent: oklch(0.55 0.15 250);
+  /*
+   * The accent falls back to the neutral blue unless the organisation set a
+   * brand colour; src/brand.ts writes --brand-accent-* with one legible
+   * variant per appearance (see there for why the raw colour is not used).
+   */
+  --color-accent: var(--brand-accent-light, oklch(0.55 0.15 250));
   --color-line: oklch(0.92 0.005 250);
   --color-surface: oklch(0.985 0.002 250);
+  --color-hover: oklch(0.965 0.003 250);
   color-scheme: light;
 }
 
@@ -31,9 +37,10 @@
   --color-page: oklch(0.18 0.01 250);
   --color-ink: oklch(0.93 0.005 250);
   --color-ink-muted: oklch(0.68 0.012 250);
-  --color-accent: oklch(0.75 0.13 250);
+  --color-accent: var(--brand-accent-dark, oklch(0.75 0.13 250));
   --color-line: oklch(0.31 0.012 250);
   --color-surface: oklch(0.23 0.012 250);
+  --color-hover: oklch(0.26 0.014 250);
   /* native controls: scrollbars, and the search field's clear button */
   color-scheme: dark;
 }

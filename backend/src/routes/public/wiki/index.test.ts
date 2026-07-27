@@ -344,6 +344,38 @@ describe("Public Wiki Routes", () => {
       expect(response.textResponse).not.toContain(TEST_ORGANISATION_2.name);
     });
 
+    test("the payload carries branding fields with safe defaults", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/by-slug/${SLUG}`,
+        undefined
+      );
+      expect(response.status).toBe(200);
+      // no logo and no branding setting configured for the test org
+      expect(response.jsonResponse.hasLogo).toBe(false);
+      expect(response.jsonResponse.logoUpdatedAt).toBeNull();
+      expect(response.jsonResponse.brandColor).toBeNull();
+    });
+
+    test("the logo route 404s when there is no logo", async () => {
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/${TENANT}/logo`,
+        undefined
+      );
+      expect(response.status).toBe(404);
+    });
+
+    test("the logo route 404s for an organisation that publishes nothing", async () => {
+      // must not become a way to confirm that a tenant id exists
+      const response = await testFetcher.get(
+        app,
+        `/public/wiki/${TEST_ORGANISATION_2.id}/logo`,
+        undefined
+      );
+      expect(response.status).toBe(404);
+    });
+
     test("the overview names the organisation", async () => {
       const response = await testFetcher.get(
         app,

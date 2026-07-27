@@ -21,6 +21,8 @@ import { getTeamsByOrganisation } from "@framework/lib/usermanagement/teams";
 import { getDb } from "@framework/lib/db/db-connection";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { tenants } from "@framework/lib/db/schema/users";
+import { tenantSettings } from "@framework/lib/db/schema/tenant-settings";
+import { organisationLogos } from "../../db/schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import { buildTreeFromRows, type WikiTreeNode } from "./tree";
 import { slugifyOrganisationName } from "./slug";
@@ -30,6 +32,89 @@ export interface PublicOrganisation {
   id: string
   name: string
   slug: string
+  /**
+   * Whether a logo exists, and when it last changed — the documentation site
+   * turns this into `…/logo?v=<updatedAt>` so a replaced logo is not served
+   * from a stale cache. The bytes come from the separate logo route.
+   */
+  hasLogo: boolean
+  logoUpdatedAt: string | null
+  /**
+   * Primary brand colour as `#rrggbb`, or null. The same `branding` tenant
+   * setting the authenticated app themes itself with, so a published site
+   * matches the wiki it came from.
+   */
+  brandColor: string | null
+}
+
+/** Tenant setting the authenticated app stores its brand colours under. */
+const BRANDING_SETTING_KEY = 'branding'
+
+const HEX = /^#?[0-9a-fA-F]{6}$/
+
+type Branding = {
+  brandColor: string | null
+  hasLogo: boolean
+  logoUpdatedAt: string | null
+}
+
+/**
+ * Brand colour and logo metadata for a set of organisations — two queries in
+ * total rather than two per organisation.
+ *
+ * The colour is validated rather than trusted: it ends up in a CSS custom
+ * property on a public page, and it is written through a generic key-value
+ * settings endpoint that has no idea what a colour is.
+ */
+const loadBranding = async (
+  organisationIds: string[]
+): Promise<Map<string, Branding>> => {
+  const result = new Map<string, Branding>()
+  if (organisationIds.length === 0) return result
+
+  for (const id of organisationIds) {
+    result.set(id, { brandColor: null, hasLogo: false, logoUpdatedAt: null })
+  }
+
+  const settings = await getDb()
+    .select({
+      tenantId: tenantSettings.tenantId,
+      valueJson: tenantSettings.valueJson,
+    })
+    .from(tenantSettings)
+    .where(
+      and(
+        inArray(tenantSettings.tenantId, organisationIds),
+        eq(tenantSettings.key, BRANDING_SETTING_KEY)
+      )
+    )
+
+  for (const setting of settings) {
+    const primary = (setting.valueJson as { primary?: unknown } | null)?.primary
+    if (typeof primary === 'string' && HEX.test(primary.trim())) {
+      const hex = primary.trim()
+      const entry = result.get(setting.tenantId)
+      if (entry) entry.brandColor = hex.startsWith('#') ? hex : `#${hex}`
+    }
+  }
+
+  const logos = await getDb()
+    .select({
+      organisationId: organisationLogos.organisationId,
+      updatedAt: organisationLogos.updatedAt,
+    })
+    .from(organisationLogos)
+    .where(inArray(organisationLogos.organisationId, organisationIds))
+
+  for (const logo of logos) {
+    const entry = result.get(logo.organisationId)
+    if (entry) {
+      entry.hasLogo = true
+      entry.logoUpdatedAt = logo.updatedAt
+    }
+  }
+
+  return result
 }
 
 /**
@@ -56,11 +141,18 @@ export const listPublicOrganisations = async (): Promise<
       )
     );
 
+  const branding = await loadBranding(rows.map((row) => row.id));
+
   return rows
     .map((row) => ({
       id: row.id,
       name: row.name,
       slug: slugifyOrganisationName(row.name),
+      ...(branding.get(row.id) ?? {
+        hasLogo: false,
+        logoUpdatedAt: null,
+        brandColor: null,
+      }),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -192,13 +284,18 @@ export const buildPublicWikiOverview = async (
     .from(tenants)
     .where(eq(tenants.id, tenantId));
 
-  const organisation = tenant[0]
-    ? {
-        id: tenant[0].id,
-        name: tenant[0].name,
-        slug: slugifyOrganisationName(tenant[0].name),
-      }
-    : null;
+  let organisation: PublicOrganisation | null = null;
+  if (tenant[0]) {
+    const branding = (await loadBranding([tenant[0].id])).get(tenant[0].id);
+    organisation = {
+      id: tenant[0].id,
+      name: tenant[0].name,
+      slug: slugifyOrganisationName(tenant[0].name),
+      hasLogo: branding?.hasLogo ?? false,
+      logoUpdatedAt: branding?.logoUpdatedAt ?? null,
+      brandColor: branding?.brandColor ?? null,
+    };
+  }
 
   return { organisation, sections, pageCount: pages.length };
 };
