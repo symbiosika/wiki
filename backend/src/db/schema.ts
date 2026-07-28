@@ -41,7 +41,7 @@ const bytea = customType<{ data: Buffer; default: false }>({
 
 export const organisationLogos = pgBaseTable("organisation_logos", {
   /** the tenant this logo belongs to — one logo per organisation */
-  organisationId: uuid("organisation_id").primaryKey(),
+  tenantId: uuid("tenant_id").primaryKey(),
   image: bytea("image").notNull(),
   contentType: text("content_type").notNull(),
   fileName: text("file_name").notNull(),
@@ -87,7 +87,7 @@ export const urlImportJobs = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     name: text("name").notNull(),
     /** standard 5-field Linux cron expression */
     cron: text("cron").notNull(),
@@ -109,7 +109,7 @@ export const urlImportJobs = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("url_import_jobs_org_idx").on(table.organisationId),
+    index("url_import_jobs_org_idx").on(table.tenantId),
     index("url_import_jobs_enabled_idx").on(table.enabled),
   ],
 );
@@ -123,7 +123,7 @@ export const urlImportJobUrls = pgBaseTable(
     jobId: uuid("job_id")
       .notNull()
       .references(() => urlImportJobs.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     url: text("url").notNull(),
     /** optional title override (otherwise the parsed page title is used) */
     title: text("title"),
@@ -162,7 +162,7 @@ export const urlImportJobRuns = pgBaseTable(
     jobId: uuid("job_id")
       .notNull()
       .references(() => urlImportJobs.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /** "manual" | "scheduled" */
     trigger: text("trigger").notNull(),
     status: text("status").notNull().default("running"),
@@ -256,7 +256,7 @@ export const postProcessingAgents = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /** display name, unique per organisation */
     name: text("name").notNull(),
     /** shown in pickers */
@@ -277,9 +277,9 @@ export const postProcessingAgents = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("post_processing_agents_org_idx").on(table.organisationId),
+    index("post_processing_agents_org_idx").on(table.tenantId),
     uniqueIndex("post_processing_agents_org_name_idx").on(
-      table.organisationId,
+      table.tenantId,
       table.name,
     ),
   ],
@@ -308,7 +308,7 @@ export type PostProcessingAgentInsert =
 // trajectories/judge reports are large, the UI drills down per question, and
 // per-question time series need `WHERE question_id = …`.
 //
-// Everything is scoped by organisationId (== tenantId). A run executes with
+// Everything is scoped by tenantId (== tenantId). A run executes with
 // the permissions of the user who started it, so it only ever sees the wiki
 // pages that user can see.
 // ---------------------------------------------------------------------------
@@ -346,7 +346,7 @@ export const aiTestSuites = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     name: text("name").notNull(),
     description: text("description"),
     /** optional OpenRouter model override for the *judge* (never the chat agent) */
@@ -364,7 +364,7 @@ export const aiTestSuites = pgBaseTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("ai_test_suites_org_idx").on(table.organisationId)],
+  (table) => [index("ai_test_suites_org_idx").on(table.tenantId)],
 );
 
 export const aiTestQuestions = pgBaseTable(
@@ -376,7 +376,7 @@ export const aiTestQuestions = pgBaseTable(
     suiteId: uuid("suite_id")
       .notNull()
       .references(() => aiTestSuites.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     question: text("question").notNull(),
     /** one of AI_TEST_QUESTION_TYPES */
     type: text("type").notNull().default("answerable"),
@@ -411,7 +411,7 @@ export const aiTestRuns = pgBaseTable(
     suiteId: uuid("suite_id")
       .notNull()
       .references(() => aiTestSuites.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     status: text("status").notNull().default("running"),
     /** the user whose permissions the run executes with (required) */
     startedBy: uuid("started_by").notNull(),
@@ -450,7 +450,7 @@ export const aiTestResults = pgBaseTable(
     runId: uuid("run_id")
       .notNull()
       .references(() => aiTestRuns.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /**
      * The question this result came from. `set null` + a text snapshot below
      * so a per-question time series survives the question being edited or

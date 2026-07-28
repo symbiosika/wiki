@@ -52,7 +52,7 @@ afterAll(() => {
 
 describe("URL import runner", () => {
   test("imports good URLs, records failures, finishes partial", async () => {
-    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const ctx = { tenantId: TEST_ORGANISATION_1.id, userId };
     const job = await createImportJob(ctx, {
       name: "Test job",
       cron: "*/15 * * * *",
@@ -124,7 +124,7 @@ describe("URL import runner", () => {
     // session. A tenant owner may set up a team-scoped import without being a
     // member of that team, so the run must not fail the per-user team-role
     // check ("User has not the required role").
-    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const ctx = { tenantId: TEST_ORGANISATION_1.id, userId };
     const team = await createTeam({
       name: "Import target team",
       tenantId: TEST_ORGANISATION_1.id,
@@ -163,7 +163,7 @@ describe("URL import runner", () => {
   });
 
   test("files imports under an on-demand subpath and reuses shared ancestors", async () => {
-    const ctx = { organisationId: TEST_ORGANISATION_1.id, userId };
+    const ctx = { tenantId: TEST_ORGANISATION_1.id, userId };
     const job = await createImportJob(ctx, {
       name: "Categorized job",
       cron: "*/15 * * * *",

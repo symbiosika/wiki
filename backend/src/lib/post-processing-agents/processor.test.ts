@@ -37,10 +37,10 @@ describe("agent post-processor bridge", () => {
     await initTests();
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org));
+      .where(eq(postProcessingAgents.tenantId, org));
 
     const agent = await createAgent(
-      { organisationId: org },
+      { tenantId: org },
       { name: "Bridge test", prompt: "clean it up" },
     );
     agentId = agent.id;
@@ -50,7 +50,7 @@ describe("agent post-processor bridge", () => {
   afterAll(() => {
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org))
+      .where(eq(postProcessingAgents.tenantId, org))
       .then(() => {});
   });
 
@@ -108,7 +108,7 @@ describe("agent post-processor bridge", () => {
 
   test("a disabled agent fails cleanly (throws)", async () => {
     const disabled = await createAgent(
-      { organisationId: org },
+      { tenantId: org },
       { name: "Disabled one", prompt: "x", enabled: false },
     );
     let threw = false;

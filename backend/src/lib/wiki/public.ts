@@ -100,14 +100,14 @@ const loadBranding = async (
 
   const logos = await getDb()
     .select({
-      organisationId: organisationLogos.organisationId,
+      tenantId: organisationLogos.tenantId,
       updatedAt: organisationLogos.updatedAt,
     })
     .from(organisationLogos)
-    .where(inArray(organisationLogos.organisationId, organisationIds))
+    .where(inArray(organisationLogos.tenantId, organisationIds))
 
   for (const logo of logos) {
-    const entry = result.get(logo.organisationId)
+    const entry = result.get(logo.tenantId)
     if (entry) {
       entry.hasLogo = true
       entry.logoUpdatedAt = logo.updatedAt

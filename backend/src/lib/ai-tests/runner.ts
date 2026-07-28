@@ -64,7 +64,7 @@ export const enqueueRun = async (
     .insert(aiTestRuns)
     .values({
       suiteId,
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       status: "running",
       startedBy: ctx.userId,
       judgeModelId: suite.judgeModelId ?? null,
@@ -73,7 +73,7 @@ export const enqueueRun = async (
     .returning();
   const run = runRows[0]!;
 
-  await createJob(AI_TEST_JOB_TYPE, { runId: run.id }, ctx.organisationId);
+  await createJob(AI_TEST_JOB_TYPE, { runId: run.id }, ctx.tenantId);
   return run;
 };
 
@@ -155,7 +155,7 @@ export const executeRun = async (runId: string): Promise<void> => {
       const startedAt = Date.now();
       try {
         const agentResult = await runAgentForQuestion({
-          tenantId: run.organisationId,
+          tenantId: run.tenantId,
           userId: run.startedBy,
           question: question.question,
           stepLimit: suite.stepLimit,
@@ -204,7 +204,7 @@ export const executeRun = async (runId: string): Promise<void> => {
 
         await db.insert(aiTestResults).values({
           runId,
-          organisationId: run.organisationId,
+          tenantId: run.tenantId,
           questionId: question.id,
           questionText: question.question,
           questionType: question.type,
@@ -253,7 +253,7 @@ export const executeRun = async (runId: string): Promise<void> => {
         log.error(`AI test question ${question.id} failed: ${message}`);
         await db.insert(aiTestResults).values({
           runId,
-          organisationId: run.organisationId,
+          tenantId: run.tenantId,
           questionId: question.id,
           questionText: question.question,
           questionType: question.type,

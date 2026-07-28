@@ -3,7 +3,7 @@
  *
  * A suite owns a list of test questions and a run history. This module is the
  * CRUD layer; runner.ts drives the actual evaluation. Everything is scoped by
- * `organisationId` (== tenantId) so one tenant can never read or mutate
+ * `tenantId` (== tenantId) so one tenant can never read or mutate
  * another tenant's suites.
  */
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
@@ -21,7 +21,7 @@ import {
 } from "../../db/schema";
 
 export interface AiTestContext {
-  organisationId: string;
+  tenantId: string;
   userId?: string;
 }
 
@@ -50,7 +50,7 @@ export const createSuite = async (
   const rows = await getDb()
     .insert(aiTestSuites)
     .values({
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       name: input.name,
       description: input.description ?? null,
       judgeModelId: input.judgeModelId ?? null,
@@ -67,7 +67,7 @@ export const listSuites = async (
   getDb()
     .select()
     .from(aiTestSuites)
-    .where(eq(aiTestSuites.organisationId, ctx.organisationId))
+    .where(eq(aiTestSuites.tenantId, ctx.tenantId))
     .orderBy(desc(aiTestSuites.createdAt));
 
 export const getSuite = async (
@@ -80,7 +80,7 @@ export const getSuite = async (
     .where(
       and(
         eq(aiTestSuites.id, suiteId),
-        eq(aiTestSuites.organisationId, ctx.organisationId),
+        eq(aiTestSuites.tenantId, ctx.tenantId),
       ),
     )
     .limit(1);
@@ -196,7 +196,7 @@ export const setQuestions = async (
         .insert(aiTestQuestions)
         .values({
           suiteId,
-          organisationId: ctx.organisationId,
+          tenantId: ctx.tenantId,
           ...values,
         })
         .returning();
@@ -242,7 +242,7 @@ export const bulkAddQuestions = async (
     .values(
       lines.map((question, i) => ({
         suiteId,
-        organisationId: ctx.organisationId,
+        tenantId: ctx.tenantId,
         question,
         type: normalizedType,
         sortOrder: base + i,

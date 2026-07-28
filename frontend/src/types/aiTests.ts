@@ -21,7 +21,7 @@ export type AiTestClaimVerdict = 'supported' | 'unsupported' | 'contradicted'
 
 export interface AiTestSuite {
   id: string
-  organisationId: string
+  tenantId: string
   name: string
   description: string | null
   judgeModelId: string | null
@@ -37,7 +37,7 @@ export interface AiTestSuite {
 export interface AiTestQuestion {
   id: string
   suiteId: string
-  organisationId: string
+  tenantId: string
   question: string
   type: AiTestQuestionType
   expectedPageIds: string[]
@@ -64,7 +64,7 @@ export interface AiTestRunAggregates {
 export interface AiTestRun {
   id: string
   suiteId: string
-  organisationId: string
+  tenantId: string
   status: AiTestRunStatus
   startedBy: string
   judgeModelId: string | null
@@ -141,7 +141,7 @@ export interface AiTestScores {
 export interface AiTestResult {
   id: string
   runId: string
-  organisationId: string
+  tenantId: string
   questionId: string | null
   questionText: string
   questionType: AiTestQuestionType

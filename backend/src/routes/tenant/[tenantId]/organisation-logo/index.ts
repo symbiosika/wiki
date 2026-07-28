@@ -7,7 +7,7 @@
  *   DELETE /tenant/:tenantId/logo         remove the logo (admins/owners)
  *
  * Reads are open to all tenant members (the header shows the logo to everyone);
- * writes require an admin or owner. Every operation is scoped by organisationId
+ * writes require an admin or owner. Every operation is scoped by tenantId
  * in the store layer, so a member of tenant A can never touch tenant B's logo.
  */
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
