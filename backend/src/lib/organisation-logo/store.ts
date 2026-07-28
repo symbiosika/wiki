@@ -4,7 +4,7 @@
  * The framework's `tenants` table lives in the submodule and can't be extended
  * from the app, so the logo is kept in an app-side table keyed 1:1 by the
  * organisation id (see db/schema.ts). Every read and write is scoped by
- * `organisationId`, so one tenant can never read or overwrite another's logo.
+ * `tenantId`, so one tenant can never read or overwrite another's logo.
  *
  * The image is expected to be cropped to the header aspect ratio on the client
  * before upload; here we only enforce a hard size cap as a safety net.
@@ -28,7 +28,7 @@ const nowIso = () => new Date().toISOString();
  * Insert or replace the logo of an organisation.
  */
 export const upsertOrganisationLogo = async (
-  organisationId: string,
+  tenantId: string,
   file: File
 ): Promise<void> => {
   if (file.size > MAX_LOGO_BYTES) {
@@ -44,13 +44,13 @@ export const upsertOrganisationLogo = async (
   await getDb()
     .insert(organisationLogos)
     .values({
-      organisationId,
+      tenantId,
       image: buffer,
       contentType: file.type,
       fileName: file.name,
     })
     .onConflictDoUpdate({
-      target: organisationLogos.organisationId,
+      target: organisationLogos.tenantId,
       set: {
         image: buffer,
         contentType: file.type,
@@ -64,12 +64,12 @@ export const upsertOrganisationLogo = async (
  * Get the logo of an organisation. Throws when none is set.
  */
 export const getOrganisationLogo = async (
-  organisationId: string
+  tenantId: string
 ): Promise<OrganisationLogoFile> => {
   const rows = await getDb()
     .select()
     .from(organisationLogos)
-    .where(eq(organisationLogos.organisationId, organisationId))
+    .where(eq(organisationLogos.tenantId, tenantId))
     .limit(1);
 
   const row = rows[0];
@@ -89,12 +89,12 @@ export const getOrganisationLogo = async (
  * `?v=` cache buster.
  */
 export const getOrganisationLogoInfo = async (
-  organisationId: string
+  tenantId: string
 ): Promise<{ exists: boolean; updatedAt: string | null }> => {
   const rows = await getDb()
     .select({ updatedAt: organisationLogos.updatedAt })
     .from(organisationLogos)
-    .where(eq(organisationLogos.organisationId, organisationId))
+    .where(eq(organisationLogos.tenantId, tenantId))
     .limit(1);
 
   const row = rows[0];
@@ -105,11 +105,11 @@ export const getOrganisationLogoInfo = async (
  * Remove the logo of an organisation. Returns true when a row was deleted.
  */
 export const deleteOrganisationLogo = async (
-  organisationId: string
+  tenantId: string
 ): Promise<boolean> => {
   const deleted = await getDb()
     .delete(organisationLogos)
-    .where(eq(organisationLogos.organisationId, organisationId))
-    .returning({ organisationId: organisationLogos.organisationId });
+    .where(eq(organisationLogos.tenantId, tenantId))
+    .returning({ tenantId: organisationLogos.tenantId });
   return deleted.length > 0;
 };

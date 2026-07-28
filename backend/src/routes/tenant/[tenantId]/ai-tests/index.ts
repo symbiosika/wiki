@@ -15,7 +15,7 @@
  *   DELETE /ai-tests/suites/:suiteId/runs/:runId    delete a run
  *
  * All routes are authenticated and tenant-scoped (isTenantMember). Every suite
- * operation is additionally scoped by organisationId in the lib layer, so a
+ * operation is additionally scoped by tenantId in the lib layer, so a
  * member of tenant A can never touch tenant B's suites.
  */
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
@@ -124,7 +124,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId } = c.req.valid("param");
-      const suites = await listSuites({ organisationId: tenantId });
+      const suites = await listSuites({ tenantId: tenantId });
       return c.json(suites);
     },
   );
@@ -146,7 +146,7 @@ export default function defineAiTestRoutes(
       const { tenantId } = c.req.valid("param");
       const body = c.req.valid("json");
       const suite = await createSuite(
-        { organisationId: tenantId, userId: c.get("usersId") },
+        { tenantId: tenantId, userId: c.get("usersId") },
         body,
       );
       return c.json(suite);
@@ -167,7 +167,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const [questions, runs] = await Promise.all([
         listQuestions(suiteId),
@@ -194,7 +194,7 @@ export default function defineAiTestRoutes(
       const { tenantId, suiteId } = c.req.valid("param");
       const body = c.req.valid("json");
       const suite = await updateSuite(
-        { organisationId: tenantId },
+        { tenantId: tenantId },
         suiteId,
         body,
       );
@@ -217,7 +217,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
-      const deleted = await deleteSuite({ organisationId: tenantId }, suiteId);
+      const deleted = await deleteSuite({ tenantId: tenantId }, suiteId);
       if (!deleted) throw new HTTPException(404, { message: "Suite not found" });
       return c.json({ success: true });
     },
@@ -239,10 +239,10 @@ export default function defineAiTestRoutes(
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
       const { questions } = c.req.valid("json");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const saved = await setQuestions(
-        { organisationId: tenantId },
+        { tenantId: tenantId },
         suiteId,
         questions,
       );
@@ -266,7 +266,7 @@ export default function defineAiTestRoutes(
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
       const { text, type } = c.req.valid("json");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const existing = await listQuestions(suiteId);
       const incoming = text.split("\n").filter((l) => l.trim()).length;
@@ -276,7 +276,7 @@ export default function defineAiTestRoutes(
         });
       }
       const saved = await bulkAddQuestions(
-        { organisationId: tenantId },
+        { tenantId: tenantId },
         suiteId,
         text,
         type,
@@ -300,7 +300,7 @@ export default function defineAiTestRoutes(
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
       const run = await enqueueRun(
-        { organisationId: tenantId, userId: c.get("usersId") },
+        { tenantId: tenantId, userId: c.get("usersId") },
         suiteId,
       );
       if (!run) throw new HTTPException(404, { message: "Suite not found" });
@@ -322,7 +322,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId } = c.req.valid("param");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const runs = await listRuns(suiteId);
       return c.json(runs);
@@ -343,7 +343,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId, runId } = c.req.valid("param");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const run = await getRun(suiteId, runId);
       if (!run) throw new HTTPException(404, { message: "Run not found" });
@@ -366,7 +366,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId, runId } = c.req.valid("param");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const run = await cancelRun(suiteId, runId);
       if (!run) throw new HTTPException(404, { message: "Run not found" });
@@ -388,7 +388,7 @@ export default function defineAiTestRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, suiteId, runId } = c.req.valid("param");
-      const suite = await getSuite({ organisationId: tenantId }, suiteId);
+      const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
       const deleted = await deleteRun(suiteId, runId);
       if (!deleted) throw new HTTPException(404, { message: "Run not found" });

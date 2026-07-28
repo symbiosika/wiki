@@ -39,20 +39,20 @@ describe("Post-processing agent routes", () => {
 
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org));
+      .where(eq(postProcessingAgents.tenantId, org));
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org2));
+      .where(eq(postProcessingAgents.tenantId, org2));
   });
 
   afterAll(() => {
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org))
+      .where(eq(postProcessingAgents.tenantId, org))
       .then(() => {});
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org2))
+      .where(eq(postProcessingAgents.tenantId, org2))
       .then(() => {});
   });
 

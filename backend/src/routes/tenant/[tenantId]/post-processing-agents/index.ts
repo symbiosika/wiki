@@ -9,7 +9,7 @@
  *   POST   /post-processing-agents/:id/test-run  run against sample text (no persist)
  *
  * All routes are authenticated and tenant-scoped (isTenantMember). Every agent
- * operation is additionally scoped by organisationId in the lib layer, so a
+ * operation is additionally scoped by tenantId in the lib layer, so a
  * member of tenant A can never read, mutate, or run tenant B's agents. Read
  * endpoints are open to all tenant members so the import dialog can list agents.
  */
@@ -93,7 +93,7 @@ export default function definePostProcessingAgentRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId } = c.req.valid("param");
-      const agents = await listAgents({ organisationId: tenantId });
+      const agents = await listAgents({ tenantId: tenantId });
       return c.json(agents);
     },
   );
@@ -116,7 +116,7 @@ export default function definePostProcessingAgentRoutes(
       const body = c.req.valid("json");
       try {
         const agent = await createAgent(
-          { organisationId: tenantId, userId: c.get("usersId") },
+          { tenantId: tenantId, userId: c.get("usersId") },
           body,
         );
         // Immediately selectable via usePostProcessors: ["agent:<id>"] — the
@@ -142,7 +142,7 @@ export default function definePostProcessingAgentRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, id } = c.req.valid("param");
-      const agent = await getAgentById({ organisationId: tenantId }, id);
+      const agent = await getAgentById({ tenantId: tenantId }, id);
       if (!agent) throw new HTTPException(404, { message: "Agent not found" });
       return c.json(agent);
     },
@@ -165,7 +165,7 @@ export default function definePostProcessingAgentRoutes(
       const { tenantId, id } = c.req.valid("param");
       const body = c.req.valid("json");
       try {
-        const agent = await updateAgent({ organisationId: tenantId }, id, body);
+        const agent = await updateAgent({ tenantId: tenantId }, id, body);
         if (!agent) throw new HTTPException(404, { message: "Agent not found" });
         return c.json(agent);
       } catch (e) {
@@ -189,7 +189,7 @@ export default function definePostProcessingAgentRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, id } = c.req.valid("param");
-      const deleted = await deleteAgent({ organisationId: tenantId }, id);
+      const deleted = await deleteAgent({ tenantId: tenantId }, id);
       if (!deleted) throw new HTTPException(404, { message: "Agent not found" });
       return c.json({ success: true });
     },
@@ -211,7 +211,7 @@ export default function definePostProcessingAgentRoutes(
     async (c) => {
       const { tenantId, id } = c.req.valid("param");
       const { text, title } = c.req.valid("json");
-      const agent = await getAgentById({ organisationId: tenantId }, id);
+      const agent = await getAgentById({ tenantId: tenantId }, id);
       if (!agent) throw new HTTPException(404, { message: "Agent not found" });
       try {
         const result = await runPostProcessingAgent({

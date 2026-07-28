@@ -65,7 +65,7 @@ export const enqueueRun = async (
     .insert(urlImportJobRuns)
     .values({
       jobId,
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       trigger,
       status: "running",
       total: urls.length,
@@ -78,7 +78,7 @@ export const enqueueRun = async (
   await createJob(
     URL_IMPORT_JOB_TYPE,
     { runId: run.id, jobId },
-    ctx.organisationId,
+    ctx.tenantId,
   );
 
   return run;
@@ -124,7 +124,7 @@ const resolveWikiPath = async (
       .from(knowledgeText)
       .where(
         and(
-          eq(knowledgeText.tenantId, job.organisationId),
+          eq(knowledgeText.tenantId, job.tenantId),
           eq(knowledgeText.title, title),
           parentId
             ? eq(knowledgeText.parentId, parentId)
@@ -143,7 +143,7 @@ const resolveWikiPath = async (
     let id = existing[0]?.id;
     if (!id) {
       const page = await createKnowledgeText({
-        tenantId: job.organisationId,
+        tenantId: job.tenantId,
         userId: ownerUserId,
         createdBy: job.createdBy ?? undefined,
         teamId: job.teamId ?? undefined,
@@ -228,13 +228,13 @@ export const executeJobRun = async (runId: string): Promise<void> => {
         // through the tenant-scoped PDF parser instead of being rejected.
         const parsed = await urlToMarkdown(entry.url, {
           parseContext: {
-            tenantId: job.organisationId,
+            tenantId: job.tenantId,
             userId: job.createdBy ?? undefined,
             teamId: job.teamId ?? undefined,
           },
         });
         const upsert = await upsertKnowledgeTextFromSource({
-          tenantId: job.organisationId,
+          tenantId: job.tenantId,
           sourceIdentifier: entry.url,
           matchScope: { urlImportJobId: job.id },
           title: entry.title || parsed.title || entry.url,
@@ -374,7 +374,7 @@ export const tickScheduler = async (now: Date = new Date()): Promise<void> => {
     try {
       await enqueueRun(
         {
-          organisationId: job.organisationId,
+          tenantId: job.tenantId,
           userId: job.createdBy ?? undefined,
         },
         job.id,
