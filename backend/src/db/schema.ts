@@ -109,7 +109,7 @@ export const urlImportJobs = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("url_import_jobs_org_idx").on(table.tenantId),
+    index("url_import_jobs_tenant_idx").on(table.tenantId),
     index("url_import_jobs_enabled_idx").on(table.enabled),
   ],
 );
@@ -277,8 +277,8 @@ export const postProcessingAgents = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("post_processing_agents_org_idx").on(table.tenantId),
-    uniqueIndex("post_processing_agents_org_name_idx").on(
+    index("post_processing_agents_tenant_idx").on(table.tenantId),
+    uniqueIndex("post_processing_agents_tenant_name_idx").on(
       table.tenantId,
       table.name,
     ),
@@ -364,7 +364,7 @@ export const aiTestSuites = pgBaseTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("ai_test_suites_org_idx").on(table.tenantId)],
+  (table) => [index("ai_test_suites_tenant_idx").on(table.tenantId)],
 );
 
 export const aiTestQuestions = pgBaseTable(

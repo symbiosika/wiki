@@ -43,6 +43,13 @@
       "when": 1785229599442,
       "tag": "0005_demonic_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785230563089,
+      "tag": "0006_narrow_korvac",
+      "breakpoints": true
     }
   ]
 }
