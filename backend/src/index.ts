@@ -30,6 +30,7 @@ const publicWikiEnabled = isPublicWikiEnabled();
 const server = defineServer({
   port: 3000,
   jwtExpiresAfter: 60 * 60 * 24 * 30, // 30 days
+  magicLinkTtl: 60 * 60 * 24, // 24 hours
   // Display name of the app (used in emails, OAuth metadata, …). Override
   // with the APP_NAME env var, e.g. APP_NAME=Wiki for shorter email names.
   appName: process.env.APP_NAME ?? "Symbiosika Wiki",
@@ -54,6 +55,10 @@ const server = defineServer({
   oauth2: {
     enabled: true,
     introspectionSecret: process.env.OAUTH_INTROSPECTION_SECRET,
+    // The one-time code emailed during MCP/OAuth login (entered in the same
+    // browser window). Kept longer than the framework's 10m default so a
+    // user has time to fetch it from their inbox.
+    emailLoginCodeTtl: 60 * 60, // 1 hour
     // Scopes granted to dynamically registered clients (RFC 7591) that omit
     // `scope` in their registration request — e.g. the claude.ai MCP
     // connector. Kept narrow: only identity plus the knowledge scopes the
