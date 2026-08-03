@@ -41,7 +41,7 @@ services:
 
       # --- Microsoft 365 login (optional) ---
       # Both values set = extra "Mit Microsoft 365 anmelden" button on the login
-      # page. Redirect URI in Entra ID: ${BASE_URL}/api/v1/auth/microsoft/callback
+      # page. Redirect URI in Entra ID: ${BASE_URL}/api/v1/user/auth/microsoft/callback
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}

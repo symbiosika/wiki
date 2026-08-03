@@ -54,7 +54,7 @@ services:
       # With both values set, the login page shows an additional
       # "Mit Microsoft 365 anmelden" button (the magic link stays available).
       # Redirect URI to register in Entra ID:
-      #   ${BASE_URL}/api/v1/auth/microsoft/callback
+      #   ${BASE_URL}/api/v1/user/auth/microsoft/callback
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       # Directory to authenticate against: tenant GUID (single organisation),

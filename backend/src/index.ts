@@ -9,7 +9,6 @@ import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-pro
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
 import defineAppInfoRoutes from "./routes/public/app-info";
-import defineMicrosoftLoginRoutes from "./routes/public/microsoft-login";
 import definePublicWikiRoutes from "./routes/public/wiki";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { aiTestJobHandler } from "./lib/ai-tests/runner";
@@ -105,12 +104,6 @@ const server = defineServer({
       baseRoute: "",
       app: (app) => {
         defineAppInfoRoutes(app);
-        // "Mit Microsoft anmelden" on the login page. Active only when
-        // MICROSOFT_CLIENT_ID/_SECRET are configured; the routes themselves
-        // bounce back to the login page otherwise. Registered in addition to
-        // (not instead of) the magic-link login — see
-        // ./lib/auth/microsoft-oauth.ts.
-        defineMicrosoftLoginRoutes(app);
         // Unauthenticated, read-only view of pages a tenant explicitly
         // published (knowledgeText.publicMode / publicEffective). Deliberately
         // registered here rather than in customHonoAppsWithAuth — see

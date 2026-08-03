@@ -101,15 +101,18 @@ MICROSOFT_TENANT_ID=<Directory (tenant) ID>
 In der Entra-App als Redirect-URI (Plattform „Web“) exakt hinterlegen:
 
 ```
-<BASE_URL>/api/v1/auth/microsoft/callback
+<BASE_URL>/api/v1/user/auth/microsoft/callback
 ```
 
 Benötigte Delegated Permissions: `openid`, `profile`, `email`, `User.Read`.
-Angemeldet wird über die E-Mail-Adresse des Microsoft-Kontos: existiert ein
-Account mit dieser Adresse, wird er verwendet (egal ob er ursprünglich per
-Magic-Link entstanden ist), andernfalls wird er wie bei der Magic-Link-
-Registrierung neu angelegt – inklusive Invitation-Code-Regeln und offener
-Organisations-Einladungen.
+
+Der Login läuft über die Framework-Endpunkte `/api/v1/user/auth/microsoft`
+(Start) und `/api/v1/user/auth/microsoft/callback` (Rückkehr, setzt die
+Auth-Cookies). Angemeldet wird über die E-Mail-Adresse des Microsoft-Kontos:
+existiert ein Account mit dieser Adresse, wird er verwendet (egal ob er
+ursprünglich per Magic-Link entstanden ist), andernfalls wird er neu angelegt –
+inklusive offener Organisations-Einladungen. Details siehe
+`backend/framework/docs/framework/2_BuildIn_Usermanagement.md`.
 
 ## Preview-Container (alles in einem)
 

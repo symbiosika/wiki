@@ -248,11 +248,12 @@
       const oauthMicrosoft = document.getElementById('oauth-microsoft');
       const microsoftLoginBtn = document.getElementById('microsoft-login-btn');
 
-      // German wording for the error codes the Microsoft login redirects with
+      // German wording for the error codes the framework's social login
+      // appends to this page's URL (see routes/user/public.ts)
       const OAUTH_ERRORS = {
-        microsoft_unavailable: 'Die Anmeldung mit Microsoft 365 ist auf diesem Server nicht aktiv.',
-        microsoft_cancelled: 'Die Anmeldung mit Microsoft 365 wurde abgebrochen.',
-        microsoft_failed: 'Die Anmeldung mit Microsoft 365 ist fehlgeschlagen. Bitte erneut versuchen oder den Anmeldelink per E-Mail nutzen.',
+        oauth_unavailable: 'Die Anmeldung mit Microsoft 365 ist auf diesem Server nicht aktiv.',
+        oauth_cancelled: 'Die Anmeldung mit Microsoft 365 wurde abgebrochen.',
+        oauth_failed: 'Die Anmeldung mit Microsoft 365 ist fehlgeschlagen. Bitte erneut versuchen oder den Anmeldelink per E-Mail nutzen.',
       };
 
       // Show the Microsoft button only where the server has the provider
@@ -278,7 +279,7 @@
         const { redirect } = parseQueryString();
         microsoftLoginBtn.disabled = true;
         window.location.href =
-          '/api/v1/auth/microsoft/login?redirectUrl=' + encodeURIComponent(redirect);
+          '/api/v1/user/auth/microsoft?redirectUrl=' + encodeURIComponent(redirect);
       });
 
       // The e-mail address the user is currently signing in with
