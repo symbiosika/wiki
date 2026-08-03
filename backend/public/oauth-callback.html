@@ -85,40 +85,31 @@
         }, type === 'success' ? 2500 : 4000);
       }
 
-      (async () => {
+      (() => {
         const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
         const redirect = params.get('redirectUrl') || '/static/app/';
 
-        if (!token) {
+        // Nothing to exchange here any more: the callback route
+        // (/api/v1/user/auth/<provider>/callback) has already set the HttpOnly
+        // `jwt` cookie plus the non-HttpOnly `jwt_present` marker, so the
+        // session token never travels through a URL. This page only confirms
+        // the login and forwards.
+        const signedIn = document.cookie
+          .split(';')
+          .some((entry) => entry.trim().startsWith('jwt_present='));
+
+        if (!signedIn) {
           hideEl('loading');
           showEl('error');
-          document.getElementById('error-text').textContent = 'Kein Token gefunden. Bitte versuchen Sie die Anmeldung erneut.';
+          document.getElementById('error-text').textContent =
+            'Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.';
           return;
         }
 
-        try {
-          const res = await fetch('/api/v1/user/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: '', password: '', magicLinkToken: token }),
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || 'Anmeldung fehlgeschlagen');
-          }
-
-          hideEl('loading');
-          showEl('success');
-          showToast('Anmeldung erfolgreich', 'success');
-          setTimeout(() => { window.location.href = redirect; }, 2000);
-        } catch (err) {
-          hideEl('loading');
-          showEl('error');
-          document.getElementById('error-text').textContent = err.message || 'Anmeldung fehlgeschlagen';
-          showToast('Anmeldung fehlgeschlagen', 'error');
-        }
+        hideEl('loading');
+        showEl('success');
+        showToast('Anmeldung erfolgreich', 'success');
+        setTimeout(() => { window.location.href = redirect; }, 1200);
       })();
     </script>
   </body>
