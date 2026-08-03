@@ -82,6 +82,35 @@ Login lokal ohne SMTP: `SMTP_HOST=console.localhost` (Default) schreibt
 Magic-Link-Mails nach `backend/logs/email/`. Testuser anlegen:
 `bash backend/framework/.scripts/testuser.sh http://localhost:3000`.
 
+### Anmeldung mit Microsoft 365 (optional)
+
+Sind Client-ID **und** Secret einer Entra-ID-App gesetzt, zeigt die
+Anmeldeseite direkt auf der ersten Stufe zusätzlich den Button
+„Mit Microsoft 365 anmelden“. Der Magic-Link-Login bleibt unverändert
+verfügbar – die Microsoft-Anmeldung kommt nur dazu. Fehlt eine der beiden
+Variablen, erscheint der Button nicht.
+
+```env
+MICROSOFT_CLIENT_ID=<Application (client) ID>
+MICROSOFT_CLIENT_SECRET=<Client Secret>
+# Verzeichnis: Tenant-GUID (nur eigene Organisation), `organizations`
+# oder `common` (Default, jedes Microsoft-Konto)
+MICROSOFT_TENANT_ID=<Directory (tenant) ID>
+```
+
+In der Entra-App als Redirect-URI (Plattform „Web“) exakt hinterlegen:
+
+```
+<BASE_URL>/api/v1/auth/microsoft/callback
+```
+
+Benötigte Delegated Permissions: `openid`, `profile`, `email`, `User.Read`.
+Angemeldet wird über die E-Mail-Adresse des Microsoft-Kontos: existiert ein
+Account mit dieser Adresse, wird er verwendet (egal ob er ursprünglich per
+Magic-Link entstanden ist), andernfalls wird er wie bei der Magic-Link-
+Registrierung neu angelegt – inklusive Invitation-Code-Regeln und offener
+Organisations-Einladungen.
+
 ## Preview-Container (alles in einem)
 
 [`Dockerfile.preview`](./Dockerfile.preview) baut ein einziges Image mit

@@ -50,6 +50,25 @@
                 Weiter
               </button>
             </form>
+
+            <!--
+              Microsoft 365 sign-in. Hidden until GET /api/v1/user/oauth-providers
+              reports the provider as active, so instances without an Entra app
+              show the plain e-mail login and nothing else. Additional to the
+              magic link, never a replacement.
+            -->
+            <div id="oauth-microsoft" class="hidden">
+              <div class="divider"><span>oder</span></div>
+              <button type="button" id="microsoft-login-btn" class="btn btn-oauth">
+                <svg class="btn-icon" viewBox="0 0 23 23" aria-hidden="true">
+                  <path fill="#f25022" d="M1 1h10v10H1z" />
+                  <path fill="#7fba00" d="M12 1h10v10H12z" />
+                  <path fill="#00a4ef" d="M1 12h10v10H1z" />
+                  <path fill="#ffb900" d="M12 12h10v10H12z" />
+                </svg>
+                Mit Microsoft 365 anmelden
+              </button>
+            </div>
           </div>
 
           <!-- Step 2: Anmeldeart wählen -->
@@ -226,6 +245,41 @@
       const changeEmailBtn = document.getElementById('change-email-btn');
       const methodEmailLabel = document.getElementById('method-email-label');
       const methodHint = document.getElementById('method-hint');
+      const oauthMicrosoft = document.getElementById('oauth-microsoft');
+      const microsoftLoginBtn = document.getElementById('microsoft-login-btn');
+
+      // German wording for the error codes the Microsoft login redirects with
+      const OAUTH_ERRORS = {
+        microsoft_unavailable: 'Die Anmeldung mit Microsoft 365 ist auf diesem Server nicht aktiv.',
+        microsoft_cancelled: 'Die Anmeldung mit Microsoft 365 wurde abgebrochen.',
+        microsoft_failed: 'Die Anmeldung mit Microsoft 365 ist fehlgeschlagen. Bitte erneut versuchen oder den Anmeldelink per E-Mail nutzen.',
+      };
+
+      // Show the Microsoft button only where the server has the provider
+      // configured. Failing silently is intended: without the button the
+      // e-mail login remains fully usable.
+      async function initOAuthProviders() {
+        try {
+          const response = await fetch('/api/v1/user/oauth-providers', {
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) return;
+
+          const providers = await response.json();
+          if (providers && providers.microsoft) {
+            oauthMicrosoft.classList.remove('hidden');
+          }
+        } catch (error) {
+          /* provider probe failed – keep the e-mail login only */
+        }
+      }
+
+      microsoftLoginBtn.addEventListener('click', () => {
+        const { redirect } = parseQueryString();
+        microsoftLoginBtn.disabled = true;
+        window.location.href =
+          '/api/v1/auth/microsoft/login?redirectUrl=' + encodeURIComponent(redirect);
+      });
 
       // The e-mail address the user is currently signing in with
       let currentEmail = '';
@@ -456,6 +510,14 @@
       // Main execution - check for token
       (async () => {
         const { token, redirect, email } = parseQueryString();
+
+        // Report a failed Microsoft round-trip before anything else
+        const oauthError = new URLSearchParams(window.location.search).get('error');
+        if (oauthError && OAUTH_ERRORS[oauthError]) {
+          showToast(OAUTH_ERRORS[oauthError], 'error');
+        }
+
+        initOAuthProviders();
 
         // Prefill email from URL (invitation links) and lock the field
         if (email) {
