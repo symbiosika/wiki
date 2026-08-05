@@ -19,6 +19,7 @@ import {
   isPublicWikiEnabled,
   publicWikiStaticExclusions,
 } from "./lib/wiki/public-flag";
+import { hasNulByteInPath } from "./lib/http/request-path-guard";
 
 /**
  * Operator switch for the public documentation surface (PUBLIC_WIKI_ENABLED).
@@ -147,7 +148,19 @@ const server = defineServer({
 // WebSocket-agnostic. Adding the `websocket` handler here makes Bun dispatch
 // socket events to the handlers registered by `upgradeWebSocket` (see the
 // protocol realtime route). Both halves come from the same shared instance.
+//
+// `fetch` is wrapped so paths that no file can have (a NUL byte, the classic
+// `…/etc/passwd%00` scanner probe) are answered 400 here instead of throwing
+// deep inside the static handler and being logged as a server error — see
+// ./lib/http/request-path-guard.
 export default {
   ...server,
+  fetch: (request: Request, ...rest: unknown[]) =>
+    hasNulByteInPath(request.url)
+      ? new Response("Bad Request", { status: 400 })
+      : (server.fetch as (...args: unknown[]) => Response | Promise<Response>)(
+          request,
+          ...rest
+        ),
   websocket,
 };
