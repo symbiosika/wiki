@@ -214,6 +214,11 @@ export function registerWriteTools(mcp: any): void {
         "(copy it verbatim, including the blank lines between them) removes them " +
         "all at once. `newString` may contain [[Page Title]] references " +
         "(write them plainly, never escaped) — they become real page links. " +
+        "Keep `newString` otherwise PLAIN TEXT: a page edited in the web editor " +
+        "stores rich text, which cannot carry markdown written into it — no " +
+        "line breaks, lists or headings (use `append_to_page` for a new " +
+        "paragraph). Such an edit is rejected rather than applied badly, and " +
+        "the page is left untouched. " +
         "Returns the number of replacements and the new content. " +
         "Fails (409) if the string is missing or ambiguous. For adding at the " +
         "end, `append_to_page` is simpler and safer.",
