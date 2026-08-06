@@ -62,10 +62,16 @@ describe("Wiki Routes", () => {
     teamId = team.teamId;
   });
 
+  // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+  // The trailing `.catch` is what keeps a late failure contained: this chain
+  // outlives the file, and the team delete in particular has been seen to hit
+  // the single-connection PGlite socket while the next file is already
+  // querying. Unhandled, that rejection is counted as an error by Bun and
+  // fails the whole run under a different file's name.
   afterAll(() => {
     deleteWikiTestPages()
       .then(() => testing_deleteTeam([teamId]))
-      .then(() => {});
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("Unauthorized access is rejected", async () => {

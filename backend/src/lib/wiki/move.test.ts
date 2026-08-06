@@ -65,9 +65,13 @@ describe("movePage — public visibility propagation", () => {
 
   // Fire and forget cleanup (Bun runtime limitation — see the backend-testing
   // skill); scoped to this file's own rows, so a late delete cannot disturb
-  // another suite.
+  // another suite. `.catch` rather than `.then`: a rejection after the file is
+  // done would otherwise land as an unhandled rejection between test files,
+  // which Bun counts as an error and turns into exit code 1.
   afterAll(() => {
-    deleteTestPages().then(() => {});
+    deleteTestPages().catch((error) =>
+      console.warn("afterAll cleanup failed:", error)
+    );
   });
 
   test("moving an internal subtree under a published parent publishes it", async () => {
