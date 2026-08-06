@@ -34,8 +34,12 @@ describe("Protocol Routes", () => {
     await cleanup();
   });
 
+  // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+  // `.catch` rather than `.then`: a rejection after the file is done would
+  // otherwise land as an unhandled rejection between test files, which Bun
+  // counts as an error and turns into exit code 1.
   afterAll(() => {
-    cleanup().then(() => {});
+    cleanup().catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("unauthenticated create is rejected", async () => {

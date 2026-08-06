@@ -46,14 +46,19 @@ describe("Post-processing agent routes", () => {
   });
 
   afterAll(() => {
+    // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+    // `.catch` rather than `.then`: an unawaited cleanup that rejects after the
+    // file is done becomes an unhandled rejection between test files, which Bun
+    // counts as an error and turns into exit code 1 — blamed on whichever file
+    // happened to be running.
     getDb()
       .delete(postProcessingAgents)
       .where(eq(postProcessingAgents.tenantId, org))
-      .then(() => {});
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
     getDb()
       .delete(postProcessingAgents)
       .where(eq(postProcessingAgents.tenantId, org2))
-      .then(() => {});
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("rejects an empty prompt", async () => {

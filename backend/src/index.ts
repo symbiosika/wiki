@@ -20,6 +20,15 @@ import {
   publicWikiStaticExclusions,
 } from "./lib/wiki/public-flag";
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
+import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
+
+/**
+ * Operational instrumentation (boot/crash/signal events, heartbeat, slow and
+ * failed requests). Started before the server is defined so a crash *during*
+ * startup — a bad env var, an unreachable database — is recorded too.
+ * See ./lib/diagnostics and docs/bad-gateway-debugging.md.
+ */
+startDiagnostics();
 
 /**
  * Operator switch for the public documentation surface (PUBLIC_WIKI_ENABLED).
@@ -153,14 +162,20 @@ const server = defineServer({
 // `…/etc/passwd%00` scanner probe) are answered 400 here instead of throwing
 // deep inside the static handler and being logged as a server error — see
 // ./lib/http/request-path-guard.
+const guardedFetch = (request: Request, ...rest: unknown[]) =>
+  hasNulByteInPath(request.url)
+    ? new Response("Bad Request", { status: 400 })
+    : (server.fetch as (...args: unknown[]) => Response | Promise<Response>)(
+        request,
+        ...rest
+      );
+
+// The diagnostics wrapper goes outermost, so it sees every request — including
+// the ones the guard above refuses and the ones that arrive before the
+// framework has registered any route (it waits for the database). That is the
+// vantage point a "Bad Gateway" investigation needs; see ./lib/diagnostics.
 export default {
   ...server,
-  fetch: (request: Request, ...rest: unknown[]) =>
-    hasNulByteInPath(request.url)
-      ? new Response("Bad Request", { status: 400 })
-      : (server.fetch as (...args: unknown[]) => Response | Promise<Response>)(
-          request,
-          ...rest
-        ),
+  fetch: withDiagnostics(guardedFetch),
   websocket,
 };
