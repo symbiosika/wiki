@@ -114,6 +114,16 @@ ursprünglich per Magic-Link entstanden ist), andernfalls wird er neu angelegt �
 inklusive offener Organisations-Einladungen. Details siehe
 `backend/framework/docs/framework/2_BuildIn_Usermanagement.md`.
 
+Verlangt die Instanz Einladungscodes (aktive Einträge in `invitation_codes`),
+legt eine unbekannte Adresse **keinen** Account an, auch nicht per Microsoft:
+das verifizierte Profil parkt für 15 Minuten in einem HttpOnly-Cookie und der
+Browser landet wieder auf `/login.html?provider=microsoft`. Dort fragt die
+letzte Stufe der Anmeldeseite den Einladungscode ab und schickt ihn an
+`POST /api/v1/user/oauth/complete-registration`; erst das erzeugt den Account.
+Liegt für die Adresse eine offene Organisations-Einladung vor, entfällt der
+Umweg. Ein falscher Code kann bis zum Ablauf beliebig oft neu eingegeben
+werden.
+
 ## Preview-Container (alles in einem)
 
 [`Dockerfile.preview`](./Dockerfile.preview) baut ein einziges Image mit
