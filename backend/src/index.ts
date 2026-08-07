@@ -47,6 +47,11 @@ const server = defineServer({
   basePath: "/api/v1",
   loginUrl: "/login.html",
   magicLoginVerifyUrl: "/magic-login-verify.html",
+  // A social login for an unknown address on an instance that requires an
+  // invitation code lands back on our own login page (the framework appends
+  // `?provider=…`), where the last step asks for the code instead of shipping
+  // a second, separately styled page.
+  oauthInvitationCodeUrl: "/login.html",
   staticPublicDataPath: "./public",
   staticPrivateDataPath: "./static",
   // With the public documentation switched off, the bundle stays in the image
