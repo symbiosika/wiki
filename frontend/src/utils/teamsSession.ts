@@ -35,7 +35,11 @@ export const teamsState = reactive<{
   status: TeamsStatus
   /** Address the Entra token was issued for; shown on the invitation-code step. */
   email: string
-  /** User-facing reason for `error`, already translated by the caller. */
+  /**
+   * Raw failure reason for `error` — a Teams SDK error code or the server's
+   * response body. Kept for diagnosis (console, bug reports); the gate shows a
+   * translated message instead, because these strings are not user-facing.
+   */
   message: string
 }>({
   status: 'idle',
@@ -228,13 +232,6 @@ export const refreshTeamsSession = async (): Promise<boolean> => {
   sessionToken = null
   const status = await bootstrapTeamsSession()
   return status === 'authenticated'
-}
-
-/** Drop the in-memory session (used by the "signed out" path in Teams). */
-export const clearTeamsSession = (): void => {
-  sessionToken = null
-  pendingRegistrationToken = null
-  teamsState.status = 'idle'
 }
 
 /* ── Theme ───────────────────────────────────────────────────────────────── */
