@@ -72,9 +72,29 @@ Das ZIP in Teams unter „Apps → Manage your apps → Upload an app" hochladen
 Voraussetzung: Custom App Upload / Sideloading ist im Tenant erlaubt (Teams Admin
 Center).
 
-Das ZIP muss **flach** sein — Manifest und Icons direkt im Wurzelverzeichnis. Ein
-Paket mit Unterordner wird beim Upload mit einer generischen Fehlermeldung
-abgelehnt; genau dafür gibt es das Skript (`zip -j`).
+Das Skript prüft vorher das Manifest und packt dann flach (`zip -j`). Beides,
+weil Teams an zwei Stellen streng ist und der Fehler jeweils erst beim Upload
+auffällt:
+
+- **Flaches ZIP.** Manifest und Icons direkt im Wurzelverzeichnis; ein Paket mit
+  Unterordner wird mit einer generischen Meldung abgelehnt.
+- **Keine unbekannten Felder.** Das Schema setzt `additionalProperties: false`.
+  Ein einziger nicht vorgesehener Schlüssel führt zu „Das App-Manifest aus Ihrem
+  App-Paket konnte nicht analysiert werden". `packageName` etwa gehört **nicht**
+  zu v1.17, auch wenn es in älteren Beispielen auftaucht.
+
+Die Prüfung im Skript vergleicht die Top-Level-Schlüssel mit der
+Property-Liste von v1.17 und stellt sicher, dass die Pflichtfelder da sind. Sie
+ist kein vollständiger Validator — für den kompletten Abgleich:
+
+```bash
+curl -sO https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json
+pip install jsonschema && python3 -c "
+import json, jsonschema
+jsonschema.Draft7Validator(json.load(open('MicrosoftTeams.schema.json'))).validate(
+    json.load(open('docs/teams-app/manifest.json')))
+print('valide')"
+```
 
 **Für eine andere Instanz** zu ersetzen:
 
