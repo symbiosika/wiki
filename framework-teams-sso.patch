@@ -47,10 +47,10 @@ index fbae1ad..1e7d086 100644
            root: staticPrivateDataPath,
            rewriteRequestPath: (path) => path.replace(/^\/static/, "/"),
 diff --git a/src/lib/utils/hono-middlewares.ts b/src/lib/utils/hono-middlewares.ts
-index ce14b6b..93680f5 100644
+index ce14b6b..b285217 100644
 --- a/src/lib/utils/hono-middlewares.ts
 +++ b/src/lib/utils/hono-middlewares.ts
-@@ -114,6 +114,17 @@ export async function checkUserPermission(c: Context, next: Function) {
+@@ -114,6 +114,29 @@ export async function checkUserPermission(c: Context, next: Function) {
    // await next();
  }
  
@@ -65,27 +65,40 @@ index ce14b6b..93680f5 100644
 +const isWebSocketUpgrade = (c: Context): boolean =>
 +  (c.req.header("Upgrade") ?? "").toLowerCase() === "websocket";
 +
++/**
++ * Does this string have the shape of a JWT?
++ *
++ * Used to tell the two kinds of credential in `?token=` apart: a session JWT has
++ * three base64url segments, an API token is a `nanoid` and never contains a dot.
++ * The distinction has to be made *before* either path runs — resolving an API
++ * token hits the database, and verifying a JWT needs the value to be one — so
++ * the shape is checked rather than the outcome.
++ */
++const looksLikeJwt = (value: string): boolean =>
++  value.split(".").length === 3;
++
  /**
   * HONO Middleware to check the JWT token
   */
-@@ -136,8 +147,20 @@ export const checkToken = async (c: Context) => {
+@@ -136,8 +159,21 @@ export const checkToken = async (c: Context) => {
  
      let jwtToken = "";
  
 -    // check if there is a "token=xxx" set in the URL request
 -    if (token || xApiKey) {
-+    if (token && isWebSocketUpgrade(c)) {
++    if (token && isWebSocketUpgrade(c) && looksLikeJwt(token)) {
 +      // A browser cannot set headers on a WebSocket handshake — `new WebSocket()`
 +      // takes a URL and nothing else — so a client that authenticates with a
 +      // bearer token (an SPA embedded in Microsoft Teams, where the session
 +      // cookie is cross-site and never sent) has no way to open a socket other
 +      // than putting its session token in the query string.
 +      //
-+      // Accepted for the upgrade request only. Everywhere else `?token=` keeps
-+      // meaning "service token" and a session JWT is rejected, so this cannot
-+      // become a general "session in the URL" mode: URLs end up in proxy logs,
-+      // browser history and referrers, and a plain GET is far easier to leak
-+      // than a handshake.
++      // Narrow on purpose, in two directions. Only on an upgrade request, so
++      // this cannot become a general "session in the URL" mode — URLs end up in
++      // proxy logs, browser history and referrers, and a plain GET is far easier
++      // to leak than a handshake. And only for something shaped like a JWT, so
++      // an API token in `?token=` keeps being resolved the way it always was,
++      // sockets included.
 +      jwtToken = token;
 +    } else if (token || xApiKey) {
        const tokenToUse: string = token || xApiKey || "";
@@ -336,14 +349,19 @@ index 986d617..be41f5c 100644
        segments.length >= needle.length &&
 diff --git a/src/lib/utils/ws-token-auth.test.ts b/src/lib/utils/ws-token-auth.test.ts
 new file mode 100644
-index 0000000..5365eae
+index 0000000..fcfd6ed
 --- /dev/null
 +++ b/src/lib/utils/ws-token-auth.test.ts
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,112 @@
 +import { describe, test, expect, beforeAll } from "bun:test";
 +import { Hono } from "hono";
 +import type { SFContextVariables } from "../../types";
-+import { initTests } from "../../test/init.test";
++import {
++  initTests,
++  TEST_ORG1_USER_1,
++  TEST_ORGANISATION_1,
++} from "../../test/init.test";
++import { createApiToken } from "../auth/token-auth";
 +import { authAndSetUsersInfo } from "./hono-middlewares";
 +
 +/**
@@ -367,11 +385,20 @@ index 0000000..5365eae
 +const WS_HEADERS = { Upgrade: "websocket", Connection: "Upgrade" };
 +
 +let sessionToken: string;
++let apiToken: string;
 +
 +describe("WebSocket auth via query token", () => {
 +  beforeAll(async () => {
 +    const { user1Token } = await initTests();
 +    sessionToken = user1Token;
++
++    const created = await createApiToken({
++      name: "ws-token-auth-test",
++      userId: TEST_ORG1_USER_1.id,
++      tenantId: TEST_ORGANISATION_1.id,
++      scopes: ["knowledge:read"],
++    });
++    apiToken = created.token;
 +  });
 +
 +  test("a session token in the query authenticates a WebSocket handshake", async () => {
@@ -412,6 +439,28 @@ index 0000000..5365eae
 +    const response = await app.request("/socket", {
 +      headers: { ...WS_HEADERS, Authorization: `Bearer ${sessionToken}` },
 +    });
++
++    expect(response.status).toBe(200);
++  });
++
++  test("an API token in the query keeps working on a handshake", async () => {
++    // The pre-existing meaning of `?token=`: a service token, resolved against
++    // the database. Sockets have always been able to use it, and the session-JWT
++    // branch must not take that away — hence the shape check in front of it (an
++    // API token is a nanoid and contains no dot).
++    const response = await app.request(
++      `/socket?token=${encodeURIComponent(apiToken)}`,
++      { headers: WS_HEADERS }
++    );
++
++    expect(response.status).toBe(200);
++    expect(((await response.json()) as any).userId).toBe(TEST_ORG1_USER_1.id);
++  });
++
++  test("an API token in the query keeps working without an upgrade", async () => {
++    const response = await app.request(
++      `/socket?token=${encodeURIComponent(apiToken)}`
++    );
 +
 +    expect(response.status).toBe(200);
 +  });

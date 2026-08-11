@@ -6,13 +6,14 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > ## STATUS: gepusht, PR offen
 >
 > **PR:** https://github.com/symbiosika/symbiosika-framework/pull/120
-> (`claude/teams-sso-support` → `develop`, Commit `61dc95b`, Basis `cfae1a3`)
+> (`claude/teams-sso-support` → `develop`, Commits `61dc95b` + `54d343e`,
+> Basis `cfae1a3`)
 >
 > Getestet: `bun run test:local ./framework/src/lib/utils/static-exclude.test.ts`
 > → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 5 pass. Die
 > Wiki-App nutzt die Bausteine end-to-end (siehe `docs/teams-app.md`).
 >
-> **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `61dc95b`,
+> **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `54d343e`,
 > gepusht wurde er unverändert aus dem Submodul heraus. Solange der PR auf dem
 > Branch liegt, ist der Wiki-Branch also baubar — kein Re-Point nötig.
 >
@@ -25,7 +26,7 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > ```
 >
 > Der Patch `framework-teams-sso.patch` im Wiki-Repo-Root bleibt als
-> zeilengenauer Diff (`git diff cfae1a3..61dc95b`) zum Nachlesen liegen.
+> zeilengenauer Diff (`git diff cfae1a3..54d343e`) zum Nachlesen liegen.
 
 ## Warum
 
@@ -92,19 +93,24 @@ Login.
 (`generateTemporaryJwtFromToken`). Neu: liegt ein `Upgrade: websocket`-Header vor,
 wird der Wert als Session-JWT verwendet.
 
-Die Einschränkung ist der Punkt: `Upgrade` ist ein *forbidden header name* — aus
+Zwei Einschränkungen. Erstens `Upgrade`: ein *forbidden header name* — aus
 Seiten-JavaScript nicht setzbar, nur der WebSocket-Konstruktor erzeugt ihn. Ein
 normaler API-Call kann sich also nicht als Handshake ausgeben, und überall sonst
 behält der Parameter seine bisherige Bedeutung. Ohne diese Grenze hätte man einen
 generellen „Session-Token in der URL"-Modus — und URLs landen in Proxy-Logs,
 Browser-History und Referrern.
 
+Zweitens die Form des Werts: nur etwas mit JWT-Gestalt (drei Segmente) nimmt den
+neuen Zweig. Ein API-Token ist ein `nanoid` ohne Punkt und wird weiter über
+`generateTemporaryJwtFromToken` gegen die Datenbank aufgelöst — auch am
+WebSocket, wo das ein bestehender Pfad ist.
+
 ## Tests
 
 | Datei | Inhalt |
 | --- | --- |
 | `src/lib/utils/static-exclude.test.ts` | +159 Zeilen: Matcher für den privaten Mount (Teilbaum, Segmentgrenzen, Aliase in beide Richtungen) und ein Integrationstest gegen honos echtes `serve-static`: geöffneter Teilbaum anonym 200, Rest 302 auf den Login, auch über `/static/app/../internal/secret.pdf`. 27 pass. |
-| `src/lib/utils/ws-token-auth.test.ts` | neu: Session-Token im Query authentisiert einen Handshake; derselbe Token ohne Upgrade-Header wird abgelehnt; gefälschter Token abgelehnt; Upgrade-Header allein authentisiert nichts; Bearer funktioniert weiter. 5 pass. |
+| `src/lib/utils/ws-token-auth.test.ts` | neu: Session-Token im Query authentisiert einen Handshake; derselbe Token ohne Upgrade-Header wird abgelehnt; gefälschter Token abgelehnt; Upgrade-Header allein authentisiert nichts; Bearer funktioniert weiter; API-Token im Query funktioniert mit und ohne Upgrade weiter. 7 pass. |
 
 ## Kompatibilität
 
