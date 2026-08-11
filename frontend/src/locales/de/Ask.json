@@ -1,0 +1,68 @@
+{
+  "title": "Fragen",
+  "menu": "Fragen",
+  "newChat": "Neue Unterhaltung",
+  "history": "Verlauf",
+  "untitled": "Ohne Titel",
+  "noSessions": "Noch keine Unterhaltungen.",
+  "loading": "Unterhaltung wird geladen…",
+  "emptyTitle": "Haben Sie eine Frage?",
+  "emptyHint": "Fragen Sie einfach in eigenen Worten – die Antwort kommt aus Ihrem Wiki.",
+  "inputPlaceholder": "Frage stellen…",
+  "send": "Senden",
+  "stop": "Stopp",
+  "delete": "Löschen",
+  "deleteConfirm": "Unterhaltung „{title}“ wirklich löschen?",
+  "deleteError": "Die Unterhaltung konnte nicht gelöscht werden.",
+  "loadError": "Die Unterhaltung konnte nicht geladen werden.",
+  "sessionCreateError": "Die Unterhaltung wird nicht gespeichert – die Antwort kommt trotzdem.",
+  "error": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+  "disclaimer": "Antworten stammen aus Ihrem Wiki und können Fehler enthalten.",
+  "suggestions": [
+    "Wie beantrage ich Urlaub?",
+    "Was gehört ins Onboarding?",
+    "Wer ist wofür zuständig?"
+  ],
+  "dashboard": {
+    "title": "Haben Sie eine Frage?",
+    "placeholder": "Frage stellen…",
+    "ask": "Fragen",
+    "recent": "Letzte Unterhaltungen",
+    "showAll": "Alle anzeigen"
+  },
+  "tool": {
+    "noDetails": "Keine weiteren Angaben.",
+    "search_wiki": {
+      "running": "Wiki durchsuchen",
+      "done": "Wiki durchsucht"
+    },
+    "list_wiki_pages": {
+      "running": "Seiten auflisten",
+      "done": "Seiten aufgelistet"
+    },
+    "read_wiki_page": {
+      "running": "Seite lesen",
+      "done": "Seite gelesen"
+    },
+    "get_related_wiki_pages": {
+      "running": "Verwandte Seiten suchen",
+      "done": "Verwandte Seiten gefunden"
+    },
+    "create_wiki_page": {
+      "running": "Seite erstellen",
+      "done": "Seite erstellt"
+    },
+    "edit_wiki_page_content": {
+      "running": "Seiteninhalt bearbeiten",
+      "done": "Seiteninhalt bearbeitet"
+    },
+    "update_wiki_page": {
+      "running": "Seite aktualisieren",
+      "done": "Seite aktualisiert"
+    },
+    "delete_wiki_page": {
+      "running": "Seite löschen",
+      "done": "Seite gelöscht"
+    }
+  }
+}

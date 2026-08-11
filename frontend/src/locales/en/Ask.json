@@ -1,0 +1,68 @@
+{
+  "title": "Ask",
+  "menu": "Ask",
+  "newChat": "New conversation",
+  "history": "History",
+  "untitled": "Untitled",
+  "noSessions": "No conversations yet.",
+  "loading": "Loading conversation…",
+  "emptyTitle": "Do you have a question?",
+  "emptyHint": "Just ask in your own words — the answer comes from your wiki.",
+  "inputPlaceholder": "Ask a question…",
+  "send": "Send",
+  "stop": "Stop",
+  "delete": "Delete",
+  "deleteConfirm": "Delete the conversation “{title}”?",
+  "deleteError": "The conversation could not be deleted.",
+  "loadError": "The conversation could not be loaded.",
+  "sessionCreateError": "This conversation will not be saved — you will still get an answer.",
+  "error": "Something went wrong. Please try again.",
+  "disclaimer": "Answers come from your wiki and can contain mistakes.",
+  "suggestions": [
+    "How do I request time off?",
+    "What belongs in onboarding?",
+    "Who is responsible for what?"
+  ],
+  "dashboard": {
+    "title": "Do you have a question?",
+    "placeholder": "Ask a question…",
+    "ask": "Ask",
+    "recent": "Recent conversations",
+    "showAll": "Show all"
+  },
+  "tool": {
+    "noDetails": "No further details.",
+    "search_wiki": {
+      "running": "Searching the wiki",
+      "done": "Searched the wiki"
+    },
+    "list_wiki_pages": {
+      "running": "Listing pages",
+      "done": "Listed pages"
+    },
+    "read_wiki_page": {
+      "running": "Reading a page",
+      "done": "Read a page"
+    },
+    "get_related_wiki_pages": {
+      "running": "Looking for related pages",
+      "done": "Found related pages"
+    },
+    "create_wiki_page": {
+      "running": "Creating a page",
+      "done": "Created a page"
+    },
+    "edit_wiki_page_content": {
+      "running": "Editing page content",
+      "done": "Edited page content"
+    },
+    "update_wiki_page": {
+      "running": "Updating a page",
+      "done": "Updated a page"
+    },
+    "delete_wiki_page": {
+      "running": "Deleting a page",
+      "done": "Deleted a page"
+    }
+  }
+}

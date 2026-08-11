@@ -16,9 +16,11 @@ declare global {
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
   const applyBrandColors: typeof import('./utils/brandColor').applyBrandColors
   const applyTheme: typeof import('./utils/theme').applyTheme
+  const authenticatedImageUrl: typeof import('./utils/fetcher').authenticatedImageUrl
   const blocksAreEqual: typeof import('./utils/wikiBlocks').blocksAreEqual
   const blocksToEditorHtml: typeof import('./utils/wikiBlocks').blocksToEditorHtml
   const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
+  const bootstrapTeamsSession: typeof import('./utils/teamsSession').bootstrapTeamsSession
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
@@ -36,12 +38,15 @@ declare global {
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
   const formatDateAsMMYYYY: typeof import('./utils/date').formatDateAsMMYYYY
   const formatDateTime: typeof import('./utils/date').formatDateTime
+  const formatExactDateTime: typeof import('./utils/date').formatExactDateTime
+  const formatRelativeIntl: typeof import('./utils/date').formatRelativeIntl
   const formatRelativeTime: typeof import('./utils/date').formatRelativeTime
   const generateScale: typeof import('./utils/brandColor').generateScale
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const getStoredTheme: typeof import('./utils/theme').getStoredTheme
+  const getTeamsAuthToken: typeof import('./utils/teamsSession').getTeamsAuthToken
   const h: typeof import('vue').h
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
@@ -50,6 +55,7 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const isTeamsHost: typeof import('./utils/teamsSession').isTeamsHost
   const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
@@ -81,6 +87,7 @@ declare global {
   const reactive: typeof import('vue').reactive
   const readonly: typeof import('vue').readonly
   const ref: typeof import('vue').ref
+  const refreshTeamsSession: typeof import('./utils/teamsSession').refreshTeamsSession
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
   const renderMarkdown: typeof import('./utils/markdown').renderMarkdown
   const renderMarkdownInline: typeof import('./utils/markdown').renderMarkdownInline
@@ -88,12 +95,16 @@ declare global {
   const resolveDark: typeof import('./utils/theme').resolveDark
   const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags
   const scopeLabel: typeof import('./utils/wikiTreeOptions').scopeLabel
+  const sessionLabel: typeof import('./types/chatSession').sessionLabel
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
   const splitSubPath: typeof import('./utils/urlImportLines').splitSubPath
   const storeTheme: typeof import('./utils/theme').storeTheme
+  const submitTeamsInvitationCode: typeof import('./utils/teamsSession').submitTeamsInvitationCode
+  const teamsAuthHeaders: typeof import('./utils/teamsSession').teamsAuthHeaders
+  const teamsState: typeof import('./utils/teamsSession').teamsState
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
@@ -102,6 +113,7 @@ declare global {
   const unref: typeof import('vue').unref
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
   const urlLinesToText: typeof import('./utils/urlImportLines').urlLinesToText
+  const useAgentInstructions: typeof import('./stores/agentInstructions').useAgentInstructions
   const useAiChat: typeof import('./stores/aiChat').useAiChat
   const useAiTests: typeof import('./stores/aiTests').useAiTests
   const useApiTokens: typeof import('./stores/apiTokens').useApiTokens
@@ -109,6 +121,7 @@ declare global {
   const useAttrs: typeof import('vue').useAttrs
   const useAuthStore: typeof import('./stores/authStore').useAuthStore
   const useChatConfig: typeof import('./stores/chatConfig').useChatConfig
+  const useChatSessions: typeof import('./stores/chatSessions').useChatSessions
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
   const useDocumentAssistant: typeof import('./stores/documentAssistant').useDocumentAssistant
@@ -135,6 +148,8 @@ declare global {
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
   const watchSyncEffect: typeof import('vue').watchSyncEffect
+  const watchTeamsTheme: typeof import('./utils/teamsSession').watchTeamsTheme
+  const withTeamsWsToken: typeof import('./utils/teamsSession').withTeamsWsToken
 }
 // for type re-export
 declare global {
@@ -166,6 +181,9 @@ declare global {
   export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
   import('./types/aiTests')
   // @ts-ignore
+  export type { ChatSession, ChatSessionMessage, ChatSessionDetail } from './types/chatSession'
+  import('./types/chatSession')
+  // @ts-ignore
   export type { JobStatus, Job, KnowledgeIngestResult, MessageType, NotificationMeta, UserMessage } from './types/notifications'
   import('./types/notifications')
   // @ts-ignore
@@ -181,7 +199,7 @@ declare global {
   export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, AgentInstructions, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { BrandColors } from './utils/brandColor'
@@ -189,6 +207,9 @@ declare global {
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
+  // @ts-ignore
+  export type { TeamsStatus, TeamsFailure, TeamsTheme } from './utils/teamsSession'
+  import('./utils/teamsSession')
   // @ts-ignore
   export type { ThemePreference } from './utils/theme'
   import('./utils/theme')
