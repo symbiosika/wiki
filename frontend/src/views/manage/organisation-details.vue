@@ -102,8 +102,8 @@
           class="flex h-16 w-32 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-800"
         >
           <img
-            v-if="logoUrl"
-            :src="logoUrl"
+            v-if="logoSrc"
+            :src="logoSrc"
             :alt="$t('UserTenants.logo.title')"
             class="max-h-full max-w-full object-contain"
           />
@@ -383,6 +383,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import IconPencil from '~icons/mdi/pencil'
@@ -415,6 +416,8 @@ const pendingLogo = ref<File | null>(null)
 const logoCropperVisible = ref(false)
 const uploadingLogo = ref(false)
 const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
+// see useAuthenticatedImage: a bearer session cannot authenticate an <img src>
+const logoSrc = useAuthenticatedImage(() => logoUrl.value)
 
 const inviteDialog = ref(false)
 const inviteEmail = ref('')

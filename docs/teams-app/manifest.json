@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "REPLACE_WITH_A_NEW_GUID",
+  "packageName": "de.symbiosika.wiki",
+  "developer": {
+    "name": "Symbiosika GmbH",
+    "websiteUrl": "https://wiki.example.com",
+    "privacyUrl": "https://wiki.example.com/privacy",
+    "termsOfUseUrl": "https://wiki.example.com/terms"
+  },
+  "name": {
+    "short": "Wiki",
+    "full": "Symbiosika Wiki"
+  },
+  "description": {
+    "short": "Internes Wiki",
+    "full": "Das interne Wiki — Suche, Seiten und KI-Chat direkt in Microsoft Teams."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#FFFFFF",
+  "staticTabs": [
+    {
+      "entityId": "wiki",
+      "name": "Wiki",
+      "contentUrl": "https://wiki.example.com/static/app/?host=teams",
+      "websiteUrl": "https://wiki.example.com/static/app/",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": ["identity"],
+  "validDomains": ["wiki.example.com"],
+  "webApplicationInfo": {
+    "id": "REPLACE_WITH_MICROSOFT_CLIENT_ID",
+    "resource": "api://wiki.example.com/REPLACE_WITH_MICROSOFT_CLIENT_ID"
+  }
+}

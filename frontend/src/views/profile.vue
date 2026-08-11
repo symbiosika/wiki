@@ -44,8 +44,8 @@
           "
         >
           <img
-            v-if="hasImage"
-            :src="imageUrl"
+            v-if="hasImage && imageSrc"
+            :src="imageSrc"
             :alt="$t('Profile.picture')"
             class="h-full w-full object-cover"
           />
@@ -659,6 +659,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { WebAuthnError } from '@simplewebauthn/browser'
@@ -1139,6 +1140,10 @@ const initials = computed(() => {
 const hasImage = computed(() => Boolean(app.state.user?.profileImageName))
 const imageUrl = computed(
   () => `/api/v1/user/profile-image?v=${imageVersion.value}`,
+)
+// see useAuthenticatedImage: a bearer session cannot authenticate an <img src>
+const imageSrc = useAuthenticatedImage(() =>
+  hasImage.value ? imageUrl.value : null,
 )
 
 const isDirty = computed(

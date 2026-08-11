@@ -1,0 +1,13 @@
+{
+  "signingIn": "Anmeldung über Microsoft Teams…",
+  "signInFailed": "Anmeldung fehlgeschlagen",
+  "signInFailedHint": "Die Anmeldung über Microsoft Teams war nicht möglich. Bitte den Tab neu laden. Bleibt es dabei, wende dich an die Administration deiner Organisation.",
+  "retry": "Erneut versuchen",
+  "invitationCodeTitle": "Einladungscode erforderlich",
+  "invitationCodeIntro": "Du bist als {email} angemeldet. Für diesen Server ist zusätzlich ein Einladungscode nötig, um ein Konto anzulegen.",
+  "invitationCodeLabel": "Einladungscode",
+  "invitationCodePlaceholder": "Code eingeben",
+  "invitationCodeSubmit": "Fortfahren",
+  "invitationCodeMissing": "Bitte gib einen Einladungscode ein.",
+  "invitationCodeRejected": "Dieser Einladungscode ist nicht gültig."
+}

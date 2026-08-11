@@ -1,0 +1,446 @@
+diff --git a/src/index.ts b/src/index.ts
+index fbae1ad..1e7d086 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -27,6 +27,7 @@ import { validateAllEnvVariables } from "./lib/utils/env-validate";
+ import { globalErrorHandler } from "./lib/utils/global-error-handler";
+ import { withRequestPathGuard } from "./lib/utils/request-path-guard";
+ import {
++  isExcludedFromPrivateStatic,
+   isExcludedFromPublicStatic,
+   prepareStaticExclusions,
+ } from "./lib/utils/static-exclude";
+@@ -424,9 +425,34 @@ export const defineServer = (config: ServerSpecificConfig) => {
+        */
+       const staticPrivateDataPath = config.staticPrivateDataPath ?? "./static";
+       log.debug(`Static private data path:", ${staticPrivateDataPath}`);
++
++      /**
++       * Subtrees of that folder the deployment hands out without a login (see
++       * `staticPrivateExclude`) — for bundles that authenticate themselves with
++       * a bearer token and would otherwise be redirected away before their own
++       * code runs. Resolved once here; the guard only compares.
++       */
++      const staticPrivateExclusions = prepareStaticExclusions(
++        config.staticPrivateExclude
++      );
++      if (staticPrivateExclusions.length > 0) {
++        log.debug(
++          `Static private exclusions (served without login): ${staticPrivateExclusions
++            .map((segments) => "/static/" + segments.join("/"))
++            .join(", ")}`
++        );
++      }
++
+       app.use(
+         "/static/*",
+-        authOrRedirectToLogin,
++        async (c, next) => {
++          // The auth middleware is skipped for excluded subtrees; the static
++          // handler behind it still only serves what is on disk.
++          if (isExcludedFromPrivateStatic(c.req.path, staticPrivateExclusions)) {
++            return next();
++          }
++          return authOrRedirectToLogin(c, next);
++        },
+         serveStatic({
+           root: staticPrivateDataPath,
+           rewriteRequestPath: (path) => path.replace(/^\/static/, "/"),
+diff --git a/src/lib/utils/hono-middlewares.ts b/src/lib/utils/hono-middlewares.ts
+index ce14b6b..93680f5 100644
+--- a/src/lib/utils/hono-middlewares.ts
++++ b/src/lib/utils/hono-middlewares.ts
+@@ -114,6 +114,17 @@ export async function checkUserPermission(c: Context, next: Function) {
+   // await next();
+ }
+ 
++/**
++ * Is this request a WebSocket handshake?
++ *
++ * `Upgrade` is a forbidden header name in browsers: page JavaScript cannot set
++ * it on a fetch/XHR, only the WebSocket constructor produces it. That is what
++ * makes it usable as the gate for accepting a session token from the query
++ * string — a normal API call cannot pretend to be an upgrade.
++ */
++const isWebSocketUpgrade = (c: Context): boolean =>
++  (c.req.header("Upgrade") ?? "").toLowerCase() === "websocket";
++
+ /**
+  * HONO Middleware to check the JWT token
+  */
+@@ -136,8 +147,20 @@ export const checkToken = async (c: Context) => {
+ 
+     let jwtToken = "";
+ 
+-    // check if there is a "token=xxx" set in the URL request
+-    if (token || xApiKey) {
++    if (token && isWebSocketUpgrade(c)) {
++      // A browser cannot set headers on a WebSocket handshake — `new WebSocket()`
++      // takes a URL and nothing else — so a client that authenticates with a
++      // bearer token (an SPA embedded in Microsoft Teams, where the session
++      // cookie is cross-site and never sent) has no way to open a socket other
++      // than putting its session token in the query string.
++      //
++      // Accepted for the upgrade request only. Everywhere else `?token=` keeps
++      // meaning "service token" and a session JWT is rejected, so this cannot
++      // become a general "session in the URL" mode: URLs end up in proxy logs,
++      // browser history and referrers, and a plain GET is far easier to leak
++      // than a handshake.
++      jwtToken = token;
++    } else if (token || xApiKey) {
+       const tokenToUse: string = token || xApiKey || "";
+       // try to generate a JWT token from the token string
+       const temporaryJwt = await generateTemporaryJwtFromToken(tokenToUse);
+diff --git a/src/lib/utils/static-exclude.test.ts b/src/lib/utils/static-exclude.test.ts
+index a67df6e..8eec32c 100644
+--- a/src/lib/utils/static-exclude.test.ts
++++ b/src/lib/utils/static-exclude.test.ts
+@@ -3,6 +3,7 @@ import { Hono } from "hono";
+ import { serveStatic } from "hono/serve-static";
+ import { join } from "node:path";
+ import {
++  isExcludedFromPrivateStatic,
+   isExcludedFromPublicStatic,
+   prepareStaticExclusions,
+ } from "./static-exclude";
+@@ -32,6 +33,66 @@ describe("prepareStaticExclusions", () => {
+   });
+ });
+ 
++/**
++ * The private mount's counterpart. Same matching, other prefix: what the public
++ * side reaches under `/bundle`, the private side reaches under `/static/bundle`.
++ * The entries stay relative to the mount, so a deployment writes `["app"]` and
++ * not `["static", "app"]`.
++ */
++describe("isExcludedFromPrivateStatic", () => {
++  it("keeps the whole mount behind the login when nothing is configured", () => {
++    expect(isExcludedFromPrivateStatic("/static/app/index.html", [])).toBe(
++      false
++    );
++  });
++
++  it("opens the subtree and its root", () => {
++    const p = prepared("app");
++    expect(isExcludedFromPrivateStatic("/static/app", p)).toBe(true);
++    expect(isExcludedFromPrivateStatic("/static/app/", p)).toBe(true);
++    expect(isExcludedFromPrivateStatic("/static/app/index.html", p)).toBe(true);
++    expect(isExcludedFromPrivateStatic("/static/app/assets/x.js", p)).toBe(true);
++  });
++
++  it("leaves the rest of the private folder protected", () => {
++    const p = prepared("app");
++    for (const path of [
++      "/static/",
++      "/static/internal/report.pdf",
++      "/static/app-internal/x",
++      "/static/apps/x",
++    ]) {
++      expect(isExcludedFromPrivateStatic(path, p)).toBe(false);
++    }
++  });
++
++  /*
++   * The same alias tricks as on the public side — the private mount strips a
++   * literal "/static", without a segment boundary, and the handler decodes and
++   * resolves the path before the filesystem lookup. An opened subtree must not
++   * be reachable under a name that resolves *outside* it, and a protected file
++   * must not be reachable under a name that resolves *into* it.
++   */
++  it("sees through the /static rewrite and its missing boundary", () => {
++    const p = prepared("app");
++    expect(isExcludedFromPrivateStatic("/staticapp/index.html", p)).toBe(true);
++    expect(isExcludedFromPrivateStatic("/static/%61pp/index.html", p)).toBe(
++      true
++    );
++    expect(isExcludedFromPrivateStatic("/static/x/../app/index.html", p)).toBe(
++      true
++    );
++  });
++
++  it("does not open a protected file that only looks like it is inside", () => {
++    const p = prepared("app");
++    // resolves to /internal/secret.pdf, i.e. outside the opened subtree
++    expect(
++      isExcludedFromPrivateStatic("/static/app/../internal/secret.pdf", p)
++    ).toBe(false);
++  });
++});
++
+ describe("isExcludedFromPublicStatic", () => {
+   it("passes everything through when nothing is configured", () => {
+     expect(isExcludedFromPublicStatic("/anything", [])).toBe(false);
+@@ -200,3 +261,101 @@ describe("in front of hono's static middleware", () => {
+     }
+   });
+ });
++
++/**
++ * The private mount with an opened subtree, wired exactly like `defineServer`
++ * does: the exclusion decides whether the auth middleware runs at all, and the
++ * static handler behind it is the same in both cases.
++ *
++ * What must hold: the opened bundle is served to an anonymous request under every
++ * alias that resolves into it, and everything else still redirects to the login —
++ * including a path that only looks like it is inside the bundle.
++ */
++describe("in front of the private static mount", () => {
++  const FILES: Record<string, string> = {
++    "/root/app/index.html": "<p>spa</p>",
++    "/root/app/assets/app.js": "console.log(1)",
++    "/root/internal/secret.pdf": "%PDF",
++  };
++
++  const LOGIN = "/login.html";
++
++  const mount = (exclude: string[]) => {
++    const app = new Hono();
++    const exclusions = prepareStaticExclusions(exclude);
++
++    app.use(
++      "/static/*",
++      async (c, next) => {
++        if (isExcludedFromPrivateStatic(c.req.path, exclusions)) return next();
++        // stands in for authOrRedirectToLogin with no session present
++        return c.redirect(LOGIN);
++      },
++      serveStatic({
++        root: "/root",
++        rewriteRequestPath: (path) => path.replace(/^\/static/, "/"),
++        join,
++        getContent: async (path) => FILES[path] ?? null,
++        isDir: (path) => {
++          const dir = path.replace(/\/+$/, "");
++          return Object.keys(FILES).some((file) => file.startsWith(dir + "/"));
++        },
++      })
++    );
++    return app;
++  };
++
++  const BUNDLE_PATHS = [
++    "/static/app/index.html",
++    "/static/app/",
++    "/static/app",
++    "/static/app/assets/app.js",
++    "/static/%61pp/index.html",
++    "/static/./app/index.html",
++    "/static/x/../app/index.html",
++  ];
++
++  it("redirects anonymous requests for the bundle without the exclusion", async () => {
++    const app = mount([]);
++    for (const path of BUNDLE_PATHS) {
++      const res = await app.request(`http://x${path}`);
++      expect({ path, status: res.status }).toEqual({ path, status: 302 });
++    }
++  });
++
++  it("serves the opened bundle to an anonymous request", async () => {
++    const app = mount(["app"]);
++    for (const path of BUNDLE_PATHS) {
++      const res = await app.request(`http://x${path}`);
++      expect({ path, status: res.status }).toEqual({ path, status: 200 });
++    }
++  });
++
++  /*
++   * The rewrite's missing segment boundary — "/staticapp/x" becoming "/app/x" —
++   * is the one public-side alias that has no private-side counterpart: the mount
++   * is registered for "/static/*", so a path that does not start with that
++   * prefix never reaches this middleware at all. `isExcludedFromPrivateStatic`
++   * still classifies it, which costs nothing and keeps the matcher correct if the
++   * mount pattern is ever widened.
++   */
++  it("does not reach the mount at all without the /static/ prefix", async () => {
++    for (const exclude of [[], ["app"]]) {
++      const res = await mount(exclude).request("http://x/staticapp/index.html");
++      expect({ exclude, status: res.status }).toEqual({ exclude, status: 404 });
++    }
++  });
++
++  it("keeps the rest of the private folder behind the login", async () => {
++    const app = mount(["app"]);
++    for (const path of [
++      "/static/internal/secret.pdf",
++      // resolves out of the bundle again — the alias must not smuggle it out
++      "/static/app/../internal/secret.pdf",
++    ]) {
++      const res = await app.request(`http://x${path}`);
++      expect({ path, status: res.status }).toEqual({ path, status: 302 });
++      expect(res.headers.get("location")).toBe(LOGIN);
++    }
++  });
++});
+diff --git a/src/lib/utils/static-exclude.ts b/src/lib/utils/static-exclude.ts
+index 986d617..be41f5c 100644
+--- a/src/lib/utils/static-exclude.ts
++++ b/src/lib/utils/static-exclude.ts
+@@ -26,6 +26,10 @@
+ const stripPublicPrefix = (path: string): string =>
+   path.replace(/^\/public/, "/");
+ 
++/** Mirrors the `rewriteRequestPath` of the private static mount. */
++const stripPrivatePrefix = (path: string): string =>
++  path.replace(/^\/static/, "/");
++
+ /**
+  * Reduce a request path to the segments the static handler will look up.
+  *
+@@ -33,8 +37,11 @@ const stripPublicPrefix = (path: string): string =>
+  * path as-is rather than throwing, because an undecodable path still has to be
+  * classified — and it is classified on what it literally says.
+  */
+-const resolveSegments = (path: string): string[] => {
+-  let decoded = stripPublicPrefix(path);
++const resolveSegments = (
++  path: string,
++  stripPrefix: (path: string) => string
++): string[] => {
++  let decoded = stripPrefix(path);
+   try {
+     decoded = decodeURIComponent(decoded);
+   } catch {
+@@ -78,10 +85,31 @@ export const prepareStaticExclusions = (
+ export const isExcludedFromPublicStatic = (
+   path: string,
+   prepared: string[][]
++): boolean => matches(path, prepared, stripPublicPrefix);
++
++/**
++ * Counterpart for the **private** static mount: is this request path inside one
++ * of the subtrees the deployment declared as reachable without a login?
++ *
++ * Same matching rules as above, only the prefix the static handler strips
++ * differs (`/static` instead of `/public`). Used to let a deployment hand out a
++ * single bundle — e.g. an SPA that authenticates itself with a bearer token
++ * instead of the session cookie — while the rest of the folder stays behind the
++ * login redirect.
++ */
++export const isExcludedFromPrivateStatic = (
++  path: string,
++  prepared: string[][]
++): boolean => matches(path, prepared, stripPrivatePrefix);
++
++const matches = (
++  path: string,
++  prepared: string[][],
++  stripPrefix: (path: string) => string
+ ): boolean => {
+   if (prepared.length === 0) return false;
+ 
+-  const segments = resolveSegments(path);
++  const segments = resolveSegments(path, stripPrefix);
+   return prepared.some(
+     (needle) =>
+       segments.length >= needle.length &&
+diff --git a/src/lib/utils/ws-token-auth.test.ts b/src/lib/utils/ws-token-auth.test.ts
+new file mode 100644
+index 0000000..5365eae
+--- /dev/null
++++ b/src/lib/utils/ws-token-auth.test.ts
+@@ -0,0 +1,76 @@
++import { describe, test, expect, beforeAll } from "bun:test";
++import { Hono } from "hono";
++import type { SFContextVariables } from "../../types";
++import { initTests } from "../../test/init.test";
++import { authAndSetUsersInfo } from "./hono-middlewares";
++
++/**
++ * A session token in `?token=` is accepted for WebSocket handshakes only.
++ *
++ * Why it exists: `new WebSocket(url)` is the only way a browser opens a socket,
++ * and it takes no headers — so a client that authenticates with a bearer token
++ * instead of the session cookie (the SPA embedded in Microsoft Teams) cannot
++ * send `Authorization` on the upgrade request.
++ *
++ * Why it is narrow: a token in a URL lands in proxy logs, history and
++ * referrers. The `Upgrade` header cannot be set from page JavaScript, so a
++ * normal API call cannot claim to be a handshake and the query parameter keeps
++ * its old "service token" meaning everywhere else.
++ */
++const app = new Hono<{ Variables: SFContextVariables }>();
++app.get("/socket", authAndSetUsersInfo, (c) =>
++  c.json({ userId: c.get("usersId") })
++);
++
++const WS_HEADERS = { Upgrade: "websocket", Connection: "Upgrade" };
++
++let sessionToken: string;
++
++describe("WebSocket auth via query token", () => {
++  beforeAll(async () => {
++    const { user1Token } = await initTests();
++    sessionToken = user1Token;
++  });
++
++  test("a session token in the query authenticates a WebSocket handshake", async () => {
++    const response = await app.request(
++      `/socket?token=${encodeURIComponent(sessionToken)}`,
++      { headers: WS_HEADERS }
++    );
++
++    expect(response.status).toBe(200);
++    expect(((await response.json()) as any).userId).toBeTruthy();
++  });
++
++  test("the same token in the query is rejected on a plain request", async () => {
++    // Without the upgrade header the query parameter still means "service
++    // token"; a session JWT is not one, so this must not authenticate.
++    const response = await app.request(
++      `/socket?token=${encodeURIComponent(sessionToken)}`
++    );
++
++    expect(response.status).toBe(401);
++  });
++
++  test("a forged token is rejected on a handshake as well", async () => {
++    const response = await app.request("/socket?token=not-a-jwt", {
++      headers: WS_HEADERS,
++    });
++
++    expect(response.status).toBe(401);
++  });
++
++  test("the upgrade header alone authenticates nothing", async () => {
++    const response = await app.request("/socket", { headers: WS_HEADERS });
++
++    expect(response.status).toBe(401);
++  });
++
++  test("the bearer header keeps working for handshakes", async () => {
++    const response = await app.request("/socket", {
++      headers: { ...WS_HEADERS, Authorization: `Bearer ${sessionToken}` },
++    });
++
++    expect(response.status).toBe(200);
++  });
++});
+diff --git a/src/types.ts b/src/types.ts
+index 11a7b80..5bd9978 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -141,6 +141,23 @@ export interface ServerSpecificConfig {
+    * nothing are ignored rather than matching everything.
+    */
+   staticPublicExclude?: string[];
++  /**
++   * Path prefixes inside the **private** static folder that are served without
++   * the login redirect.
++   *
++   * For bundles that authenticate themselves rather than relying on the session
++   * cookie — an SPA embedded in a host application (Microsoft Teams, an iframe
++   * on another site) cannot receive a cross-site cookie on the document load,
++   * so it would be redirected to the login page before its own code ever runs.
++   * Listing its folder here hands out the bundle; every API route it calls stays
++   * authenticated as before.
++   *
++   * Only for content that carries no secrets. Matched on whole path segments,
++   * relative to the mount: `["app"]` opens `/static/app` and everything below
++   * it, but not `/static/app-internal`. Entries that normalise to nothing are
++   * ignored rather than matching everything.
++   */
++  staticPrivateExclude?: string[];
+ 
+   // Registration Flow
+   customPreRegisterCustomVerifications?: CustomPreRegisterVerification[];

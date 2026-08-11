@@ -15,6 +15,7 @@ import Column from 'primevue/column'
 import ProgressSpinner from 'primevue/progressspinner'
 
 import { registerToastServiceGlobal } from './stores/toast'
+import { bootstrapTeamsSession, isTeamsHost } from './utils/teamsSession'
 
 const app = createApp(App)
 
@@ -61,4 +62,20 @@ app.use(ConfirmationService)
 // Initialize toast service for use outside components
 registerToastServiceGlobal(app.config.globalProperties.$toast)
 
-app.mount('#app')
+/**
+ * In a Teams tab the session is established before the app mounts.
+ *
+ * It has to happen here rather than in a component: the router guard and the
+ * very first API calls need a token, and neither can wait for a component
+ * lifecycle. The promise is never rejected — `bootstrapTeamsSession` reports
+ * failure through its state object, which App.vue renders (sign-in error, or the
+ * invitation-code step on a gated instance).
+ */
+const start = async () => {
+  if (isTeamsHost()) {
+    await bootstrapTeamsSession()
+  }
+  app.mount('#app')
+}
+
+void start()

@@ -1,0 +1,13 @@
+{
+  "signingIn": "Signing in with Microsoft Teams…",
+  "signInFailed": "Sign-in failed",
+  "signInFailedHint": "Signing in with Microsoft Teams did not work. Please reload the tab. If it keeps failing, contact your organisation's administrators.",
+  "retry": "Try again",
+  "invitationCodeTitle": "Invitation code required",
+  "invitationCodeIntro": "You are signed in as {email}. This server also requires an invitation code before an account can be created.",
+  "invitationCodeLabel": "Invitation code",
+  "invitationCodePlaceholder": "Enter code",
+  "invitationCodeSubmit": "Continue",
+  "invitationCodeMissing": "Please enter an invitation code.",
+  "invitationCodeRejected": "This invitation code is not valid."
+}

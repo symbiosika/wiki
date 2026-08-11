@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import DefaultLayout from '../components/layout/Default.vue'
+import { isTeamsHost } from '@/utils/teamsSession'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -144,6 +145,16 @@ const redirectToLogin = () => {
  * Navigation guard
  */
 router.beforeEach((to, from, next) => {
+  // In a Teams tab there is no session cookie to look for and no login page to
+  // go to: the session lives in memory and is established before the app mounts
+  // (see utils/teamsSession). Navigation is never the place to fix it — an
+  // expired session surfaces as a 401 in the fetcher, which re-authenticates
+  // against the Teams host.
+  if (isTeamsHost()) {
+    next()
+    return
+  }
+
   // Check authentication for protected routes
   if (!isAuthenticated()) {
     redirectToLogin()

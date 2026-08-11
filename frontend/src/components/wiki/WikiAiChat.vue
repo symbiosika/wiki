@@ -261,6 +261,7 @@
 <script setup lang="ts">
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
+import { teamsAuthHeaders } from '@/utils/teamsSession'
 import IconChat from '~icons/mdi/message-text-outline'
 import IconClose from '~icons/mdi/close'
 import IconSend from '~icons/mdi/send'
@@ -345,6 +346,10 @@ const initializeChat = () => {
   chat.value = new Chat({
     transport: new DefaultChatTransport({
       api: `/api/v1/tenant/${tenantId.value}/chat`,
+      // The transport does its own fetch, so the bearer session (Teams tab) has
+      // to be attached here. A function, not a fixed object: the token is
+      // replaced when a session is refreshed mid-conversation.
+      headers: teamsAuthHeaders,
     }),
   })
 }

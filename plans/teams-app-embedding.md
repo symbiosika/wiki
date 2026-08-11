@@ -2,6 +2,33 @@
 
 Stand: `develop` @ c36c082, Framework @ cfae1a3.
 
+> ## STATUS: umgesetzt
+>
+> Betriebsanleitung: `docs/teams-app.md`. Framework-Anteil:
+> `FRAMEWORK_CHANGES_TEAMS_SSO.md` + `framework-teams-sso.patch`.
+>
+> **Vier Dinge sind anders gelaufen als hier geplant:**
+>
+> 1. **Keine `teams.html`.** Sobald das SPA-Bundle ohne Login ausgeliefert wird
+>    (`staticPrivateExclude`), kann der Bootstrap direkt in der SPA laufen. Damit
+>    entfällt eine handgeschriebene Vanilla-Seite, `teams-js` kommt als npm-Paket
+>    (lazy importiert), und die Einladungscode-Abfrage ist eine Vue-Komponente
+>    (`components/teams/TeamsSessionGate.vue`) statt eines zweiten HTML-Formulars.
+> 2. **`complete-registration` im Framework blieb unangetastet.** Statt dessen
+>    Cookie-Zwang aufzuweichen, gibt es eine eigene App-Route, die den
+>    (signierten, 15-minütigen) Pending-Token im Body annimmt und
+>    `completePendingOAuthRegistration` aufruft. Kein Eingriff in den
+>    Browser-Flow.
+> 3. **Der Framework-Patch enthält dafür zwei andere Bausteine:**
+>    `staticPrivateExclude` und Session-Token via `?token=` für WebSocket-
+>    Handshakes. Beide waren aus der App nicht lösbar (Mount bzw.
+>    Auth-Middleware liegen im Framework).
+> 4. **`utils/wikiPdf.ts` brauchte keine Änderung** — es lädt Bilder bereits über
+>    `fetcher.getBlob`, der Bearer-Header greift also automatisch.
+>
+> Nicht verifiziert: iPadOS/Teams-Mobile und die Entra-Registrierung selbst
+> (Admin-Schritte, kein Tenant-Zugang in dieser Umgebung).
+
 Ziel: Das Wiki als Teams Personal Tab einbetten. Der in Teams angemeldete Nutzer
 wird über `teams-js` gegen Entra authentifiziert und gegen eine Framework-Session
 getauscht — ohne zweiten Login, mit denselben Invitation-Code-Regeln wie der
