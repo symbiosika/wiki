@@ -9,15 +9,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * and re-imports it.
  */
 const getAuthToken = vi.fn(async () => 'entra-token')
+const initialize = vi.fn(async () => {})
 const registerOnThemeChangeHandler = vi.fn()
 const getContext = vi.fn(async () => ({ app: { theme: 'dark' } }))
 
 vi.mock('@microsoft/teams-js', () => ({
-  app: {
-    initialize: vi.fn(async () => {}),
-    getContext,
-    registerOnThemeChangeHandler,
-  },
+  app: { initialize, getContext, registerOnThemeChangeHandler },
   authentication: { getAuthToken },
 }))
 
@@ -42,6 +39,8 @@ describe('teamsSession', () => {
     vi.restoreAllMocks()
     getAuthToken.mockClear()
     getAuthToken.mockResolvedValue('entra-token')
+    initialize.mockClear()
+    initialize.mockResolvedValue(undefined)
     setSearch('?host=teams')
     localStorage.clear()
     sessionStorage.clear()
@@ -175,6 +174,66 @@ describe('teamsSession', () => {
     const teams = await loadModule()
     expect(await teams.bootstrapTeamsSession()).toBe('error')
     expect(teams.teamsState.message).toContain('resourceDisabled')
+    // The stage matters: this one points at the Entra app registration, not at
+    // our server and not at the page being outside Teams.
+    expect(teams.teamsState.failure).toBe('no_token')
+  })
+
+  it('keeps the SDK error code when the host rejects with an object', async () => {
+    // teams-js rejects with { errorCode, message } in places, and stringifying
+    // that naively yields "[object Object]" — which is exactly the detail an
+    // administrator needs.
+    getAuthToken.mockRejectedValue({
+      errorCode: 500,
+      message: 'resourceDisabled',
+    })
+
+    const teams = await loadModule()
+    await teams.bootstrapTeamsSession()
+
+    expect(teams.teamsState.message).toBe('500: resourceDisabled')
+    expect(teams.teamsState.message).not.toContain('[object')
+  })
+
+  it('distinguishes a page that is not running inside Teams', async () => {
+    // `initialize()` only resolves when a Teams host answers — the usual cause
+    // is the URL being opened in a plain browser tab.
+    initialize.mockRejectedValue(new Error('timeout'))
+
+    const teams = await loadModule()
+    expect(await teams.bootstrapTeamsSession()).toBe('error')
+    expect(teams.teamsState.failure).toBe('not_in_teams')
+    expect(getAuthToken).not.toHaveBeenCalled()
+  })
+
+  it('marks a rejection by our own backend as an exchange failure', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Teams sign-in failed', { status: 401 }),
+    )
+
+    const teams = await loadModule()
+    expect(await teams.bootstrapTeamsSession()).toBe('error')
+    expect(teams.teamsState.failure).toBe('exchange')
+    expect(teams.teamsState.message).toContain('Teams sign-in failed')
+  })
+
+  it('clears the failure once a session exists', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        status: 'authenticated',
+        token: 'session-token',
+        expiresAt: '2026-01-01T00:00:00.000Z',
+      }),
+    )
+
+    const teams = await loadModule()
+    getAuthToken.mockRejectedValueOnce(new Error('resourceDisabled'))
+    await teams.bootstrapTeamsSession()
+    expect(teams.teamsState.failure).toBe('no_token')
+
+    await teams.bootstrapTeamsSession()
+    expect(teams.teamsState.failure).toBe('none')
+    expect(teams.teamsState.message).toBe('')
   })
 
   it('re-authenticates silently on refresh', async () => {

@@ -9,5 +9,10 @@
   "invitationCodePlaceholder": "Enter code",
   "invitationCodeSubmit": "Continue",
   "invitationCodeMissing": "Please enter an invitation code.",
-  "invitationCodeRejected": "This invitation code is not valid."
+  "invitationCodeRejected": "This invitation code is not valid.",
+  "signInFailedNotInTeams": "This page is not running inside Microsoft Teams. It is meant to be opened as a Teams tab — in a browser, please use the normal sign-in.",
+  "signInFailedNoToken": "Microsoft Teams did not issue a token for this app. That is almost always the app registration: a missing Application ID URI, the \"access_as_user\" scope, the pre-authorized Teams clients, or consent that was never granted.",
+  "signInFailedExchange": "The server rejected the sign-in. Details are in the server log.",
+  "signInDetails": "Technical message",
+  "openInBrowser": "Sign in in a browser"
 }

@@ -36,6 +36,20 @@ const submit = async () => {
 }
 
 const reload = () => window.location.reload()
+
+/** Which cause to name — the stage the bootstrap failed in decides. */
+const failureHint = computed(() => {
+  switch (teamsState.failure) {
+    case 'not_in_teams':
+      return t('Teams.signInFailedNotInTeams')
+    case 'exchange':
+      return t('Teams.signInFailedExchange')
+    case 'no_token':
+      return t('Teams.signInFailedNoToken')
+    default:
+      return t('Teams.signInFailedHint')
+  }
+})
 </script>
 
 <template>
@@ -95,18 +109,42 @@ const reload = () => window.location.reload()
     <!-- sign-in failed -->
     <section
       v-else
-      class="w-full max-w-md rounded-lg border border-red-200 p-6 text-center dark:border-red-900"
+      class="w-full max-w-lg rounded-lg border border-red-200 p-6 dark:border-red-900"
     >
       <h1 class="mb-2 text-xl font-semibold">{{ t('Teams.signInFailed') }}</h1>
       <p class="text-sm text-surface-600 dark:text-surface-400">
-        {{ t('Teams.signInFailedHint') }}
+        {{ failureHint }}
       </p>
-      <Button
-        class="mt-4"
-        severity="secondary"
-        :label="t('Teams.retry')"
-        @click="reload"
-      />
+
+      <!-- The verbatim reason. Whoever has to fix this is an administrator
+           looking at an Entra app registration, and a generic message costs them
+           the one clue that identifies the gap. -->
+      <details v-if="teamsState.message" class="mt-4 text-left">
+        <summary
+          class="cursor-pointer text-xs text-surface-500 dark:text-surface-400"
+        >
+          {{ t('Teams.signInDetails') }}
+        </summary>
+        <pre
+          class="mt-2 overflow-x-auto rounded bg-surface-100 p-3 text-xs whitespace-pre-wrap text-surface-700 dark:bg-surface-800 dark:text-surface-300"
+          >{{ teamsState.message }}</pre
+        >
+      </details>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <Button
+          severity="secondary"
+          :label="t('Teams.retry')"
+          @click="reload"
+        />
+        <!-- Outside Teams the tab cannot work at all; the normal login can. -->
+        <SecondaryButton
+          v-if="teamsState.failure === 'not_in_teams'"
+          as="a"
+          href="/login.html"
+          :label="t('Teams.openInBrowser')"
+        />
+      </div>
     </section>
   </main>
 </template>
