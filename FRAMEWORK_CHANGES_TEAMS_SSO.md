@@ -6,14 +6,14 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > ## STATUS: gepusht, PR offen
 >
 > **PR:** https://github.com/symbiosika/symbiosika-framework/pull/120
-> (`claude/teams-sso-support` → `develop`, Commits `61dc95b` + `54d343e`,
-> Basis `cfae1a3`)
+> (`claude/teams-sso-support` → `develop`, Commits `61dc95b`, `54d343e`,
+> `7b1debb`, Basis `cfae1a3`)
 >
 > Getestet: `bun run test:local ./framework/src/lib/utils/static-exclude.test.ts`
-> → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 7 pass. Die
+> → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 16 pass. Die
 > Wiki-App nutzt die Bausteine end-to-end (siehe `docs/teams-app.md`).
 >
-> **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `54d343e`,
+> **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `7b1debb`,
 > gepusht wurde er unverändert aus dem Submodul heraus. Solange der PR auf dem
 > Branch liegt, ist der Wiki-Branch also baubar — kein Re-Point nötig.
 >
@@ -26,7 +26,7 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > ```
 >
 > Der Patch `framework-teams-sso.patch` im Wiki-Repo-Root bleibt als
-> zeilengenauer Diff (`git diff cfae1a3..54d343e`) zum Nachlesen liegen.
+> zeilengenauer Diff (`git diff cfae1a3..7b1debb`) zum Nachlesen liegen.
 
 ## Warum
 
@@ -38,7 +38,8 @@ Client muss sich also per Bearer-Token authentisieren.
 
 Das kann das Framework grundsätzlich schon: `checkToken` akzeptiert
 `Authorization: Bearer` seit immer. Zwei Stellen konnten es aber nicht, weil dort
-gar kein Header gesetzt werden kann:
+gar kein Header gesetzt werden kann — und die zweite davon zieht eine
+Härtung nach sich, die unabhängig davon fällig war (Punkt 3):
 
 1. **Der Dokument-Request der SPA.** Ein Browser, der `/static/app/index.html`
    navigiert, sendet Cookies — aber keine Header, die wir kontrollieren. Ohne
@@ -105,15 +106,55 @@ neuen Zweig. Ein API-Token ist ein `nanoid` ohne Punkt und wird weiter über
 `generateTemporaryJwtFromToken` gegen die Datenbank aufgelöst — auch am
 WebSocket, wo das ein bestehender Pfad ist.
 
+### 3. Origin-Prüfung für WebSocket-Handshakes
+
+`src/lib/utils/hono-middlewares.ts`
+
+Ein Handshake unterliegt nicht der Same-Origin-Policy: jede fremde Seite kann
+`new WebSocket("wss://unser-host/…")` aufrufen, und der Browser hängt die Cookies
+an. Die CORS-Middleware greift dort nicht — sie regelt `fetch`/XHR, keine
+Upgrades. Bisher hing die Abwehr dieses Angriffs (CSWSH) allein an
+`SameSite=Lax`, also an einem Browser-Default. Jetzt wird sie explizit:
+
+| `Origin` | Ergebnis |
+| --- | --- |
+| fehlt | erlaubt — nur Browser senden ihn; CLI-/Server-Clients sind nicht per Webseite austricksbar |
+| gleicher Host wie der Request | erlaubt |
+| in `allowedOrigins` bzw. gleich `baseUrl` | erlaubt |
+| alles andere | abgelehnt, **bevor** ein Credential angesehen wird |
+
+Verglichen wird der **Host**, nicht das ganze Origin: hinter einem
+TLS-terminierenden Proxy kommt der Request als `http` an, während der Browser
+`https` meldet — ein Schema-Vergleich würde jedes reale Deployment abweisen. Ein
+Schema-Mismatch ist hier auch keine Gefahr, weil Mixed-Content-Regeln eine
+`https`-Seite ohnehin daran hindern, ein `ws://` zu öffnen.
+
+Ein `*` in `allowedOrigins` erfüllt die Prüfung **nicht**. Ein Wildcard ist eine
+Aussage über öffentliche, CORS-geregelte Lesezugriffe — keine Zustimmung, dass
+beliebige Seiten Sockets mit fremder Session öffnen. Regressionsrisiko: keins.
+Ein Cross-Site-Handshake im Browser bekommt das Cookie sowieso nicht, und
+Nicht-Browser-Clients senden kein `Origin`.
+
 ## Tests
 
 | Datei | Inhalt |
 | --- | --- |
 | `src/lib/utils/static-exclude.test.ts` | +159 Zeilen: Matcher für den privaten Mount (Teilbaum, Segmentgrenzen, Aliase in beide Richtungen) und ein Integrationstest gegen honos echtes `serve-static`: geöffneter Teilbaum anonym 200, Rest 302 auf den Login, auch über `/static/app/../internal/secret.pdf`. 27 pass. |
-| `src/lib/utils/ws-token-auth.test.ts` | neu: Session-Token im Query authentisiert einen Handshake; derselbe Token ohne Upgrade-Header wird abgelehnt; gefälschter Token abgelehnt; Upgrade-Header allein authentisiert nichts; Bearer funktioniert weiter; API-Token im Query funktioniert mit und ohne Upgrade weiter. 7 pass. |
+| `src/lib/utils/ws-token-auth.test.ts` | neu, 16 pass. Query-Token: authentisiert einen Handshake, wird ohne Upgrade-Header abgelehnt, gefälschter Token abgelehnt, Upgrade-Header allein authentisiert nichts, Bearer funktioniert weiter, API-Token mit und ohne Upgrade weiter. Origin: same-origin erlaubt, fehlendes `Origin` erlaubt, fremde Site abgelehnt, konfiguriertes Origin und `baseUrl` erlaubt, `*` öffnet nichts, gleicher Host über https erlaubt (Proxy), Lookalike-Host (`localhost.evil.example.com`) abgelehnt, normaler Request bleibt CORS überlassen. |
 
 ## Kompatibilität
 
-Rein additiv. Ohne `staticPrivateExclude` verhält sich der private Mount
-unverändert, und ohne `Upgrade`-Header verhält sich `?token=` unverändert. Keine
-Migration, keine Änderung an bestehenden Aufrufern.
+Ohne `staticPrivateExclude` verhält sich der private Mount unverändert, und ohne
+`Upgrade`-Header verhält sich `?token=` unverändert.
+
+Die Origin-Prüfung ist die einzige Verschärfung: sie lehnt WebSocket-Handshakes
+mit fremdem `Origin` ab. Praktisch kann daran nur ein Setup hängen, das eine
+Socket-Verbindung aus einem Browser auf einer *anderen* Domain aufbaut — das
+funktioniert heute mit Cookie-Auth wegen `SameSite=Lax` schon nicht, und für
+einen gewollt cross-origin betriebenen Client genügt der Eintrag in
+`ALLOWED_ORIGINS`. Nicht-Browser-Clients sind nicht betroffen.
+
+**Deployment-Hinweis:** Wenn ein Reverse Proxy den `Host`-Header umschreibt
+*und* `BASE_URL` nicht auf den öffentlichen Host zeigt, schlagen Handshakes mit
+401 fehl. Beides zeigt normalerweise auf denselben Host; im Zweifel den
+öffentlichen Origin in `ALLOWED_ORIGINS` aufnehmen.
