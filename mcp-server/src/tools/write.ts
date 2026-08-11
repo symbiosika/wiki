@@ -207,21 +207,19 @@ export function registerWriteTools(mcp: any): void {
       description:
         "Edits a page's body by replacing an exact substring, like a code " +
         "editor's find-and-replace. `oldString` must match the current content " +
-        "exactly and unambiguously (read it first with `read_page_content`). " +
+        "exactly and unambiguously — copy it verbatim out of " +
+        "`read_page_content`, markdown formatting (**bold**, `## heading`, " +
+        "list markers) and the blank lines between paragraphs included. A " +
+        "match may span several paragraphs. " +
         "Set `replaceAll: true` to replace every occurrence. To delete, pass an " +
-        "empty `newString`: on block pages a block left empty is removed cleanly " +
-        "(no empty placeholder), and an `oldString` that spans several blocks " +
-        "(copy it verbatim, including the blank lines between them) removes them " +
-        "all at once. `newString` may contain [[Page Title]] references " +
-        "(write them plainly, never escaped) — they become real page links. " +
-        "Keep `newString` otherwise PLAIN TEXT: a page edited in the web editor " +
-        "stores rich text, which cannot carry markdown written into it — no " +
-        "line breaks, lists or headings (use `append_to_page` for a new " +
-        "paragraph). Such an edit is rejected rather than applied badly, and " +
-        "the page is left untouched. " +
+        "empty `newString`: a paragraph left empty is removed cleanly, without " +
+        "an empty placeholder. `newString` is markdown too, and may contain " +
+        "[[Page Title]] references (write them plainly, never escaped) — they " +
+        "become real page links. " +
         "Returns the number of replacements and the new content. " +
-        "Fails (409) if the string is missing or ambiguous. For adding at the " +
-        "end, `append_to_page` is simpler and safer.",
+        "Fails (409) if the string is missing or ambiguous — then re-read the " +
+        "page and copy the current text again. For adding at the end, " +
+        "`append_to_page` is simpler and safer.",
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
         oldString: z
