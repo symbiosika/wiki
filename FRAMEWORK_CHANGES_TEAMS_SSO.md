@@ -25,8 +25,8 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > cd ../.. && git add backend/framework && git commit -m "chore: bump framework to Teams-SSO building blocks"
 > ```
 >
-> Der Patch `framework-teams-sso.patch` im Wiki-Repo-Root bleibt als
-> zeilengenauer Diff (`git diff cfae1a3..7b1debb`) zum Nachlesen liegen.
+> Den zeilengenauen Diff liefert der PR selbst; lokal:
+> `git -C backend/framework diff cfae1a3..7b1debb`.
 
 ## Warum
 
