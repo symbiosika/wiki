@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "id": "1f4c6834-53a2-4b36-b441-64d660a401f0",
   "developer": {
     "name": "Symbiosika GmbH",
@@ -33,7 +33,7 @@
   ],
   "validDomains": ["wiki.symbiosika.de"],
   "webApplicationInfo": {
-    "id": "5fc494c1-8811-43f5-8625-6f67e2d0a3de",
-    "resource": "api://wiki.symbiosika.de/5fc494c1-8811-43f5-8625-6f67e2d0a3de"
+    "id": "2f5956d3-cbc2-4fc9-872e-e0c751777325",
+    "resource": "api://wiki.symbiosika.de/2f5956d3-cbc2-4fc9-872e-e0c751777325"
   }
 }
