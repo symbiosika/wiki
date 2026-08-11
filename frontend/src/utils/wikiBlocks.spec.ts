@@ -137,3 +137,50 @@ describe('blocksAreEqual', () => {
     expect(blocksAreEqual(a, [])).toBe(false)
   })
 })
+
+describe('blocksToEditorHtml — markdown task lists', () => {
+  test('a markdown task list becomes a real checklist for the editor', () => {
+    // Without the rewrite the editor schema has no node for a bare checkbox,
+    // drops it, and the checklist degrades to a plain bullet list on the next
+    // save — losing which items were done.
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] offen\n- [x] erledigt' },
+    ])
+
+    expect(html).toContain('data-type="taskList"')
+    expect(html).toContain('data-type="taskItem"')
+    expect(html).toContain('data-checked="false"')
+    expect(html).toContain('data-checked="true"')
+    // no bare checkbox is left for the editor to drop
+    expect(html).not.toContain('<input')
+    // TaskItem's content is `paragraph+`
+    expect(html).toContain('<p>')
+  })
+
+  test('a plain bullet list is left alone', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- eins\n- zwei' },
+    ])
+
+    expect(html).not.toContain('data-type="taskList"')
+    expect(html).toContain('<li>eins</li>')
+  })
+
+  test('a list with only some checkboxes is not a task list', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] offen\n- kein Kästchen' },
+    ])
+
+    expect(html).not.toContain('data-type="taskList"')
+  })
+
+  test('nested task items keep their own state', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] oben\n    - [x] unten' },
+    ])
+
+    expect(html).toContain('data-checked="false"')
+    expect(html).toContain('data-checked="true"')
+    expect(html).not.toContain('<input')
+  })
+})
