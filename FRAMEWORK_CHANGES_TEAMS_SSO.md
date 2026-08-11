@@ -3,31 +3,29 @@
 **Target repo:** `symbiosika/symbiosika-framework` (das `backend/framework`
 Submodul). **Nicht** `symbiosika/wiki`.
 
-> ## STATUS: implementiert + lokal getestet in dieser Umgebung
+> ## STATUS: gepusht, PR offen
 >
-> Die Änderung ist **im lokalen `backend/framework`-Submodul committet**, auf
-> Branch `claude/teams-sso-support` (lokaler Commit `61dc95b`, Basis
-> `cfae1a3`), und getestet:
-> `bun run test:local ./framework/src/lib/utils/static-exclude.test.ts` → 27 pass,
-> `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 5 pass.
-> Die Wiki-App nutzt sie end-to-end (siehe `docs/teams-app.md`).
+> **PR:** https://github.com/symbiosika/symbiosika-framework/pull/120
+> (`claude/teams-sso-support` → `develop`, Commit `61dc95b`, Basis `cfae1a3`)
 >
-> **Zeilengenauer Export:** `framework-teams-sso.patch` im Wiki-Repo-Root ist ein
-> `git diff cfae1a3..61dc95b`. In einem sauberen Framework-Checkout anwenden mit
-> `git apply framework-teams-sso.patch`, prüfen, committen, pushen.
+> Getestet: `bun run test:local ./framework/src/lib/utils/static-exclude.test.ts`
+> → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 5 pass. Die
+> Wiki-App nutzt die Bausteine end-to-end (siehe `docs/teams-app.md`).
 >
-> **⚠️ Submodul-Pointer:** Ich kann nicht ins Framework-Repo pushen (Session-Scope
-> ist nur `symbiosika/wiki`), der Commit `61dc95b` ist also **nur lokal**. Der
-> Wiki-Submodul-Pointer zeigt derzeit darauf. Nach dem Landen upstream:
+> **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `61dc95b`,
+> gepusht wurde er unverändert aus dem Submodul heraus. Solange der PR auf dem
+> Branch liegt, ist der Wiki-Branch also baubar — kein Re-Point nötig.
+>
+> ⚠️ Wird der PR **gesquasht** gemergt, entsteht upstream eine andere SHA. Dann
+> zeigt der Submodul-Pointer auf einen Commit, der nur noch auf dem
+> Feature-Branch existiert. Nach dem Merge deshalb:
 > ```bash
-> cd backend/framework && git fetch origin && git checkout <upstream-sha>
+> cd backend/framework && git fetch origin && git checkout <merge-sha>
 > cd ../.. && git add backend/framework && git commit -m "chore: bump framework to Teams-SSO building blocks"
 > ```
-> (Oder `61dc95b` unverändert pushen — dann ist kein Re-Point nötig.)
 >
-> **Bis dahin ist der Wiki-Branch nicht baubar in einem frischen Checkout**, weil
-> der Submodul-Commit fehlt. Das ist derselbe Ablauf wie bei
-> `FRAMEWORK_CHANGES_PHASE3.md`.
+> Der Patch `framework-teams-sso.patch` im Wiki-Repo-Root bleibt als
+> zeilengenauer Diff (`git diff cfae1a3..61dc95b`) zum Nachlesen liegen.
 
 ## Warum
 
