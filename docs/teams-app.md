@@ -170,9 +170,30 @@ dieser Reihenfolge:
 4. **Delegated permissions** `openid` und `profile` erteilt
 5. **Zustimmung**: bei „needs admin approval" einmal „Grant admin consent"
 
-Typische Wortlaute: `resourceDisabled` oder `invalid_resource` → Punkt 1 oder 3.
-`consentRequired` / `invalid_grant` → Punkt 5. `2000: …` /
-`NOT_SUPPORTED_ON_PLATFORM` → der Host unterstützt SSO in diesem Kontext nicht.
+Die Meldung enthält bei Teams-Desktop einen JSON-Block der Broker-Telemetrie.
+Zwei Felder darin sagen alles:
+
+| Feld | Bedeutung |
+| --- | --- |
+| `oauth_error_code` | der eigentliche OAuth-Fehler |
+| `server_error_code` | der `AADSTS`-Code ohne Präfix (`500011` = `AADSTS500011`) |
+| `scope` | die Resource, für die Teams ein Token wollte — muss `webApplicationInfo.resource` entsprechen |
+| `authority` | der Tenant, in dem gefragt wurde |
+
+Zuordnung:
+
+| Wortlaut | Ursache |
+| --- | --- |
+| `invalid_resource` + `500011` | **Punkt 1.** Entra findet die Resource im Tenant nicht: die Application ID URI ist nicht gesetzt, lautet anders (z. B. der Default `api://<client-id>`), oder die App-Registrierung liegt in einem anderen Tenant als der angemeldete Nutzer. Der `scope` aus der Telemetrie ist genau der Wert, der in „Expose an API" stehen muss. |
+| `resourceDisabled` | Punkt 1 oder 3 |
+| `consentRequired`, `invalid_grant` | Punkt 5 |
+| `NOT_SUPPORTED_ON_PLATFORM` | der Host unterstützt SSO in diesem Kontext nicht |
+
+**Wenn Entra die Application ID URI im Format `api://<host>/<client-id>` nicht
+annimmt** (unverifizierte Domain), geht auch der Default `api://<client-id>`:
+dann in `webApplicationInfo.resource` denselben Wert eintragen. Der Server
+akzeptiert beide Formen (`acceptedAudiences` in `lib/teams-sso`), es muss nur auf
+beiden Seiten dasselbe stehen.
 
 | Symptom | Ursache |
 | --- | --- |
