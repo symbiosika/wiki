@@ -10,7 +10,7 @@ Submodul). **Nicht** `symbiosika/wiki`.
 > Basis `cfae1a3`)
 >
 > Getestet: `bun run test:local ./framework/src/lib/utils/static-exclude.test.ts`
-> → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 5 pass. Die
+> → 27 pass, `… ./framework/src/lib/utils/ws-token-auth.test.ts` → 7 pass. Die
 > Wiki-App nutzt die Bausteine end-to-end (siehe `docs/teams-app.md`).
 >
 > **Submodul-Pointer:** Der Wiki-Branch zeigt auf genau diesen Commit `54d343e`,
