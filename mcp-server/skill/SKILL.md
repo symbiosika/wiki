@@ -143,7 +143,10 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
   Notizen, Log-Einträge, neue Abschnitte — kein Lesen vorher, kein
   String-Matching, kein Konflikt.
 - **Gezielt ändern:** `edit_page_content` ist exaktes Find-&-Replace: `oldString`
-  muss **eindeutig** vorkommen. Immer zuerst `read_page_content`, dann ersetzen.
+  muss **eindeutig** vorkommen. Immer zuerst `read_page_content`, dann ersetzen —
+  den Suchtext wörtlich aus dem Gelesenen kopieren, inklusive Markdown-Auszeichnung
+  (`**fett**`, `## Überschrift`, Listenpunkte) und der Leerzeilen zwischen Absätzen.
+  Ein `oldString` darf mehrere Absätze umspannen, `newString` ist ebenfalls Markdown.
   Bei mehrfachen Vorkommen `replaceAll: true`. Ein `409` heißt: String fehlt oder
   ist mehrdeutig → neu lesen und präziser matchen.
 - **Verweise setzen:** `[[Seitentitel]]` (oder `[[Seitentitel|Anzeigetext]]`)
@@ -153,8 +156,8 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
   Phantom-Link stehen und rastet ein, sobald die Seite angelegt wird. Nicht
   escapen und keine Backslashes setzen.
 - **Löschen:** `edit_page_content` mit leerem `newString`. Ein dadurch leer
-  gewordener Block wird sauber entfernt (kein leerer Platzhalter), und ein
-  `oldString`, der mehrere Blöcke umspannt (wörtlich aus `read_page_content`
+  gewordener Absatz wird sauber entfernt (kein leerer Platzhalter), und ein
+  `oldString`, der mehrere Absätze umspannt (wörtlich aus `read_page_content`
   kopiert, inkl. der Leerzeilen dazwischen), entfernt sie alle auf einmal.
 - **Neue Seite:** `create_page`. Standard ist **persönlich/privat**. Bewusst wählen:
   - `teamId` → Seite gehört einem Team,
