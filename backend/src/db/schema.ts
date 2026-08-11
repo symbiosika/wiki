@@ -629,3 +629,93 @@ export type AiTestQuestionSelect = typeof aiTestQuestions.$inferSelect;
 export type AiTestQuestionInsert = typeof aiTestQuestions.$inferInsert;
 export type AiTestRunSelect = typeof aiTestRuns.$inferSelect;
 export type AiTestResultSelect = typeof aiTestResults.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Chat sessions ("Fragen" view)
+//
+// The wiki-assistant slide-over is stateless: closing it drops the
+// conversation. The dedicated chat view instead keeps named sessions per user,
+// the way a consumer chat app does — pick one up later, rename it, delete it.
+//
+// A session belongs to exactly one user inside one organisation; there is no
+// sharing. Messages are stored as AI-SDK UIMessage `parts` (text + tool calls)
+// so a reopened session renders exactly like the live stream did, and can be
+// handed back to the model unchanged.
+// ---------------------------------------------------------------------------
+
+export const chatSessions = pgBaseTable(
+  "chat_sessions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    /** owner — sessions are private to the user who created them */
+    userId: uuid("user_id").notNull(),
+    /** derived from the first question; NULL until that message arrives */
+    title: text("title"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+    /** bumped on every stored message — the list is ordered by this */
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_sessions_tenant_user_idx").on(
+      table.tenantId,
+      table.userId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const chatMessages = pgBaseTable(
+  "chat_messages",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => chatSessions.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * The AI-SDK message id as generated on the client. Stable across the
+     * request that streams the answer and the follow-up requests that resend
+     * the history, which is what makes saving a conversation an upsert instead
+     * of an append (and keeps a retried request from duplicating rows).
+     */
+    messageId: text("message_id").notNull(),
+    /** "user" | "assistant" | "system" */
+    role: text("role").notNull(),
+    /** UIMessage.parts — text, tool calls and their results */
+    parts: jsonb("parts").notNull(),
+    /** position in the conversation; ordering key (createdAt can tie) */
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_messages_session_idx").on(table.sessionId, table.position),
+    uniqueIndex("chat_messages_session_message_idx").on(
+      table.sessionId,
+      table.messageId,
+    ),
+  ],
+);
+
+export const chatSessionsRelations = relations(chatSessions, ({ many }) => ({
+  messages: many(chatMessages),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  session: one(chatSessions, {
+    fields: [chatMessages.sessionId],
+    references: [chatSessions.id],
+  }),
+}));
+
+export const chatSessionSelectSchema = createSelectSchema(chatSessions);
+export const chatMessageSelectSchema = createSelectSchema(chatMessages);
+
+export type ChatSessionSelect = typeof chatSessions.$inferSelect;
+export type ChatSessionInsert = typeof chatSessions.$inferInsert;
+export type ChatMessageSelect = typeof chatMessages.$inferSelect;
+export type ChatMessageInsert = typeof chatMessages.$inferInsert;

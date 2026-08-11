@@ -37,6 +37,9 @@
 
   <!-- dashboard -->
   <div v-else class="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-10">
+    <!-- ask the assistant: the fastest way to an answer, so it comes first -->
+    <AskDashboardCard :tenant-id="tenantId" class="mb-8" />
+
     <!-- header: greeting + quick actions -->
     <header
       class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
@@ -182,7 +185,12 @@ import IconFile from '~icons/mdi/file-document-outline'
 import IconAccount from '~icons/mdi/account-outline'
 import IconTeam from '~icons/mdi/account-group-outline'
 import IconOrg from '~icons/mdi/office-building-outline'
-import { parseServerDate } from '@/utils/date'
+import {
+  parseServerDate,
+  formatExactDateTime,
+  formatRelativeIntl,
+} from '@/utils/date'
+import AskDashboardCard from '@/components/ask/AskDashboardCard.vue'
 import type { WikiTreeNode } from '@/types/wiki'
 
 /**
@@ -325,35 +333,10 @@ const greeting = computed(() => {
 // ----- date formatting ------------------------------------------------------
 
 const formatExact = (value: string): string =>
-  parseServerDate(value)?.toLocaleString(locale.value, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }) ?? '—'
+  formatExactDateTime(value, locale.value)
 
-/** Localised "2 days ago" style label using the browser's Intl support. */
-const formatRelative = (value: string): string => {
-  const date = parseServerDate(value)
-  if (!date) return '—'
-  const diffMs = date.getTime() - Date.now()
-  const rtf = new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' })
-  const divisions: [number, Intl.RelativeTimeFormatUnit][] = [
-    [60, 'second'],
-    [60, 'minute'],
-    [24, 'hour'],
-    [7, 'day'],
-    [4.34524, 'week'],
-    [12, 'month'],
-    [Number.POSITIVE_INFINITY, 'year'],
-  ]
-  let duration = diffMs / 1000
-  for (const [amount, unit] of divisions) {
-    if (Math.abs(duration) < amount) {
-      return rtf.format(Math.round(duration), unit)
-    }
-    duration /= amount
-  }
-  return formatExact(value)
-}
+const formatRelative = (value: string): string =>
+  formatRelativeIntl(value, locale.value)
 
 // ----- navigation & actions -------------------------------------------------
 

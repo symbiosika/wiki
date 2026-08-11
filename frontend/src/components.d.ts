@@ -12,6 +12,9 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppTopBar: typeof import('./components/layout/AppTopBar.vue')['default']
+    AskDashboardCard: typeof import('./components/ask/AskDashboardCard.vue')['default']
+    AskSessionList: typeof import('./components/ask/AskSessionList.vue')['default']
+    AskToolLine: typeof import('./components/ask/AskToolLine.vue')['default']
     Avatar: typeof import('./volt/Avatar.vue')['default']
     Badge: typeof import('./volt/Badge.vue')['default']
     BlockEditor: typeof import('./components/editor/BlockEditor.vue')['default']
@@ -49,6 +52,7 @@ declare module 'vue' {
     Select: typeof import('./volt/Select.vue')['default']
     SelectButton: typeof import('./volt/SelectButton.vue')['default']
     SlashMenu: typeof import('./components/editor/SlashMenu.vue')['default']
+    TeamsSessionGate: typeof import('./components/teams/TeamsSessionGate.vue')['default']
     Textarea: typeof import('./volt/Textarea.vue')['default']
     Toast: typeof import('./volt/Toast.vue')['default']
     ToggleButton: typeof import('./volt/ToggleButton.vue')['default']

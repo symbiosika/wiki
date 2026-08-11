@@ -9,6 +9,11 @@
  *   - "read" (default): only the read-only wiki tools are exposed.
  *   - "edit": additionally exposes the write tools (create / edit / delete).
  * The frontend toggles the mode with a switch at the top right of the chat.
+ *
+ * Streaming is stateless by default (the slide-over panel keeps its history in
+ * the browser). The dedicated chat view instead passes a `sessionId`, and then
+ * the conversation is persisted per user — see ../../lib/chat-sessions/store
+ * and the `/sessions` endpoints below.
  */
 
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
@@ -21,7 +26,12 @@ import { isTenantMember } from "@framework/routes/tenant";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator } from "hono-openapi";
 import * as v from "valibot";
-import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import {
+  streamText,
+  convertToModelMessages,
+  createIdGenerator,
+  type UIMessage,
+} from "ai";
 import { assertOpenRouterConfigured } from "../../../../ai";
 import { buildWikiAgentConfig } from "../../../../ai/wiki-agent";
 import type { WikiChatMode } from "../../../../ai/tools/wiki";
@@ -30,6 +40,17 @@ import {
   setChatAgentConfig,
   MAX_SYSTEM_PROMPT_CHARS,
 } from "../../../../lib/chat-config/store";
+import {
+  listSessions,
+  createSession,
+  getSessionWithMessages,
+  renameSession,
+  deleteSession,
+  saveMessages,
+  DEFAULT_SESSION_LIMIT,
+  MAX_TITLE_CHARS,
+  type StoredChatMessage,
+} from "../../../../lib/chat-sessions/store";
 
 /**
  * Request schema. Messages are AI-SDK UIMessages: their `parts` carry text as
@@ -53,6 +74,12 @@ const chatRequestSchema = v.object({
     v.maxLength(100),
   ),
   mode: v.optional(v.picklist(["read", "edit"])),
+  /**
+   * When set, the conversation is stored under this session (the dedicated
+   * chat view). Unknown or foreign ids are ignored rather than rejected: a
+   * missing session must never cost the user their answer.
+   */
+  sessionId: v.optional(v.string()),
 });
 
 export default function defineChatRoutes(
@@ -98,12 +125,26 @@ export default function defineChatRoutes(
 
       const { tenantId } = c.req.valid("param");
       const userId = c.get("usersId");
-      const { messages, mode: rawMode } = c.req.valid("json");
+      const { messages, mode: rawMode, sessionId } = c.req.valid("json");
       const mode: WikiChatMode = rawMode === "edit" ? "edit" : "read";
+      const sessionCtx = { tenantId, userId };
 
       try {
         const { systemPrompt: orgSystemPrompt } =
           await getChatAgentConfig(tenantId);
+
+        // Store the question before the answer starts. If the stream never
+        // finishes (tab closed, network gone), the user still finds what they
+        // asked when they come back to the session.
+        if (sessionId) {
+          await saveMessages(
+            sessionCtx,
+            sessionId,
+            messages as StoredChatMessage[],
+          ).catch((error) =>
+            console.error("[Chat] failed to store incoming messages", error),
+          );
+        }
 
         const result = streamText({
           ...buildWikiAgentConfig({ tenantId, userId, mode, orgSystemPrompt }),
@@ -118,6 +159,27 @@ export default function defineChatRoutes(
             "Cache-Control": "no-cache, no-transform",
             "X-Accel-Buffering": "no",
           },
+          // `originalMessages` puts the stream in persistence mode: the response
+          // message gets a stable id and `onFinish` hands back the whole updated
+          // conversation, which is exactly what we store.
+          ...(sessionId
+            ? {
+                originalMessages: messages as UIMessage[],
+                // Without this the answer reaches `onFinish` with no id (the
+                // SDK only assigns one by itself when it continues an existing
+                // assistant message) and could not be stored or updated.
+                generateMessageId: createIdGenerator({ prefix: "msg" }),
+                onFinish: async ({ messages: updated }) => {
+                  await saveMessages(
+                    sessionCtx,
+                    sessionId,
+                    updated as StoredChatMessage[],
+                  ).catch((error) =>
+                    console.error("[Chat] failed to store conversation", error),
+                  );
+                },
+              }
+            : {}),
           onError: (error) =>
             error instanceof Error ? error.message : "Streaming failed",
         });
@@ -185,6 +247,174 @@ export default function defineChatRoutes(
       const { systemPrompt } = c.req.valid("json");
       const config = await setChatAgentConfig(tenantId, { systemPrompt });
       return c.json(config);
+    },
+  );
+
+  // ---- chat sessions -------------------------------------------------------
+  //
+  // Sessions are private to the user who started them. Every handler therefore
+  // scopes on `(tenantId, usersId)`, and a session belonging to somebody else
+  // is indistinguishable from one that does not exist (404).
+
+  const sessionsRoute = `${baseRoute}/sessions`;
+  const sessionCtx = (c: {
+    req: { valid: (target: "param") => { tenantId: string } };
+    get: (key: "usersId") => string;
+  }) => ({
+    tenantId: c.req.valid("param").tenantId,
+    userId: c.get("usersId"),
+  });
+
+  /**
+   * GET /tenant/:tenantId/chat/sessions?limit=n
+   * The user's conversations, most recently used first.
+   */
+  app.get(
+    sessionsRoute,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "List the user's chat sessions",
+      responses: { 200: { description: "The user's chat sessions" } },
+    }),
+    validator("param", v.object({ tenantId: v.string() })),
+    validator(
+      "query",
+      v.object({
+        limit: v.optional(v.pipe(v.string(), v.regex(/^\d{1,3}$/))),
+      }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const sessions = await listSessions(
+        sessionCtx(c),
+        limit ? Number(limit) : DEFAULT_SESSION_LIMIT,
+      );
+      return c.json(sessions);
+    },
+  );
+
+  /**
+   * POST /tenant/:tenantId/chat/sessions
+   * Start a new conversation. The title is optional — it is derived from the
+   * first question once that is stored.
+   */
+  app.post(
+    sessionsRoute,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Create a chat session",
+      responses: { 200: { description: "The created chat session" } },
+    }),
+    validator("param", v.object({ tenantId: v.string() })),
+    validator(
+      "json",
+      v.object({
+        title: v.optional(
+          v.pipe(v.string(), v.maxLength(MAX_TITLE_CHARS * 4)),
+        ),
+      }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { title } = c.req.valid("json");
+      const session = await createSession(sessionCtx(c), title ?? null);
+      return c.json(session);
+    },
+  );
+
+  /**
+   * GET /tenant/:tenantId/chat/sessions/:sessionId
+   * One conversation with its full message history.
+   */
+  app.get(
+    `${sessionsRoute}/:sessionId`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Get a chat session including its messages",
+      responses: { 200: { description: "The chat session and its messages" } },
+    }),
+    validator(
+      "param",
+      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { sessionId } = c.req.valid("param");
+      const result = await getSessionWithMessages(sessionCtx(c), sessionId);
+      if (!result) {
+        throw new HTTPException(404, { message: "Chat session not found" });
+      }
+      return c.json(result);
+    },
+  );
+
+  /**
+   * PUT /tenant/:tenantId/chat/sessions/:sessionId
+   * Rename a conversation.
+   */
+  app.put(
+    `${sessionsRoute}/:sessionId`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Rename a chat session",
+      responses: { 200: { description: "The updated chat session" } },
+    }),
+    validator(
+      "param",
+      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+    ),
+    validator(
+      "json",
+      v.object({
+        title: v.pipe(v.string(), v.maxLength(MAX_TITLE_CHARS * 4)),
+      }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { sessionId } = c.req.valid("param");
+      const { title } = c.req.valid("json");
+      const session = await renameSession(sessionCtx(c), sessionId, title);
+      if (!session) {
+        throw new HTTPException(404, { message: "Chat session not found" });
+      }
+      return c.json(session);
+    },
+  );
+
+  /**
+   * DELETE /tenant/:tenantId/chat/sessions/:sessionId
+   * Delete a conversation and its messages.
+   */
+  app.delete(
+    `${sessionsRoute}/:sessionId`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Delete a chat session",
+      responses: { 200: { description: "Deletion result" } },
+    }),
+    validator(
+      "param",
+      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+    ),
+    isTenantMember,
+    async (c) => {
+      const { sessionId } = c.req.valid("param");
+      const deleted = await deleteSession(sessionCtx(c), sessionId);
+      if (!deleted) {
+        throw new HTTPException(404, { message: "Chat session not found" });
+      }
+      return c.json({ success: true });
     },
   );
 }

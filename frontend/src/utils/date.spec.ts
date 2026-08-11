@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { parseServerDate, formatDateTime } from './date'
+import {
+  parseServerDate,
+  formatDateTime,
+  formatRelativeIntl,
+  formatExactDateTime,
+} from './date'
 
 describe('parseServerDate', () => {
   it('treats a naive (timezone-less) timestamp as UTC', () => {
@@ -51,5 +56,46 @@ describe('formatDateTime', () => {
   it('returns a placeholder for missing values', () => {
     expect(formatDateTime(null)).toBe('-')
     expect(formatDateTime('')).toBe('-')
+  })
+})
+
+describe('formatRelativeIntl', () => {
+  it('describes a recent timestamp in the given locale', () => {
+    const minutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+    expect(formatRelativeIntl(minutesAgo, 'de')).toContain('Minuten')
+    expect(formatRelativeIntl(minutesAgo, 'en')).toContain('minutes')
+  })
+
+  it('scales up through the units', () => {
+    const daysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    expect(formatRelativeIntl(daysAgo, 'en')).toBe('3 days ago')
+  })
+
+  it('reads a naive server timestamp as UTC', () => {
+    const naive = new Date(Date.now() - 2 * 60 * 60 * 1000)
+      .toISOString()
+      .replace('T', ' ')
+      .replace('Z', '')
+    expect(formatRelativeIntl(naive, 'en')).toBe('2 hours ago')
+  })
+
+  it('returns an em dash for missing values', () => {
+    expect(formatRelativeIntl(null, 'en')).toBe('—')
+    expect(formatRelativeIntl('nonsense', 'en')).toBe('—')
+  })
+})
+
+describe('formatExactDateTime', () => {
+  it('formats date and time in the given locale', () => {
+    expect(formatExactDateTime('2026-07-22T17:20:07Z', 'de')).toBe(
+      new Date('2026-07-22T17:20:07Z').toLocaleString('de', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    )
+  })
+
+  it('returns an em dash for missing values', () => {
+    expect(formatExactDateTime(null, 'en')).toBe('—')
   })
 })

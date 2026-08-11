@@ -110,6 +110,27 @@
       </template>
     </Menu>
 
+    <!--
+      "Fragen": the plain-language chat view. Sits above the search box because
+      asking a question is the other half of finding something — and it is the
+      entry point people who do not know the wiki structure reach for first.
+    -->
+    <div class="px-3 pt-1 pb-1">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors lg:py-1.5"
+        :class="
+          isAskRoute
+            ? 'bg-primary/10 text-primary'
+            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+        "
+        @click="gotoAsk"
+      >
+        <IconChat class="h-4 w-4 shrink-0" />
+        <span class="truncate text-sm font-medium">{{ $t('Ask.menu') }}</span>
+      </button>
+    </div>
+
     <!-- search -->
     <div class="relative px-3 py-2 pt-1">
       <IconMagnify
@@ -607,6 +628,13 @@ const profileImageSrc = useAuthenticatedImage(() =>
 const isNotificationsActive = computed(
   () => String(route.name ?? '') === 'Notifications',
 )
+
+const isAskRoute = computed(() => String(route.name ?? '') === 'Ask')
+
+const gotoAsk = () => {
+  layout.closeSidebar()
+  router.push({ name: 'Ask', params: { tenantId: tenantId.value } })
+}
 
 const gotoNotifications = () => {
   router.push({ name: 'Notifications', params: { tenantId: tenantId.value } })

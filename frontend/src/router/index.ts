@@ -76,6 +76,18 @@ const router = createRouter({
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),
         },
+        // "Fragen": the plain-language chat with saved sessions. Separate from
+        // the technical /chat view above, which stays as it is.
+        //
+        // One record with an optional session id, not two: a new conversation
+        // gets its id while the first answer is already streaming, and the
+        // route is rewritten right then. Two records would remount the view at
+        // that moment and cut the stream.
+        {
+          path: 'tenant/:tenantId/ask/:sessionId?',
+          name: 'Ask',
+          component: () => import('../views/ask/index.vue'),
+        },
         {
           path: 'tenant/:tenantId/profile',
           name: 'Profile',
