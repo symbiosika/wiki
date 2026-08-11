@@ -9,6 +9,7 @@ import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-pro
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
 import defineAppInfoRoutes from "./routes/public/app-info";
+import defineTeamsAuthRoutes from "./routes/public/teams-auth";
 import definePublicWikiRoutes from "./routes/public/wiki";
 import { tickScheduler, urlImportJobHandler } from "./lib/url-import/runner";
 import { aiTestJobHandler } from "./lib/ai-tests/runner";
@@ -58,6 +59,13 @@ const server = defineServer({
   // but stops answering — otherwise a dead page would remain reachable,
   // reporting that the API is unavailable.
   staticPublicExclude: publicWikiStaticExclusions(),
+  // The SPA bundle is served without the login redirect so it can also load
+  // inside a Microsoft Teams tab, where the document request is cross-site and
+  // carries no session cookie — the bundle would be redirected to the login page
+  // before its own code ever runs. Only the bundle is opened up: it holds no
+  // secrets, and every API route it calls stays authenticated. See
+  // ./routes/public/teams-auth and docs/teams-app.md.
+  staticPrivateExclude: ["app"],
   // activate additional parameters for PDF parsing
   enablePdfParserExtraction: true,
 
@@ -119,6 +127,10 @@ const server = defineServer({
       baseRoute: "",
       app: (app) => {
         defineAppInfoRoutes(app);
+        // Microsoft Teams SSO. Unauthenticated because it establishes the
+        // session: the Entra ID token from the Teams host is what authorises
+        // the caller.
+        defineTeamsAuthRoutes(app);
         // Unauthenticated, read-only view of pages a tenant explicitly
         // published (knowledgeText.publicMode / publicEffective). Deliberately
         // registered here rather than in customHonoAppsWithAuth — see

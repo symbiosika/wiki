@@ -12,8 +12,8 @@
       >
         <!-- a cropped organisation logo replaces the initial + name lockup -->
         <img
-          v-if="logoUrl"
-          :src="logoUrl"
+          v-if="logoSrc"
+          :src="logoSrc"
           :alt="app.currentTenant?.name ?? $t('Wiki.appName')"
           class="max-h-11 max-w-full shrink object-contain"
         />
@@ -265,8 +265,8 @@
           "
         >
           <img
-            v-if="app.state.user?.profileImageName"
-            :src="profileImageUrl"
+            v-if="app.state.user?.profileImageName && profileImageSrc"
+            :src="profileImageSrc"
             alt=""
             class="h-full w-full object-cover"
           />
@@ -332,8 +332,11 @@
         </span>
       </button>
 
-      <!-- log out, pinned to the right edge -->
+      <!-- log out, pinned to the right edge. Hidden where signing out has no
+           meaning: in a Teams tab the identity comes from the host, so a sign-out
+           would be followed by an immediate silent sign-in. -->
       <button
+        v-if="auth.canLogout"
         type="button"
         :title="$t('Wiki.logout')"
         class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
@@ -347,6 +350,7 @@
 
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
 import IconChat from '~icons/mdi/message-text-outline'
@@ -397,6 +401,9 @@ watch(
 
 /** cropped organisation logo for the current tenant (null when none set) */
 const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
+// Resolved through the fetcher so the logo also loads with a bearer session
+// (Teams tab); outside Teams this is the plain URL.
+const logoSrc = useAuthenticatedImage(() => logoUrl.value)
 
 // ----- header: organisation ------------------------------------------------
 
@@ -593,7 +600,9 @@ const gotoProfile = () => {
   router.push({ name: 'Profile', params: { tenantId: tenantId.value } })
 }
 
-const profileImageUrl = '/api/v1/user/profile-image'
+const profileImageSrc = useAuthenticatedImage(() =>
+  app.state.user?.profileImageName ? '/api/v1/user/profile-image' : null,
+)
 
 const isNotificationsActive = computed(
   () => String(route.name ?? '') === 'Notifications',

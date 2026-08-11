@@ -15,6 +15,7 @@
  *   - `lockedByOther` / `lockHolderName` drive the "being edited by X" banner.
  */
 import { ref, computed, watch, onBeforeUnmount, type Ref } from 'vue'
+import { withTeamsWsToken } from '@/utils/teamsSession'
 
 interface PresenceState {
   locked: boolean
@@ -79,9 +80,9 @@ export function useWikiPresence(
 
   const buildUrl = (): string => {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return (
+    return withTeamsWsToken(
       `${proto}//${window.location.host}` +
-      `/api/v1/tenant/${tenantId.value}/wiki/${pageId.value}/presence`
+        `/api/v1/tenant/${tenantId.value}/wiki/${pageId.value}/presence`,
     )
   }
 

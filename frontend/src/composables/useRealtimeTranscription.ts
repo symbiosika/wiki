@@ -13,6 +13,7 @@
  * surface either way; the transcript just arrives at the end instead of live.
  */
 import { ref } from 'vue'
+import { withTeamsWsToken } from '@/utils/teamsSession'
 import { useI18n } from 'vue-i18n'
 import { floatTo16BitPCM } from '@/utils/pcm'
 import { useProtocol } from '@/stores/protocol'
@@ -134,9 +135,9 @@ export function useRealtimeTranscription(
   const buildWsUrl = (sampleRate: number): string => {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const tid = options.tenantId()
-    return (
+    return withTeamsWsToken(
       `${proto}//${window.location.host}` +
-      `/api/v1/tenant/${tid}/protocol/realtime?sampleRate=${sampleRate}`
+        `/api/v1/tenant/${tid}/protocol/realtime?sampleRate=${sampleRate}`,
     )
   }
 
