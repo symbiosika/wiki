@@ -92,19 +92,27 @@ export const agentEditCases: AgentEditCase[] = [
         '<tr><td colspan="1" rowspan="1"><p>1</p></td><td colspan="1" rowspan="1"><p>2</p></td></tr>' +
         '</tbody></table>',
     ],
-    // KNOWN DEFECT, and not one agent edits cause — it hits every table saved
-    // in the editor. TipTap emits <colgroup> for resizable tables, and
-    // turndown-plugin-gfm keeps a table it does not recognize as raw html
-    // instead of converting it, so the page's text cache (search, embedding,
-    // read_page_content, export) carries markup instead of a markdown table.
-    // The backend half asserts this verbatim, so the test flips the day the
-    // materializer learns to handle editor tables.
-    readsAsAfterSave:
-      '<table style="min-width: 50px;"><colgroup><col style="min-width: 25px;">' +
-      '<col style="min-width: 25px;"></colgroup><tbody>' +
-      '<tr><th colspan="1" rowspan="1"><p>A</p></th><th colspan="1" rowspan="1"><p>B</p></th></tr>' +
-      '<tr><td colspan="1" rowspan="1"><p>1</p></td><td colspan="1" rowspan="1"><p>2</p></td></tr>' +
-      '</tbody></table>',
+    // The editor's own table markup (a <colgroup> for resizing, <p> inside the
+    // cells) used to reach the page text as raw html; the materializer now
+    // renders any table as GFM, so a table stays a table through the round trip.
+    readsAsAfterSave: '| A | B |\n| --- | --- |\n| 1 | 2 |',
+  },
+  {
+    name: 'a checklist',
+    edited: '- [ ] offen\n- [x] erledigt',
+    savedByEditor: [
+      '<ul data-type="taskList">' +
+        '<li data-checked="false" data-type="taskItem">' +
+        '<label><input type="checkbox"><span></span></label><div><p>offen</p></div></li>' +
+        '<li data-checked="true" data-type="taskItem">' +
+        '<label><input type="checkbox" checked="checked"><span></span></label>' +
+        '<div><p>erledigt</p></div></li>' +
+        '</ul>',
+    ],
+    // NORMALIZED like any other list (Turndown's `*   ` marker), but the checked
+    // state survives in both directions: the editor parses the markdown task
+    // list into real checklist items, and the materializer writes the boxes back.
+    readsAsAfterSave: '*   [ ] offen\n*   [x] erledigt',
   },
 ]
 
