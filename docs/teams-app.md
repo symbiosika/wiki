@@ -60,18 +60,39 @@ nur das eigene Verzeichnis durch.
 
 ### 3. Teams-App-Paket
 
-`docs/teams-app/manifest.json` als Vorlage nehmen und ersetzen:
+Unter `docs/teams-app/` liegt das vollständige Paket für `wiki.symbiosika.de`:
+`manifest.json`, `color.png` (192×192) und `outline.png` (32×32, weiß auf
+transparent — so verlangt es Teams für das Outline-Icon).
 
-- `id` → neue GUID (die der Teams-App, **nicht** die Client-ID)
-- `wiki.example.com` → eigener Host (in `contentUrl`, `websiteUrl`,
-  `validDomains`, `resource`)
-- `webApplicationInfo.id` und der GUID-Teil in `resource` → `MICROSOFT_CLIENT_ID`
+```bash
+docs/teams-app/pack.sh          # → docs/teams-app/symbiosika-wiki-teams.zip
+```
 
-Dazu zwei Icons ins selbe Verzeichnis: `color.png` (192×192) und `outline.png`
-(32×32, einfarbig transparent). Die drei Dateien als ZIP packen (flach, ohne
-Unterordner) und in Teams unter „Apps → Manage your apps → Upload an app"
-hochladen. Voraussetzung: Custom App Upload / Sideloading ist im Tenant erlaubt
-(Teams Admin Center).
+Das ZIP in Teams unter „Apps → Manage your apps → Upload an app" hochladen.
+Voraussetzung: Custom App Upload / Sideloading ist im Tenant erlaubt (Teams Admin
+Center).
+
+Das ZIP muss **flach** sein — Manifest und Icons direkt im Wurzelverzeichnis. Ein
+Paket mit Unterordner wird beim Upload mit einer generischen Fehlermeldung
+abgelehnt; genau dafür gibt es das Skript (`zip -j`).
+
+**Für eine andere Instanz** zu ersetzen:
+
+| Feld | Wert |
+| --- | --- |
+| `id` | neue GUID für die Teams-App — **nicht** die Client-ID |
+| `staticTabs[0].contentUrl` | `https://<host>/static/app/?host=teams` |
+| `staticTabs[0].websiteUrl`, `validDomains` | eigener Host |
+| `webApplicationInfo.id` | `MICROSOFT_CLIENT_ID` |
+| `webApplicationInfo.resource` | `api://<host>/<MICROSOFT_CLIENT_ID>` |
+| `developer.*`, `name`, `description`, `accentColor` | eigene Angaben |
+
+**Zur `contentUrl`:** Der direkte Pfad `/static/app/?host=teams` ist der
+kürzeste Weg. Die bloße Domain (`https://<host>/?host=teams`) funktioniert auch —
+`public/index.html` erkennt den `host=teams`-Marker und leitet weiter, *bevor* es
+das Session-Cookie prüft. Ohne diese Sonderbehandlung würde der Tab auf
+`/login.html` landen, weil im Tab nie ein Cookie ankommt, und der Marker ginge
+beim Redirect verloren.
 
 ## Warum das SPA-Bundle öffentlich ausgeliefert wird
 

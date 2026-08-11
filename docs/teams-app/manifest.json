@@ -1,41 +1,40 @@
 {
-  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
   "version": "1.0.0",
-  "id": "REPLACE_WITH_A_NEW_GUID",
+  "id": "1f4c6834-53a2-4b36-b441-64d660a401f0",
   "packageName": "de.symbiosika.wiki",
   "developer": {
     "name": "Symbiosika GmbH",
-    "websiteUrl": "https://wiki.example.com",
-    "privacyUrl": "https://wiki.example.com/privacy",
-    "termsOfUseUrl": "https://wiki.example.com/terms"
+    "websiteUrl": "https://www.symbiosika.de",
+    "privacyUrl": "https://symbiosika.de/datenschutz",
+    "termsOfUseUrl": "https://symbiosika.de/datenschutz"
   },
   "name": {
-    "short": "Wiki",
+    "short": "Symbiosika Wiki",
     "full": "Symbiosika Wiki"
   },
   "description": {
-    "short": "Internes Wiki",
-    "full": "Das interne Wiki — Suche, Seiten und KI-Chat direkt in Microsoft Teams."
+    "short": "Firmenwissen und Dokumentation direkt in Teams",
+    "full": "Zugriff auf das Symbiosika Wiki direkt in Microsoft Teams. Prozesse, Richtlinien, Produktdokumentation und Handbuecher ohne Wechsel in den Browser."
   },
   "icons": {
     "color": "color.png",
     "outline": "outline.png"
   },
-  "accentColor": "#FFFFFF",
+  "accentColor": "#0F6E56",
   "staticTabs": [
     {
-      "entityId": "wiki",
+      "entityId": "symbiosika-wiki",
       "name": "Wiki",
-      "contentUrl": "https://wiki.example.com/static/app/?host=teams",
-      "websiteUrl": "https://wiki.example.com/static/app/",
+      "contentUrl": "https://wiki.symbiosika.de/static/app/?host=teams",
+      "websiteUrl": "https://wiki.symbiosika.de",
       "scopes": ["personal"]
     }
   ],
-  "permissions": ["identity"],
-  "validDomains": ["wiki.example.com"],
+  "validDomains": ["wiki.symbiosika.de"],
   "webApplicationInfo": {
-    "id": "REPLACE_WITH_MICROSOFT_CLIENT_ID",
-    "resource": "api://wiki.example.com/REPLACE_WITH_MICROSOFT_CLIENT_ID"
+    "id": "5fc494c1-8811-43f5-8625-6f67e2d0a3de",
+    "resource": "api://wiki.symbiosika.de/5fc494c1-8811-43f5-8625-6f67e2d0a3de"
   }
 }

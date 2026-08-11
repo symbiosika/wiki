@@ -5,32 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Redirect</title>
     <script>
-      function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(";").shift();
-        return null;
-      }
-      // The real `jwt` cookie is HttpOnly (not readable from JS). The server
-      // also sets a non-secret `jwt_present` marker so the SPA can detect a
-      // logged-in state.
-      const hasJwt = getCookie("jwt_present");
-      if (hasJwt) {
-        (async () => {
-          try {
-            const u = await fetch("/api/v1/user/me");
-            if (u.status === 200) {
-              window.location.href = "/static/app/";
-            } else {
-              window.location.href = "/login.html";
-            }
-          } catch (error) {
-            console.error(error);
-          }
-        })();
-      } else {
-        window.location.href = "/login.html";
-      }
+      (async () => {
+        // A Microsoft Teams tab has no session cookie: inside the tab every
+        // request is cross-site, so `SameSite=Lax` is never sent. The cookie
+        // check below would therefore always fail and send the tab to the login
+        // page, which cannot complete the Teams flow. So the host marker wins
+        // and is handed on to the SPA, which authenticates against the Teams
+        // host itself (see frontend/src/utils/teamsSession.ts).
+        //
+        // This exists so a Teams manifest may point at the bare domain. Pointing
+        // it straight at /static/app/?host=teams works too and saves a redirect.
+        if (new URLSearchParams(window.location.search).get("host") === "teams") {
+          window.location.replace("/static/app/?host=teams");
+          return;
+        }
+
+        function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(";").shift();
+          return null;
+        }
+
+        // The real `jwt` cookie is HttpOnly (not readable from JS). The server
+        // also sets a non-secret `jwt_present` marker so the SPA can detect a
+        // logged-in state.
+        if (!getCookie("jwt_present")) {
+          window.location.href = "/login.html";
+          return;
+        }
+
+        try {
+          const u = await fetch("/api/v1/user/me");
+          window.location.href = u.status === 200 ? "/static/app/" : "/login.html";
+        } catch (error) {
+          console.error(error);
+        }
+      })();
     </script>
   </head>
   <body></body>
