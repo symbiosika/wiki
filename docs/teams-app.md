@@ -143,9 +143,40 @@ Daten kommen aus der API, und dort ist jede Route weiterhin authentifiziert.
 
 ## Fehlersuche
 
+Der Fehlerbildschirm im Tab nennt die Stufe, auf der es gebrochen ist, und zeigt
+unter „Technische Meldung" den Wortlaut. Dieselbe Meldung steht in der Konsole
+(`[teams] sign-in failed …`) — im Teams-Desktop per Rechtsklick → „Inspect"
+erreichbar, im Teams-Web mit den Devtools des Browsers.
+
+**Wichtigste Unterscheidung:** kommt im Server-Log **kein**
+`POST /api/v1/auth/teams/exchange` an, ist der Fehler clientseitig — Teams hat
+kein Token herausgegeben, der Server war nie beteiligt.
+
+### Teams gibt kein Token heraus (Stufe „no_token")
+
+Das ist der häufigste Fall und betrifft immer die App-Registrierung. Der
+Browser-Login funktioniert dabei weiterhin, weil er diese Einstellungen **nicht**
+braucht — er kommt mit Client-ID, Secret und Redirect-URI aus. Zu prüfen, in
+dieser Reihenfolge:
+
+1. **Application ID URI** unter „Expose an API" gesetzt und **exakt** gleich
+   `webApplicationInfo.resource` im Manifest:
+   `api://wiki.symbiosika.de/<MICROSOFT_CLIENT_ID>`
+2. **Scope `access_as_user`** unter „Expose an API" vorhanden, „Who can consent:
+   Admins and users"
+3. **Vorautorisierte Client-Anwendungen** für diesen Scope — beide GUIDs
+   (`1fec8e78-…` Desktop/Mobile, `5e3ce6c0-…` Web). Fehlt das, verweigert der
+   Host das Token stillschweigend.
+4. **Delegated permissions** `openid` und `profile` erteilt
+5. **Zustimmung**: bei „needs admin approval" einmal „Grant admin consent"
+
+Typische Wortlaute: `resourceDisabled` oder `invalid_resource` → Punkt 1 oder 3.
+`consentRequired` / `invalid_grant` → Punkt 5. `2000: …` /
+`NOT_SUPPORTED_ON_PLATFORM` → der Host unterstützt SSO in diesem Kontext nicht.
+
 | Symptom | Ursache |
 | --- | --- |
-| „Anmeldung fehlgeschlagen" im Tab | `getAuthToken()` scheitert — meist fehlende Vorautorisierung der Teams-Clients oder falsche Application ID URI |
+| „Diese Seite läuft nicht in Microsoft Teams" | `app.initialize()` fand keinen Teams-Host — die URL wurde außerhalb von Teams geöffnet |
 | 401 auf `/auth/teams/exchange` | Audience, Tenant oder Scope passen nicht; der genaue Grund steht im Server-Log (`Teams SSO exchange rejected: …`) |
 | 503 auf `/auth/teams/exchange` | `MICROSOFT_CLIENT_ID` ist nicht gesetzt |
 | Einladungscode-Abfrage erscheint unerwartet | die Instanz hat aktive Einladungscodes und die Adresse ist unbekannt — Verhalten identisch zum Browser-Login |

@@ -31,8 +31,20 @@ export type TeamsStatus =
   | 'invitation_code_required'
   | 'error'
 
+/** Where a failure happened — decides which hint the gate shows. */
+export type TeamsFailure =
+  | 'none'
+  /** The Teams SDK never reached a host: the page is not running inside Teams. */
+  | 'not_in_teams'
+  /** The host refused to issue an Entra token — almost always an Entra config gap. */
+  | 'no_token'
+  /** The token was rejected by our own backend. */
+  | 'exchange'
+
 export const teamsState = reactive<{
   status: TeamsStatus
+  /** Where it broke, for the hint the gate shows. */
+  failure: TeamsFailure
   /** Address the Entra token was issued for; shown on the invitation-code step. */
   email: string
   /**
@@ -43,6 +55,7 @@ export const teamsState = reactive<{
   message: string
 }>({
   status: 'idle',
+  failure: 'none',
   email: '',
   message: '',
 })
@@ -112,10 +125,54 @@ export const withTeamsWsToken = (url: string): string => {
 let sdk: typeof import('@microsoft/teams-js') | null = null
 let sdkInitialized = false
 
+/**
+ * Error carrying the stage it happened in, so the gate can name a cause instead
+ * of a generic "did not work".
+ */
+class TeamsBootstrapError extends Error {
+  constructor(
+    readonly failure: TeamsFailure,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'TeamsBootstrapError'
+  }
+}
+
+/** Whatever the SDK threw, as something printable. */
+const describeSdkError = (error: unknown): string => {
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object') {
+    // teams-js rejects with { errorCode, message } in places
+    const sdkError = error as { errorCode?: unknown; message?: unknown }
+    const parts = [sdkError.errorCode, sdkError.message]
+      .filter((part) => part !== undefined && part !== null)
+      .map(String)
+    if (parts.length) return parts.join(': ')
+    try {
+      return JSON.stringify(error)
+    } catch {
+      /* fall through */
+    }
+  }
+  return String(error)
+}
+
 const getSdk = async () => {
   if (!sdk) sdk = await import('@microsoft/teams-js')
   if (!sdkInitialized) {
-    await sdk.app.initialize()
+    try {
+      await sdk.app.initialize()
+    } catch (error) {
+      // `initialize()` only resolves when a Teams host answers the handshake.
+      // The usual cause is the page being opened outside Teams — the URL pasted
+      // into a browser, for instance.
+      throw new TeamsBootstrapError(
+        'not_in_teams',
+        `Teams SDK konnte den Host nicht erreichen: ${describeSdkError(error)}`,
+      )
+    }
     sdkInitialized = true
   }
   return sdk
@@ -130,7 +187,14 @@ const getSdk = async () => {
  */
 const getEntraToken = async (): Promise<string> => {
   const teams = await getSdk()
-  return await teams.authentication.getAuthToken()
+  try {
+    return await teams.authentication.getAuthToken()
+  } catch (error) {
+    // The host refused to mint a token. This is almost never our code: the app
+    // registration is incomplete (Application ID URI, `access_as_user`, the two
+    // pre-authorized Teams client IDs) or the user has not consented.
+    throw new TeamsBootstrapError('no_token', describeSdkError(error))
+  }
 }
 
 /* ── Exchange ────────────────────────────────────────────────────────────── */
@@ -163,6 +227,7 @@ const applyResult = (result: ExchangeResult): void => {
     sessionToken = result.token
     pendingRegistrationToken = null
     teamsState.status = 'authenticated'
+    teamsState.failure = 'none'
     teamsState.message = ''
     return
   }
@@ -187,14 +252,23 @@ export const bootstrapTeamsSession = async (): Promise<TeamsStatus> => {
 
   try {
     const teamsToken = await getEntraToken()
-    applyResult(
-      await postJson<ExchangeResult>('/api/v1/auth/teams/exchange', {
-        teamsToken,
-      }),
-    )
+    try {
+      applyResult(
+        await postJson<ExchangeResult>('/api/v1/auth/teams/exchange', {
+          teamsToken,
+        }),
+      )
+    } catch (error) {
+      throw new TeamsBootstrapError('exchange', describeSdkError(error))
+    }
   } catch (error) {
     teamsState.status = 'error'
-    teamsState.message = error instanceof Error ? error.message : String(error)
+    teamsState.failure =
+      error instanceof TeamsBootstrapError ? error.failure : 'no_token'
+    teamsState.message = describeSdkError(error)
+    // Also on the console: a Teams tab can be inspected (desktop: right-click →
+    // "Inspect"), and this is the one place with the verbatim reason.
+    console.error('[teams] sign-in failed', teamsState.failure, error)
   }
 
   return teamsState.status

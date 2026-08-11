@@ -9,5 +9,10 @@
   "invitationCodePlaceholder": "Code eingeben",
   "invitationCodeSubmit": "Fortfahren",
   "invitationCodeMissing": "Bitte gib einen Einladungscode ein.",
-  "invitationCodeRejected": "Dieser Einladungscode ist nicht gültig."
+  "invitationCodeRejected": "Dieser Einladungscode ist nicht gültig.",
+  "signInFailedNotInTeams": "Diese Seite läuft nicht in Microsoft Teams. Sie ist dafür gedacht, als Teams-Tab geöffnet zu werden — im Browser bitte die normale Anmeldung nutzen.",
+  "signInFailedNoToken": "Microsoft Teams hat kein Token für diese App ausgegeben. Das liegt fast immer an der App-Registrierung: Application ID URI, der Scope „access_as_user\" oder die vorautorisierten Teams-Clients fehlen, oder die Zustimmung wurde nicht erteilt.",
+  "signInFailedExchange": "Der Server hat die Anmeldung abgelehnt. Details stehen im Server-Log.",
+  "signInDetails": "Technische Meldung",
+  "openInBrowser": "Im Browser anmelden"
 }
