@@ -124,6 +124,27 @@ laufen kann.
 Betroffen ist nur das gebaute Frontend-Bundle. Es enthält keine Geheimnisse; alle
 Daten kommen aus der API, und dort ist jede Route weiterhin authentifiziert.
 
+## Bilder im Teams-Modus
+
+Wiki-Bilder sind authentifizierte API-Pfade, und ein `<img src>` schickt zwar
+Cookies, aber niemals einen `Authorization`-Header. Im Tab, wo die Session ein
+Bearer-Token ist, laufen sie deshalb alle in ein 401 und der Browser zeigt ein
+kaputtes Bild.
+
+Gelöst wird das an drei Stellen, alle über
+`components/editor/authenticatedImageSrc.ts`:
+
+| Wo | Wie |
+| --- | --- |
+| Wiki-Inhalt (TipTap) | NodeView in `wikiImage.ts` — holt die Bytes per Fetcher und setzt eine Blob-URL. `node.attrs.src` bleibt der echte Pfad, sonst würde beim Speichern eine Blob-URL in den Seiteninhalt wandern |
+| Gerendertes Markdown (Chat, Vorschauen) | `MarkdownRenderer.vue` patcht die `<img>`-Elemente nach jedem Render; reine Anzeige, nichts wird zurückgeschrieben |
+| Logo, Profilbild | `useAuthenticatedImage` |
+
+Zwei Regeln dabei: nur app-relative Pfade werden mit Token geladen — an einen
+fremden Host würde das Token sonst abfließen — und außerhalb des Teams-Modus
+bleibt die URL unverändert, damit der Browser-Cache greift. Die Blob-URLs werden
+beim Verlassen der Wiki-Ansicht freigegeben.
+
 ## Bekannte Einschränkungen
 
 - **Kein Logout im Tab.** Die Identität kommt vom Teams-Host; ein Abmelden würde
