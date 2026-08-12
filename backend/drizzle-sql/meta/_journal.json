@@ -57,6 +57,13 @@
       "when": 1786441552664,
       "tag": "0007_polite_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786524777777,
+      "tag": "0008_widen_knowledge_position",
+      "breakpoints": true
     }
   ]
 }

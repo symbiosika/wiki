@@ -71,6 +71,7 @@
     "release:patch": "tsc && npm version patch && git push --follow-tags && npm publish",
     "release:minor": "tsc && npm version minor && git push --follow-tags && npm publish",
     "release:major": "tsc && npm version major && git push --follow-tags && npm publish",
+    "wiki:rebalance-positions": "bun run ./.scripts/rebalance-block-positions.ts",
     "sync-skills": "bun run ./framework/.scripts/sync-skills.ts",
     "init": "bun run ./framework/.scripts/init.ts",
     "add-demo-data": "bun run seeds/run.ts demo"

@@ -171,24 +171,33 @@ export const movePage = async (
 
   const reParented = (page.parentId ?? null) !== newParentId;
 
+  // One transaction for the whole sibling group: the keys are only meaningful
+  // relative to each other, so a run that dies halfway would leave the group
+  // half re-keyed and its order scrambled. This matters more now that
+  // `assignPositions` may re-key every sibling at once (it compacts keys that
+  // have grown long instead of only touching what moved).
   let writes = 0;
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i]!;
-    const nextPosition = positions[i]!;
-    const positionChanged = (currentPosition.get(id) ?? null) !== nextPosition;
-    const parentChanged = id === pageId && reParented;
-    if (!positionChanged && !parentChanged) continue;
+  await db.transaction(async (trx) => {
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i]!;
+      const nextPosition = positions[i]!;
+      const positionChanged = (currentPosition.get(id) ?? null) !== nextPosition;
+      const parentChanged = id === pageId && reParented;
+      if (!positionChanged && !parentChanged) continue;
 
-    await db
-      .update(knowledgeText)
-      .set(
-        id === pageId
-          ? { position: nextPosition, parentId: newParentId }
-          : { position: nextPosition }
-      )
-      .where(and(eq(knowledgeText.id, id), eq(knowledgeText.tenantId, tenantId)));
-    writes++;
-  }
+      await trx
+        .update(knowledgeText)
+        .set(
+          id === pageId
+            ? { position: nextPosition, parentId: newParentId }
+            : { position: nextPosition }
+        )
+        .where(
+          and(eq(knowledgeText.id, id), eq(knowledgeText.tenantId, tenantId))
+        );
+      writes++;
+    }
+  });
 
   // Re-parenting can change whether the moved subtree is publicly published:
   // dropping an internal branch under a published parent publishes it, and
