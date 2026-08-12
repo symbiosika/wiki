@@ -10,10 +10,9 @@
 --
 -- WHY HERE, ON `base_*` TABLES: the columns belong to the framework submodule,
 -- which releases on its own cadence, and pages are broken today. The framework
--- carries the same widening in its own schema (see
--- FRAMEWORK_CHANGES_POSITION_REBALANCE.md at the repo root); applying it twice
--- is a no-op. `drizzle.config.ts` filters on `app_*`, so `drizzle-kit generate`
--- never diffs these tables and cannot revert this migration.
+-- carries the same widening in its own schema (symbiosika/symbiosika-framework#122);
+-- applying it twice is a no-op. `drizzle.config.ts` filters on `app_*`, so
+-- `drizzle-kit generate` never diffs these tables and cannot revert this migration.
 --
 -- COST: varchar(64) -> text is binary-coercible — no table rewrite and no index
 -- rebuild (varchar already uses text's btree opclass), only a brief ACCESS

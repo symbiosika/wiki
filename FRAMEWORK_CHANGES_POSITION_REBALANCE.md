@@ -3,28 +3,20 @@
 **Ziel-Repo:** `symbiosika/symbiosika-framework` (das Submodul
 `backend/framework`). **Nicht** `symbiosika/wiki`.
 
-> ## STATUS: umgesetzt und lokal getestet
+> ## STATUS: als PR offen
 >
-> Die Änderung liegt **im lokalen Working Tree des Submoduls
-> `backend/framework`** und ist verifiziert:
-> `bun run test:local ./framework/src/lib/utils/fractional-index.test.ts` → 20 pass,
-> `bun run test:local "./framework/src/routes/tenant/[tenantId]/knowledge/texts/blocks.test.ts"` → 11 pass,
-> `bun run test:local ./framework/src/lib/knowledge/` → 409 pass / 9 skip / 0 fail,
-> `bun run typecheck` sauber.
+> [symbiosika/symbiosika-framework#122](https://github.com/symbiosika/symbiosika-framework/pull/122)
 >
-> **Zeilengenauer Export:** `framework-position-rebalance.patch` im Wurzel-
-> verzeichnis des Wiki-Repos ist ein `git diff` exakt dieser Änderungen
-> (5 Dateien, nur Quellcode — die Migration wird generiert, siehe unten).
+> **⚠️ Submodul-Pointer:** Solange PR #122 nicht gemergt und der Submodul-
+> Pointer in `symbiosika/wiki` nicht angehoben ist, enthält das deployte
+> Backend die Änderung **nicht** — CI baut den gepinnten Submodul-SHA. Was
+> aus dem Wiki-Repo heute ausgeliefert wird, ist die Spaltenverbreiterung
+> (App-Migration `0008_widen_knowledge_position.sql`); die macht die
+> kaputten Seiten wieder speicherbar. PR #122 sorgt dafür, dass sie gar
+> nicht erst wieder in den Zustand geraten.
 >
-> **⚠️ Submodul-Pointer:** Die Session hat nur Zugriff auf `symbiosika/wiki`,
-> der Framework-Commit wurde deshalb nicht gepusht und der Submodul-Pointer im
-> Wiki-Repo bleibt **unverändert**. Solange die Änderung nicht upstream gelandet
-> und der Pointer nicht angehoben ist, enthält das deployte Backend sie
-> **nicht** — CI baut den gepinnten Submodul-SHA. Was aus dem Wiki-Repo heute
-> ausgeliefert wird, ist die Spaltenverbreiterung (App-Migration
-> `0008_widen_knowledge_position.sql`); die macht die kaputten Seiten wieder
-> speicherbar. Diese Änderung hier sorgt dafür, dass sie gar nicht erst wieder
-> in den Zustand geraten.
+> Nachdem PR #122 gemergt ist: Submodul-Pointer in `symbiosika/wiki`
+> anheben und diese Datei löschen.
 
 ## Der Fehler
 
@@ -52,7 +44,7 @@ In Produktion aufgetreten bei einer Seite mit 461 Blöcken (Tenant `c96798ed…`
 Dasselbe Wachstum gilt für `base_knowledge_text.position` (Sortierung im
 Wiki-Baum), wo ein Elternknoten mit 257+ Kindern hineingelaufen wäre.
 
-## Die Änderung
+## Die Änderung (in PR #122)
 
 1. **`src/lib/db/schema/knowledge.ts`** — beide `position`-Spalten werden `text`
    statt `varchar(64)`. Eine Längenbegrenzung auf einem monoton wachsenden
@@ -67,55 +59,18 @@ Wiki-Baum), wo ein Elternknoten mit 257+ Kindern hineingelaufen wäre.
    einer kleinen Basis; gemessen tritt ein Rebalance danach etwa alle 120
    angehängten Blöcke auf.
 
-   Das bricht bewusst die Eigenschaft „unveränderte Liste ⇒ keine Schreibvorgänge"
-   *oberhalb der Schwelle*: der Aufrufer schreibt dann einmalig jede Zeile.
-   Im Docstring dokumentiert.
-
 3. **`src/lib/knowledge/knowledge-text-blocks.ts`** — das Speichern der Blöcke
-   übersteht jetzt eine komplette Neuverschlüsselung:
-   - **Zwischenschlüssel-Durchlauf.** `knowledge_text_block_page_position_idx`
-     ist ein gewöhnlicher (nicht deferrable) Unique-Index und wird deshalb pro
-     Zeile geprüft. Eine Permutation — zwei getauschte Blöcke oder ein Rebalance,
-     das alles neu schreibt — lässt sich nicht Zeile für Zeile anwenden, weil die
-     erste Zeile auf einem Schlüssel landet, den ihr Nachbar noch hält. Jede
-     Zeile, deren Position sich ändert, wird deshalb zuerst auf `~<token>-<i>`
-     geparkt: `~` liegt außerhalb des Schlüssel-Alphabets (`^[a-z]+$`) und kann
-     daher nie mit einem echten Schlüssel kollidieren, und das zufällige Token
-     hält zwei überlappende Transaktionen auseinander.
-   - **Row-Lock pro Seite.** Die Transaktion beginnt mit `SELECT … FOR UPDATE`
-     auf der `knowledge_text`-Zeile, damit zwei gleichzeitige Speichervorgänge
-     derselben Seite serialisiert werden, statt sich auf dem Unique-Index zu
-     überholen.
+   übersteht jetzt eine komplette Neuverschlüsselung: ein Row-Lock pro Seite
+   serialisiert gleichzeitige Speichervorgänge, und jede Zeile, deren Position
+   sich ändert, wird zuerst auf einen temporären Schlüssel geparkt, damit die
+   Permutation nicht am Unique-Index (`page`, `position`) scheitert.
 
-4. Tests für beides (`fractional-index.test.ts`, `blocks.test.ts`), inklusive
-   einem End-to-End-Speichern einer Seite mit 300 Blöcken und dem Speichern
-   einer Seite, deren gespeicherte Schlüssel bereits zu lang sind.
+4. Migration `drizzle-sql/0041_faulty_whizzer.sql` — dasselbe DDL, das das
+   Wiki-Repo bereits in `backend/drizzle-sql/0008_widen_knowledge_position.sql`
+   ausliefert. Ein zweites Anwenden ist ein No-op, die beiden können also in
+   beliebiger Reihenfolge landen.
 
-## Upstream anwenden
-
-```bash
-cd backend/framework
-git checkout -b claude/position-key-rebalance
-git apply ../../framework-position-rebalance.patch
-bun run generate          # erzeugt Migration + Snapshot für die Schema-Änderung
-bun test src/lib/utils/fractional-index.test.ts
-git add -A && git commit -m "fix(knowledge): bound fractional-index key growth (blocks + page order)"
-git push -u origin claude/position-key-rebalance
-```
-
-Die generierte Migration ist exakt:
-
-```sql
-ALTER TABLE "base_knowledge_text" ALTER COLUMN "position" SET DATA TYPE text;--> statement-breakpoint
-ALTER TABLE "base_knowledge_text_block" ALTER COLUMN "position" SET DATA TYPE text;
-```
-
-also dasselbe DDL, das das Wiki-Repo bereits in
-`backend/drizzle-sql/0008_widen_knowledge_position.sql` ausliefert. Ein zweites
-Anwenden ist ein No-op, die beiden können also in beliebiger Reihenfolge landen.
-
-Nachdem der Framework-Commit gemergt ist: Submodul-Pointer in `symbiosika/wiki`
-anheben und diese Datei samt Patch löschen.
+Details, Tests und Review: siehe PR #122.
 
 ## Was das Wiki-Repo in der Zwischenzeit mitbringt
 

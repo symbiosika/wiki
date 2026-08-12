@@ -18,8 +18,9 @@
  *
  * It is a one-off repair for existing data. New growth is bounded by the
  * on-save rebalance in `assignPositions` — a framework-side change that ships
- * separately (see FRAMEWORK_CHANGES_POSITION_REBALANCE.md); until that release
- * lands, re-running this script occasionally keeps keys short.
+ * separately (symbiosika/symbiosika-framework#122); until that PR is merged
+ * and the submodule pointer bumped, re-running this script occasionally keeps
+ * keys short.
  *
  * Safety: a position rewrite is invisible to everything else. Block order is
  * preserved, so the materialized page text is byte-identical; chunk provenance
