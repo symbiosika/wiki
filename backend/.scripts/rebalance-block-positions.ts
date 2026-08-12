@@ -2,11 +2,11 @@
  * Wiki maintenance: compact over-long block ordering keys.
  *
  * Blocks are ordered by a fractional-index key that grows by ~1 character per
- * 4 appended blocks. Before migration 0008 those keys were capped at
- * `varchar(64)`, so a page reaching ~257 blocks could no longer be saved at all
- * (Postgres rejected the INSERT, the API answered 400). The migration removed
- * the ceiling; this script repairs the keys that already grew long, so the
- * index stays small and growth restarts from a compact base.
+ * 4 appended blocks, in a `varchar(64)` column: a page reaching ~257 blocks
+ * can no longer be saved at all (Postgres rejects the INSERT, the API answers
+ * 400). This script repairs the keys that already grew long — shrinking a key
+ * always fits the column, no schema change needed — so the page becomes
+ * saveable again and growth restarts from a compact base.
  *
  * Safe to run against a live system and safe to repeat: each page is rewritten
  * in its own transaction that locks the page row first, block order and content

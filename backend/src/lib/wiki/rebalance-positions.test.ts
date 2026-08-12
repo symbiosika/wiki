@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import {
   initTests,
   TEST_ORGANISATION_1,
@@ -96,30 +96,6 @@ describe("rebalanceBlockPositions", () => {
     deleteTestPages().catch((error) =>
       console.warn("afterAll cleanup failed:", error)
     );
-  });
-
-  /**
-   * Migration 0008 is hand-written (it widens framework columns from the app's
-   * migration folder). If it ever stops being applied, block keys silently get
-   * a 64-character ceiling back and long pages start failing on save with 400.
-   */
-  test("migration 0008 widened the position columns to text", async () => {
-    const rows = await getDb().execute<{
-      table_name: string;
-      data_type: string;
-      character_maximum_length: number | null;
-    }>(sql`
-      SELECT table_name, data_type, character_maximum_length
-      FROM information_schema.columns
-      WHERE table_name IN ('base_knowledge_text', 'base_knowledge_text_block')
-        AND column_name = 'position'
-      ORDER BY table_name
-    `);
-    const columns = Array.isArray(rows) ? rows : Array.from(rows as any);
-    expect(columns.length).toBe(2);
-    for (const column of columns as { data_type: string }[]) {
-      expect(column.data_type).toBe("text");
-    }
   });
 
   test("compacts long keys, preserving order and content", async () => {

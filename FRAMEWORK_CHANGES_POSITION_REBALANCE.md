@@ -8,12 +8,10 @@
 > [symbiosika/symbiosika-framework#122](https://github.com/symbiosika/symbiosika-framework/pull/122)
 >
 > **⚠️ Submodul-Pointer:** Solange PR #122 nicht gemergt und der Submodul-
-> Pointer in `symbiosika/wiki` nicht angehoben ist, enthält das deployte
-> Backend die Änderung **nicht** — CI baut den gepinnten Submodul-SHA. Was
-> aus dem Wiki-Repo heute ausgeliefert wird, ist die Spaltenverbreiterung
-> (App-Migration `0008_widen_knowledge_position.sql`); die macht die
-> kaputten Seiten wieder speicherbar. PR #122 sorgt dafür, dass sie gar
-> nicht erst wieder in den Zustand geraten.
+> Pointer in `symbiosika/wiki` nicht angehoben ist, bleibt `position`
+> `varchar(64)` und der Fehler kann erneut auftreten. Bis dahin repariert
+> `bun run wiki:rebalance-positions` bereits blockierte Seiten (siehe unten);
+> das braucht keine Schemaänderung, weil es Schlüssel nur verkürzt.
 >
 > Nachdem PR #122 gemergt ist: Submodul-Pointer in `symbiosika/wiki`
 > anheben und diese Datei löschen.
@@ -65,21 +63,22 @@ Wiki-Baum), wo ein Elternknoten mit 257+ Kindern hineingelaufen wäre.
    sich ändert, wird zuerst auf einen temporären Schlüssel geparkt, damit die
    Permutation nicht am Unique-Index (`page`, `position`) scheitert.
 
-4. Migration `drizzle-sql/0041_faulty_whizzer.sql` — dasselbe DDL, das das
-   Wiki-Repo bereits in `backend/drizzle-sql/0008_widen_knowledge_position.sql`
-   ausliefert. Ein zweites Anwenden ist ein No-op, die beiden können also in
-   beliebiger Reihenfolge landen.
+4. Migration `drizzle-sql/0041_faulty_whizzer.sql` — verbreitert die Spalten
+   auf `text`. Landet erst mit dem Framework-Release, wenn der Submodul-
+   Pointer angehoben wird; das Wiki-Repo liefert keine eigene Kopie davon
+   (siehe unten, warum das nicht nötig ist).
 
 Details, Tests und Review: siehe PR #122.
 
 ## Was das Wiki-Repo in der Zwischenzeit mitbringt
 
-- `backend/drizzle-sql/0008_widen_knowledge_position.sql` — die Verbreiterung,
-  damit kaputte Seiten mit dem nächsten Deploy wieder speicherbar sind, ohne auf
-  ein Framework-Release zu warten.
 - `backend/src/lib/wiki/rebalance-positions.ts` + `bun run wiki:rebalance-positions`
-  — einmalige Kompaktierung von Seiten, deren Schlüssel bereits lang geworden
-  sind.
+  — kompaktiert Seiten, deren Schlüssel bereits lang geworden sind, auf
+  kurze Schlüssel zurück. Braucht keine Schemaänderung (verkürzen passt immer
+  in `varchar(64)`) und macht blockierte Seiten damit sofort wieder speicherbar,
+  ohne auf das Framework-Release zu warten. Postponed nur den Fehler: ohne
+  PR #122 wachsen die Schlüssel danach erneut und das Script muss
+  gelegentlich wiederholt laufen.
 - `backend/src/lib/wiki/move.ts` — die Schreibvorgänge beim Umsortieren von
   Geschwisterseiten laufen jetzt in einer Transaktion, da ein Rebalance alle
   Geschwister auf einmal neu verschlüsseln kann und ein Teilschreiben die

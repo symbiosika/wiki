@@ -10,17 +10,20 @@
  * from there on every save failed with "value too long for type character
  * varying(64)", surfacing as HTTP 400 in the editor.
  *
- * Migration 0008 widened the column to `text`, so long keys are storable again
- * and no page is blocked. This module is the second half: it rewrites the keys
- * of already-affected pages compactly (`generateNKeysBetween` produces 3-4
- * characters for thousands of blocks), so the index stays small and the keys
- * start growing again from a clean base.
+ * The column is still `varchar(64)` — no page ever stored a key past that
+ * length, because the write that would have produced one always failed first.
+ * A blocked page's existing keys sit at or near 64 characters; this module
+ * compacts them back down (`generateNKeysBetween` produces 3-4 characters for
+ * thousands of blocks) so the page becomes saveable again and growth restarts
+ * from a clean base. It needs no schema change to do that — shrinking a key
+ * always fits.
  *
- * It is a one-off repair for existing data. New growth is bounded by the
- * on-save rebalance in `assignPositions` — a framework-side change that ships
- * separately (symbiosika/symbiosika-framework#122); until that PR is merged
- * and the submodule pointer bumped, re-running this script occasionally keeps
- * keys short.
+ * It is a one-off repair for existing data, and only postpones the ceiling:
+ * without the on-save rebalance in `assignPositions` — a framework-side
+ * change that ships separately (symbiosika/symbiosika-framework#122) — keys
+ * grow again after the fix and will need re-running roughly every 120
+ * appended blocks per page, until that PR is merged and the submodule
+ * pointer bumped.
  *
  * Safety: a position rewrite is invisible to everything else. Block order is
  * preserved, so the materialized page text is byte-identical; chunk provenance
