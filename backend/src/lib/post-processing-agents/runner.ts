@@ -19,7 +19,18 @@ import { getModel, assertOpenRouterConfigured } from "../../ai";
 import { VirtualDocument } from "./virtual-document";
 import { createVirtualDocumentTools, type AgentOutputSink } from "./tools";
 
-const DEV_STUB = process.env.POSTPROCESSING_DEV_STUB === "true";
+/**
+ * Deterministic stub instead of a real LLM call (see `runDevStub`).
+ *
+ * Read per call, not once at import: Bun runs every test file in one process
+ * with a shared module registry, so an import-time constant is decided by
+ * whichever file happens to pull this module in first. That made the
+ * stub-dependent tests pass or fail depending on file order — and a test that
+ * only passes because a *different* file set an environment variable earlier is
+ * not a test, it is a coincidence.
+ */
+const useDevStub = (): boolean =>
+  process.env.POSTPROCESSING_DEV_STUB === "true";
 
 const DEFAULT_MAX_STEPS = 40;
 const HARD_MAX_STEPS = 100;
@@ -100,7 +111,7 @@ const runDevStub = (
 export const runPostProcessingAgent = async (
   params: RunPostProcessingAgentParams,
 ): Promise<RunPostProcessingAgentResult> => {
-  if (DEV_STUB) {
+  if (useDevStub()) {
     return runDevStub(params);
   }
 

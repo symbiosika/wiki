@@ -1,3 +1,8 @@
+// The test-run endpoint executes an agent, which must not call an LLM here.
+// Set explicitly rather than relying on another test file having done it: this
+// file has to pass on its own.
+process.env.POSTPROCESSING_DEV_STUB = "true";
+
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Hono } from "hono";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
