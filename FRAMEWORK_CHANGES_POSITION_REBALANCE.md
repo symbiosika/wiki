@@ -1,124 +1,131 @@
-# Framework change — bound the growth of fractional-index ordering keys
+# Framework-Änderung — Wachstum der fractional-index Sortierschlüssel begrenzen
 
-**Target repo:** `symbiosika/symbiosika-framework` (the `backend/framework`
-submodule). **Not** `symbiosika/wiki`.
+**Ziel-Repo:** `symbiosika/symbiosika-framework` (das Submodul
+`backend/framework`). **Nicht** `symbiosika/wiki`.
 
-> ## STATUS: implemented + tested locally in this environment
+> ## STATUS: umgesetzt und lokal getestet
 >
-> The change is **applied in the local `backend/framework` submodule working
-> tree** and verified:
+> Die Änderung liegt **im lokalen Working Tree des Submoduls
+> `backend/framework`** und ist verifiziert:
 > `bun run test:local ./framework/src/lib/utils/fractional-index.test.ts` → 20 pass,
 > `bun run test:local "./framework/src/routes/tenant/[tenantId]/knowledge/texts/blocks.test.ts"` → 11 pass,
 > `bun run test:local ./framework/src/lib/knowledge/` → 409 pass / 9 skip / 0 fail,
-> `bun run typecheck` clean.
+> `bun run typecheck` sauber.
 >
-> **Line-precise export:** `framework-position-rebalance.patch` at the wiki repo
-> root is a `git diff` of exactly these changes (5 files, source only — the
-> migration is generated, see below).
+> **Zeilengenauer Export:** `framework-position-rebalance.patch` im Wurzel-
+> verzeichnis des Wiki-Repos ist ein `git diff` exakt dieser Änderungen
+> (5 Dateien, nur Quellcode — die Migration wird generiert, siehe unten).
 >
-> **⚠️ Submodule pointer:** the session scope is `symbiosika/wiki` only, so the
-> framework commit was not pushed and the wiki submodule pointer is **left
-> untouched**. Until this lands upstream and the pointer is bumped, the
-> deployed backend does **not** contain this change — CI builds the pinned
-> submodule SHA. What ships from the wiki repo today is the column widening
-> (app migration `0008_widen_knowledge_position.sql`), which is what actually
-> unblocks the broken pages; this change is what keeps them from getting there
-> again.
+> **⚠️ Submodul-Pointer:** Die Session hat nur Zugriff auf `symbiosika/wiki`,
+> der Framework-Commit wurde deshalb nicht gepusht und der Submodul-Pointer im
+> Wiki-Repo bleibt **unverändert**. Solange die Änderung nicht upstream gelandet
+> und der Pointer nicht angehoben ist, enthält das deployte Backend sie
+> **nicht** — CI baut den gepinnten Submodul-SHA. Was aus dem Wiki-Repo heute
+> ausgeliefert wird, ist die Spaltenverbreiterung (App-Migration
+> `0008_widen_knowledge_position.sql`); die macht die kaputten Seiten wieder
+> speicherbar. Diese Änderung hier sorgt dafür, dass sie gar nicht erst wieder
+> in den Zustand geraten.
 
-## The bug
+## Der Fehler
 
-Wiki page content is stored as `base_knowledge_text_block` rows ordered by
-`position`, a fractional-index key from `assignPositions`
-(`src/lib/utils/fractional-index.ts`). New keys are only ever generated
-*between* two neighbours, and appending means "between the last key and the end
-of the list" — which lengthens the key by roughly one character per four
-appended blocks.
+Wiki-Seiteninhalte liegen als `base_knowledge_text_block`-Zeilen, sortiert über
+`position` — einen fractional-index Schlüssel aus `assignPositions`
+(`src/lib/utils/fractional-index.ts`). Neue Schlüssel entstehen immer *zwischen*
+zwei Nachbarn, und Anhängen heißt „zwischen dem letzten Schlüssel und dem
+Listenende" — was den Schlüssel je vier angehängter Blöcke um etwa ein Zeichen
+verlängert.
 
-`position` was `varchar(64)`. So at ~257 blocks the generated key reached 65
-characters, Postgres rejected the INSERT in `syncKnowledgeTextBlocks`
-("value too long for type character varying(64)"), and the route's catch-all
-turned it into **HTTP 400 on every subsequent save** — the page became
-permanently uneditable. Measured against the real implementation:
+`position` war `varchar(64)`. Bei ~257 Blöcken erreichte der erzeugte Schlüssel
+also 65 Zeichen, Postgres wies das INSERT in `syncKnowledgeTextBlocks` ab
+(„value too long for type character varying(64)"), und der Catch-all der Route
+machte daraus **HTTP 400 bei jedem weiteren Speichern** — die Seite war dauerhaft
+nicht mehr editierbar. Gemessen an der echten Implementierung:
 
-| blocks | longest key |
+| Blöcke | längster Schlüssel |
 |---|---|
-| 200 | 50 chars |
-| 256 | 64 chars — exactly at the old limit |
-| 257 | 65 chars — first failing block |
-| 461 | 116 chars |
+| 200 | 50 Zeichen |
+| 256 | 64 Zeichen — genau am alten Limit |
+| 257 | 65 Zeichen — erster fehlschlagender Block |
+| 461 | 116 Zeichen |
 
-Reported in production on a 461-block page (tenant `c96798ed…`). The same
-growth applies to `base_knowledge_text.position` (wiki tree ordering), where a
-parent with 257+ children would hit it.
+In Produktion aufgetreten bei einer Seite mit 461 Blöcken (Tenant `c96798ed…`).
+Dasselbe Wachstum gilt für `base_knowledge_text.position` (Sortierung im
+Wiki-Baum), wo ein Elternknoten mit 257+ Kindern hineingelaufen wäre.
 
-## The change
+## Die Änderung
 
-1. **`src/lib/db/schema/knowledge.ts`** — both `position` columns become `text`
-   instead of `varchar(64)`. A length cap on a monotonically growing key turns
-   growth into a hard write failure; the cap bought nothing.
+1. **`src/lib/db/schema/knowledge.ts`** — beide `position`-Spalten werden `text`
+   statt `varchar(64)`. Eine Längenbegrenzung auf einem monoton wachsenden
+   Schlüssel verwandelt das Wachstum in einen harten Schreibfehler; gebracht hat
+   die Begrenzung nichts.
 
-2. **`src/lib/utils/fractional-index.ts`** — new exported constant
-   `MAX_KEY_LENGTH_BEFORE_REBALANCE = 32`. When the keys `assignPositions`
-   would return exceed it, the whole list is re-keyed compactly with
-   `generateNKeysBetween` instead (3 characters for 1000 items, 4 for 5000).
-   Growth restarts from a small base; measured, a rebalance then recurs about
-   once per 120 appended blocks.
+2. **`src/lib/utils/fractional-index.ts`** — neue exportierte Konstante
+   `MAX_KEY_LENGTH_BEFORE_REBALANCE = 32`. Überschreiten die Schlüssel, die
+   `assignPositions` zurückgeben würde, diesen Wert, wird stattdessen die
+   gesamte Liste mit `generateNKeysBetween` kompakt neu verschlüsselt
+   (3 Zeichen für 1000 Einträge, 4 für 5000). Das Wachstum startet wieder von
+   einer kleinen Basis; gemessen tritt ein Rebalance danach etwa alle 120
+   angehängten Blöcke auf.
 
-   This deliberately breaks the "unchanged list ⇒ zero writes" property *above
-   the threshold*: the caller writes every row once. Documented in the
-   docstring.
+   Das bricht bewusst die Eigenschaft „unveränderte Liste ⇒ keine Schreibvorgänge"
+   *oberhalb der Schwelle*: der Aufrufer schreibt dann einmalig jede Zeile.
+   Im Docstring dokumentiert.
 
-3. **`src/lib/knowledge/knowledge-text-blocks.ts`** — the block save now
-   survives a full re-key:
-   - **Temporary-key pass.** `knowledge_text_block_page_position_idx` is a plain
-     (non-deferrable) unique index, so it is enforced per row. A permutation —
-     two blocks swapping, or a rebalance rewriting everything — cannot be
-     applied row by row, because the first row lands on a key its neighbour
-     still holds. Every row whose position changes is therefore first parked on
-     `~<token>-<i>`: `~` is outside the key alphabet (`^[a-z]+$`) so it can
-     never collide with a real key, and the random token keeps two overlapping
-     transactions apart.
-   - **Per-page row lock.** The transaction opens with `SELECT … FOR UPDATE` on
-     the `knowledge_text` row, so two concurrent saves of the same page
-     serialise instead of racing on the unique index.
+3. **`src/lib/knowledge/knowledge-text-blocks.ts`** — das Speichern der Blöcke
+   übersteht jetzt eine komplette Neuverschlüsselung:
+   - **Zwischenschlüssel-Durchlauf.** `knowledge_text_block_page_position_idx`
+     ist ein gewöhnlicher (nicht deferrable) Unique-Index und wird deshalb pro
+     Zeile geprüft. Eine Permutation — zwei getauschte Blöcke oder ein Rebalance,
+     das alles neu schreibt — lässt sich nicht Zeile für Zeile anwenden, weil die
+     erste Zeile auf einem Schlüssel landet, den ihr Nachbar noch hält. Jede
+     Zeile, deren Position sich ändert, wird deshalb zuerst auf `~<token>-<i>`
+     geparkt: `~` liegt außerhalb des Schlüssel-Alphabets (`^[a-z]+$`) und kann
+     daher nie mit einem echten Schlüssel kollidieren, und das zufällige Token
+     hält zwei überlappende Transaktionen auseinander.
+   - **Row-Lock pro Seite.** Die Transaktion beginnt mit `SELECT … FOR UPDATE`
+     auf der `knowledge_text`-Zeile, damit zwei gleichzeitige Speichervorgänge
+     derselben Seite serialisiert werden, statt sich auf dem Unique-Index zu
+     überholen.
 
-4. Tests for both (`fractional-index.test.ts`, `blocks.test.ts`), including an
-   end-to-end save of a 300-block page and a save of a page whose stored keys
-   are already over-long.
+4. Tests für beides (`fractional-index.test.ts`, `blocks.test.ts`), inklusive
+   einem End-to-End-Speichern einer Seite mit 300 Blöcken und dem Speichern
+   einer Seite, deren gespeicherte Schlüssel bereits zu lang sind.
 
-## Applying it upstream
+## Upstream anwenden
 
 ```bash
 cd backend/framework
 git checkout -b claude/position-key-rebalance
 git apply ../../framework-position-rebalance.patch
-bun run generate          # emits the migration + snapshot for the schema change
+bun run generate          # erzeugt Migration + Snapshot für die Schema-Änderung
 bun test src/lib/utils/fractional-index.test.ts
 git add -A && git commit -m "fix(knowledge): bound fractional-index key growth (blocks + page order)"
 git push -u origin claude/position-key-rebalance
 ```
 
-The generated migration is exactly:
+Die generierte Migration ist exakt:
 
 ```sql
 ALTER TABLE "base_knowledge_text" ALTER COLUMN "position" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "base_knowledge_text_block" ALTER COLUMN "position" SET DATA TYPE text;
 ```
 
-which is the same DDL the wiki repo already ships in
-`backend/drizzle-sql/0008_widen_knowledge_position.sql`. Re-applying it is a
-no-op, so the two can land in either order.
+also dasselbe DDL, das das Wiki-Repo bereits in
+`backend/drizzle-sql/0008_widen_knowledge_position.sql` ausliefert. Ein zweites
+Anwenden ist ein No-op, die beiden können also in beliebiger Reihenfolge landen.
 
-After the framework commit is merged, bump the submodule pointer in
-`symbiosika/wiki` and drop this file plus the patch.
+Nachdem der Framework-Commit gemergt ist: Submodul-Pointer in `symbiosika/wiki`
+anheben und diese Datei samt Patch löschen.
 
-## What the wiki repo carries in the meantime
+## Was das Wiki-Repo in der Zwischenzeit mitbringt
 
-- `backend/drizzle-sql/0008_widen_knowledge_position.sql` — the widening, so
-  broken pages become saveable on the next deploy without waiting for a
-  framework release.
+- `backend/drizzle-sql/0008_widen_knowledge_position.sql` — die Verbreiterung,
+  damit kaputte Seiten mit dem nächsten Deploy wieder speicherbar sind, ohne auf
+  ein Framework-Release zu warten.
 - `backend/src/lib/wiki/rebalance-positions.ts` + `bun run wiki:rebalance-positions`
-  — one-off compaction of pages whose keys already grew long.
-- `backend/src/lib/wiki/move.ts` — the sibling re-ordering writes now run in one
-  transaction, since a rebalance can rewrite every sibling at once and a partial
-  write would scramble the order.
+  — einmalige Kompaktierung von Seiten, deren Schlüssel bereits lang geworden
+  sind.
+- `backend/src/lib/wiki/move.ts` — die Schreibvorgänge beim Umsortieren von
+  Geschwisterseiten laufen jetzt in einer Transaktion, da ein Rebalance alle
+  Geschwister auf einmal neu verschlüsseln kann und ein Teilschreiben die
+  Reihenfolge zerreißen würde.
