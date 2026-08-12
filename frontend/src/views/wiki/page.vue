@@ -505,6 +505,7 @@ import type {
   WikiBlock,
   WikiTocEntry,
 } from '@/types/wiki'
+import { releaseImageSrcCache } from '@/components/editor/authenticatedImageSrc'
 import IconChat from '~icons/mdi/message-text-outline'
 import IconListBox from '~icons/mdi/format-list-bulleted'
 import IconFilePdf from '~icons/mdi/file-pdf-box'
@@ -717,6 +718,11 @@ watch(
 onBeforeUnmount(() => {
   if (jumpHighlightTimer) clearTimeout(jumpHighlightTimer)
   editorRef.value?.flush()
+  // Blob URLs for authenticated images (Teams tabs) live as long as the
+  // document, so they are released when the wiki view is left. Kept until then
+  // rather than per page: moving between pages re-uses them, and revoking one
+  // that is still on screen would break the image.
+  releaseImageSrcCache()
 })
 
 // ----- deep-link jump (scroll to a block / match + highlight) ----------------
