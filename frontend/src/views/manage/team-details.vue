@@ -278,6 +278,18 @@ const isCurrentUserAdmin = computed(() =>
   ),
 )
 
+/**
+ * Toast detail for a failed request.
+ *
+ * The team endpoints answer a user who is not an admin of the team with 403.
+ * That is a permission problem, not a broken request, so it gets its own
+ * message instead of the generic "failed to …".
+ */
+const errorDetail = (err: unknown, fallbackKey: string) =>
+  err instanceof FetcherError && err.status === 403
+    ? t('UserTeams.errors.notTeamAdmin')
+    : t(fallbackKey)
+
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
 const foundUser = ref<FoundUser | null>(null)
@@ -355,11 +367,11 @@ const openDeleteDialog = () => {
           name: 'Teams',
           params: { tenantId: route.params.tenantId },
         })
-      } catch {
+      } catch (err) {
         toast.add({
           severity: 'error',
           summary: t('Common.error'),
-          detail: t('UserTeams.errors.deleteFailed'),
+          detail: errorDetail(err, 'UserTeams.errors.deleteFailed'),
           life: 3000,
         })
       }
@@ -385,11 +397,11 @@ const openRemoveDialog = (member: TeamMember) => {
           detail: t('UserTeams.removeMemberSuccess'),
           life: 3000,
         })
-      } catch {
+      } catch (err) {
         toast.add({
           severity: 'error',
           summary: t('Common.error'),
-          detail: t('UserTeams.errors.removeMemberFailed'),
+          detail: errorDetail(err, 'UserTeams.errors.removeMemberFailed'),
           life: 3000,
         })
       }
@@ -419,11 +431,11 @@ const confirmChangeRole = async () => {
       detail: t('UserTeams.changeRoleSuccess'),
       life: 3000,
     })
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail: t('UserTeams.errors.changeRoleFailed'),
+      detail: errorDetail(err, 'UserTeams.errors.changeRoleFailed'),
       life: 3000,
     })
   }
@@ -451,12 +463,12 @@ const changeKnowledgeAccess = async (
       detail: t('UserTeams.accessSuccess'),
       life: 3000,
     })
-  } catch {
+  } catch (err) {
     member.knowledgeAccess = previous // revert on failure
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail: t('UserTeams.errors.updateAccessFailed'),
+      detail: errorDetail(err, 'UserTeams.errors.updateAccessFailed'),
       life: 3000,
     })
   } finally {
@@ -504,11 +516,11 @@ const confirmInvite = async () => {
       detail: t('UserTeams.inviteSuccess'),
       life: 3000,
     })
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail: t('UserTeams.errors.inviteFailed'),
+      detail: errorDetail(err, 'UserTeams.errors.inviteFailed'),
       life: 3000,
     })
   }
@@ -529,13 +541,13 @@ const confirmUpdateAddNewUsersByDefault = async () => {
       detail: t('UserTeams.updateSuccess'),
       life: 3000,
     })
-  } catch {
+  } catch (err) {
     // revert the optimistic toggle on failure
     addNewUsersByDefault.value = !addNewUsersByDefault.value
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail: t('UserTeams.errors.updateSettingsFailed'),
+      detail: errorDetail(err, 'UserTeams.errors.updateSettingsFailed'),
       life: 3000,
     })
   } finally {
@@ -563,11 +575,11 @@ const confirmUpdateName = async () => {
       detail: t('UserTeams.updateSuccess'),
       life: 3000,
     })
-  } catch {
+  } catch (err) {
     toast.add({
       severity: 'error',
       summary: t('Common.error'),
-      detail: t('UserTeams.errors.updateNameFailed'),
+      detail: errorDetail(err, 'UserTeams.errors.updateNameFailed'),
       life: 3000,
     })
   }

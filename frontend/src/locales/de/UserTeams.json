@@ -61,6 +61,7 @@
     "updateNameFailed": "Name konnte nicht aktualisiert werden",
     "updateSettingsFailed": "Einstellungen konnten nicht aktualisiert werden",
     "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
+    "notTeamAdmin": "Dafür sind Administrator-Rechte für dieses Team erforderlich",
     "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden"
   }
 }

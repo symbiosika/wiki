@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * The two authentication modes of the central fetcher.
  *
- * Browser: nothing is added, the HttpOnly cookie does the work, and a 401 sends
- * the user to the login page. Teams tab: a bearer token is attached and a 401 is
+ * Browser: nothing is added, the HttpOnly cookie does the work, and a 401 — and
+ * only a 401 — sends the user to the login page; a 403 is a permission problem
+ * and reaches the caller. Teams tab: a bearer token is attached and a 401 is
  * answered by re-authenticating and retrying once — never by navigating, which
  * inside a tab would strand the user.
  */
@@ -140,6 +141,25 @@ describe('fetcher authentication', () => {
 
     await expect(fetcher.get('/api/v1/tenant/other/wiki')).rejects.toThrow()
     expect(fetchMock.mock.calls.length).toBe(2)
+  })
+
+  it('surfaces a 403 outside Teams mode instead of logging the user out', async () => {
+    setSearch('')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('User is not an admin of this team', { status: 403 }),
+    )
+
+    const { fetcher, FetcherError } = await loadModules()
+
+    const error = await fetcher
+      .put('/api/v1/tenant/t1/teams/t2', { name: 'new name' })
+      .catch((err) => err)
+
+    expect(error).toBeInstanceOf(FetcherError)
+    expect((error as InstanceType<typeof FetcherError>).status).toBe(403)
+    // no navigation to the login page: a 403 is a permission problem, not an
+    // expired session
+    expect(window.location.pathname).toBe('/static/app/')
   })
 
   it('keeps plain image URLs outside Teams mode', async () => {
