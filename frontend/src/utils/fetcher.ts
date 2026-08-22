@@ -2,6 +2,12 @@
  * A simple wrapper around fetch to make it easier to use
  * and to have a central place to add authentication and the backend url
  *
+ * Only a 401 means "no valid session" and is handled here. A 403 is an
+ * authenticated user who lacks a permission (e.g. editing a team they are not
+ * an admin of) — it is passed through as a `FetcherError` so the caller can
+ * show the real reason. Treating it as a session problem would log the user
+ * out of a working session.
+ *
  * Two authentication modes, decided once per document:
  *
  *  - **Browser (default):** the HttpOnly `jwt` cookie is attached by the browser
@@ -49,8 +55,6 @@ const authHeaders = (
   base: Record<string, string> = {},
 ): Record<string, string> => ({ ...base, ...teamsAuthHeaders() })
 
-const isUnauthorized = (status: number) => status === 401 || status === 403
-
 /**
  * Run a request, and on an expired session either re-authenticate (Teams) or
  * send the user to the login page (browser).
@@ -63,15 +67,14 @@ const withAuth = async (send: () => Promise<Response>): Promise<Response> => {
   const response = await send()
 
   if (isTeamsHost()) {
-    // Only 401 means "no valid session". A 403 is an authenticated user without
-    // permission — re-authenticating would produce the same 403 and hide the
-    // real reason from the caller.
+    // Re-authenticating on a 403 would produce the same 403 and hide the real
+    // reason from the caller.
     if (response.status !== 401) return response
     if (await refreshTeamsSession()) return await send()
     return response
   }
 
-  if (isUnauthorized(response.status)) redirectToLogin()
+  if (response.status === 401) redirectToLogin()
   return response
 }
 

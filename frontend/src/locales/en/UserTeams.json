@@ -61,6 +61,7 @@
     "updateNameFailed": "Failed to update name",
     "updateSettingsFailed": "Failed to update settings",
     "changeRoleFailed": "Failed to update role",
+    "notTeamAdmin": "This requires administrator rights for this team",
     "updateAccessFailed": "Failed to update access level"
   }
 }
