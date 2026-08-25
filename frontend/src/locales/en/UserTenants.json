@@ -112,7 +112,11 @@
     "providerInfo": "Embedding provider: {provider} ({model})",
     "providerMissing": "The server has no API key for the embedding provider “{provider}”. While {envVar} is missing no page gets indexed — the setting can be saved, but it only takes effect once the key is set.",
     "enabled": "AI search enabled ({count} page(s) marked)",
-    "disabled": "AI search disabled ({count} index entrie(s) removed)"
+    "disabled": "AI search disabled ({count} index entrie(s) removed)",
+    "pending": "{count} page(s) are marked for AI search but have no vectors yet — they were created before the setting was enabled.",
+    "backfill": "Index them now in the background",
+    "backfillHint": "The pages are indexed one after another through the job queue. Depending on the number this takes a few minutes, and it can be triggered again at any time — pages that are already queued are skipped.",
+    "backfillStarted": "Indexing started ({count} page(s) queued)"
   },
   "logo": {
     "title": "Logo",
@@ -142,6 +146,7 @@
     "updateAccessFailed": "Failed to update access level",
     "brandingLoadFailed": "Failed to load colors",
     "brandingSaveFailed": "Failed to save colors",
-    "embeddingSaveFailed": "AI search setting could not be saved"
+    "embeddingSaveFailed": "AI search setting could not be saved",
+    "embeddingBackfillFailed": "Indexing could not be started"
   }
 }
