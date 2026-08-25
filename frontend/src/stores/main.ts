@@ -75,6 +75,18 @@ export interface EmbeddingProviderStatus {
 export interface EmbeddingSettings {
   enabled: boolean
   provider: EmbeddingProviderStatus
+  /** Pages marked for embedding that have no vectors yet. */
+  pendingPages: number
+}
+
+/** Result of triggering the backfill for the pages that still need vectors. */
+export interface EmbeddingBackfillResult {
+  /** Jobs created by this call. */
+  enqueued: number
+  /** Pages waiting when the call started. */
+  pendingPages: number
+  /** Skipped because a job was already queued or running. */
+  alreadyQueued: number
 }
 
 export interface EmbeddingSettingsUpdate extends EmbeddingSettings {
@@ -276,6 +288,19 @@ export const useApp = defineStore('app', () => {
     fetcher.put<EmbeddingSettingsUpdate>(
       `/api/v1/tenant/${tenantId}/knowledge/embedding-settings`,
       { enabled },
+    )
+
+  /**
+   * Queue one background embedding job per page that is marked but has no
+   * vectors yet (admins only). Idempotent — safe to press again after a
+   * partial run.
+   */
+  const startEmbeddingBackfill = async (
+    tenantId: string,
+  ): Promise<EmbeddingBackfillResult> =>
+    fetcher.post<EmbeddingBackfillResult>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-backfill`,
+      {},
     )
 
   const getTenants = async () => {
@@ -664,6 +689,7 @@ export const useApp = defineStore('app', () => {
     saveBranding,
     getEmbeddingSettings,
     saveEmbeddingSettings,
+    startEmbeddingBackfill,
     waitForInit,
     setSelectedTenant,
     getTenants,

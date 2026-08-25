@@ -292,6 +292,31 @@
           })
         }}
       </p>
+
+      <!-- pages that were created before the switch was turned on -->
+      <div
+        v-if="embeddingLoaded && embedding.enabled && embedding.pendingPages > 0"
+        class="mt-5 border-t border-surface-200 pt-4 dark:border-surface-700"
+      >
+        <p class="text-sm">
+          {{
+            $t('UserTenants.embedding.pending', {
+              count: embedding.pendingPages,
+            })
+          }}
+        </p>
+        <Button
+          class="mt-3"
+          size="small"
+          :label="$t('UserTenants.embedding.backfill')"
+          :loading="startingBackfill"
+          :disabled="!embedding.provider.configured"
+          @click="startBackfill"
+        />
+        <p class="mt-2 text-xs text-surface-400">
+          {{ $t('UserTenants.embedding.backfillHint') }}
+        </p>
+      </div>
     </section>
 
     <!-- Invite dialog -->
@@ -711,6 +736,7 @@ const resetBranding = async () => {
 
 const embedding = reactive<EmbeddingSettings>({
   enabled: false,
+  pendingPages: 0,
   provider: {
     provider: '',
     configured: false,
@@ -721,12 +747,14 @@ const embedding = reactive<EmbeddingSettings>({
 /** false until the server state arrived — keeps the switch from flickering */
 const embeddingLoaded = ref(false)
 const savingEmbedding = ref(false)
+const startingBackfill = ref(false)
 
 const loadEmbeddingSettings = async () => {
   try {
     const settings = await app.getEmbeddingSettings(tenantId.value)
     embedding.enabled = settings.enabled
     embedding.provider = settings.provider
+    embedding.pendingPages = settings.pendingPages
     embeddingLoaded.value = true
   } catch {
     // non-admins and read failures simply leave the section unconfigured
@@ -746,6 +774,7 @@ const saveEmbedding = async () => {
     const result = await app.saveEmbeddingSettings(tenantId.value, desired)
     embedding.enabled = result.enabled
     embedding.provider = result.provider
+    embedding.pendingPages = result.pendingPages
     toast.add({
       severity: 'success',
       summary: t('Common.success'),
@@ -766,6 +795,36 @@ const saveEmbedding = async () => {
     })
   } finally {
     savingEmbedding.value = false
+  }
+}
+
+/**
+ * Queue the background embedding of every page that was created before the
+ * switch was turned on. The jobs drain one after another, so this returns as
+ * soon as they are queued — not when the wiki is fully indexed.
+ */
+const startBackfill = async () => {
+  startingBackfill.value = true
+  try {
+    const result = await app.startEmbeddingBackfill(tenantId.value)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.embedding.backfillStarted', {
+        count: result.enqueued,
+      }),
+      life: 5000,
+    })
+    await loadEmbeddingSettings()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.embeddingBackfillFailed'),
+      life: 3000,
+    })
+  } finally {
+    startingBackfill.value = false
   }
 }
 

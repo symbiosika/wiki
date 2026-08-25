@@ -112,7 +112,11 @@
     "providerInfo": "Embedding-Anbieter: {provider} ({model})",
     "providerMissing": "Auf dem Server ist kein API-Key für den Embedding-Anbieter „{provider}“ hinterlegt. Solange {envVar} fehlt, werden keine Seiten indexiert — die Einstellung lässt sich zwar speichern, greift aber erst, wenn der Key gesetzt ist.",
     "enabled": "KI-Suche aktiviert ({count} Seite(n) markiert)",
-    "disabled": "KI-Suche deaktiviert ({count} Index-Eintrag/Einträge entfernt)"
+    "disabled": "KI-Suche deaktiviert ({count} Index-Eintrag/Einträge entfernt)",
+    "pending": "{count} Seite(n) sind für die KI-Suche markiert, haben aber noch keine Vektoren — angelegt, bevor die Einstellung aktiviert wurde.",
+    "backfill": "Jetzt im Hintergrund indexieren",
+    "backfillHint": "Die Seiten werden nacheinander über die Jobs-Warteschlange indexiert. Das dauert je nach Anzahl einige Minuten und kann jederzeit erneut angestoßen werden — bereits eingeplante Seiten werden übersprungen.",
+    "backfillStarted": "Indexierung gestartet ({count} Seite(n) eingeplant)"
   },
   "logo": {
     "title": "Logo",
@@ -142,6 +146,7 @@
     "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden",
     "brandingLoadFailed": "Farben konnten nicht geladen werden",
     "brandingSaveFailed": "Farben konnten nicht gespeichert werden",
-    "embeddingSaveFailed": "KI-Suche konnte nicht gespeichert werden"
+    "embeddingSaveFailed": "KI-Suche konnte nicht gespeichert werden",
+    "embeddingBackfillFailed": "Indexierung konnte nicht gestartet werden"
   }
 }
