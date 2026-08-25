@@ -104,6 +104,16 @@
     "resetDone": "Farben auf Standard zurückgesetzt",
     "invalidColor": "Bitte eine gültige Farbe eingeben."
   },
+  "embedding": {
+    "title": "KI-Suche (Embeddings)",
+    "description": "Indexiert alle Seiten dieser Organisation zusätzlich semantisch, damit die bedeutungsbasierte Suche und KI-Antworten sie finden. Die Einstellung gilt organisationsweit — sie ist bewusst nicht pro Seite einstellbar.",
+    "enable": "Alle Seiten dieser Organisation semantisch indexieren",
+    "enableHint": "Neue und geänderte Seiten werden ab sofort automatisch indexiert. Bereits vorhandene Seiten werden markiert und erhalten ihre Vektoren beim nächsten Speichern.",
+    "providerInfo": "Embedding-Anbieter: {provider} ({model})",
+    "providerMissing": "Auf dem Server ist kein API-Key für den Embedding-Anbieter „{provider}“ hinterlegt. Solange {envVar} fehlt, werden keine Seiten indexiert — die Einstellung lässt sich zwar speichern, greift aber erst, wenn der Key gesetzt ist.",
+    "enabled": "KI-Suche aktiviert ({count} Seite(n) markiert)",
+    "disabled": "KI-Suche deaktiviert ({count} Index-Eintrag/Einträge entfernt)"
+  },
   "logo": {
     "title": "Logo",
     "hint": "Wird oben in der Seitenleiste anstelle des Organisationsnamens angezeigt.",
@@ -131,6 +141,7 @@
     "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
     "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden",
     "brandingLoadFailed": "Farben konnten nicht geladen werden",
-    "brandingSaveFailed": "Farben konnten nicht gespeichert werden"
+    "brandingSaveFailed": "Farben konnten nicht gespeichert werden",
+    "embeddingSaveFailed": "KI-Suche konnte nicht gespeichert werden"
   }
 }
