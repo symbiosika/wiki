@@ -104,6 +104,16 @@
     "resetDone": "Colors reset to defaults",
     "invalidColor": "Please enter a valid color."
   },
+  "embedding": {
+    "title": "AI search (embeddings)",
+    "description": "Additionally index every page of this organisation semantically, so meaning-based search and AI answers can find them. The setting is organisation-wide — deliberately not per page.",
+    "enable": "Semantically index all pages of this organisation",
+    "enableHint": "New and edited pages are indexed automatically from now on. Existing pages are marked and get their vectors the next time they are saved.",
+    "providerInfo": "Embedding provider: {provider} ({model})",
+    "providerMissing": "The server has no API key for the embedding provider “{provider}”. While {envVar} is missing no page gets indexed — the setting can be saved, but it only takes effect once the key is set.",
+    "enabled": "AI search enabled ({count} page(s) marked)",
+    "disabled": "AI search disabled ({count} index entrie(s) removed)"
+  },
   "logo": {
     "title": "Logo",
     "hint": "Shown at the top of the sidebar in place of the organisation name.",
@@ -131,6 +141,7 @@
     "changeRoleFailed": "Failed to update role",
     "updateAccessFailed": "Failed to update access level",
     "brandingLoadFailed": "Failed to load colors",
-    "brandingSaveFailed": "Failed to save colors"
+    "brandingSaveFailed": "Failed to save colors",
+    "embeddingSaveFailed": "AI search setting could not be saved"
   }
 }
