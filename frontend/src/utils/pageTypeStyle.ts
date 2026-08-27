@@ -15,8 +15,15 @@ import type { WikiPageTypeStyle } from '@/types/wiki'
 import { resolveWikiIcon, type ResolvedWikiIcon } from '@/utils/wikiIcons'
 
 /**
- * Selectable colours. Mirrors `KNOWLEDGE_PAGE_TYPE_COLORS` in the backend
- * config, which validates the value on write — keep both lists in step.
+ * Selectable colours — the single source of truth for this app's page-type
+ * palette.
+ *
+ * The framework stores `color` as an opaque token and does not know which
+ * values exist: which colours a page type may carry is a property of this
+ * design system, not of the knowledge backend. Growing or renaming the palette
+ * therefore needs no framework release, and `pageTypeIconClasses` falls back to
+ * a neutral tone for any value it does not recognise, so a config written by a
+ * future palette never breaks a row.
  */
 export const PAGE_TYPE_COLORS = [
   'slate',
