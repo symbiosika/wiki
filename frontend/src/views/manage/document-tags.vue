@@ -24,7 +24,7 @@
 
       <div class="mt-3 flex justify-end">
         <Button
-          :label="$t('UserTenants.metadata.save')"
+          :label="$t('UserTenants.pageTypes.save')"
           size="small"
           :loading="knowledgeConfig.saving"
           :disabled="knowledgeConfig.loading || !pageTypeStylesDirty"
@@ -336,7 +336,7 @@ const savePageTypeStyles = async () => {
     toast.add({
       severity: 'success',
       summary: t('Common.success'),
-      detail: t('UserTenants.metadata.saved'),
+      detail: t('UserTenants.pageTypes.saved'),
       life: 3000,
     })
   } catch {

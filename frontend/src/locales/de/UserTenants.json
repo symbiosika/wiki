@@ -104,7 +104,9 @@
     "emojiPlaceholder": "z. B. 📘",
     "emojiInvalid": "Bitte nur ein Emoji eingeben.",
     "noColor": "Keine Farbe",
-    "notPersisted": "Die Icons konnten nicht gespeichert werden: dieser Server unterstützt die Seitentyp-Darstellung noch nicht. Sobald das Framework-Update eingespielt ist, funktioniert das Speichern ohne weitere Änderung."
+    "notPersisted": "Die Icons konnten nicht gespeichert werden: dieser Server unterstützt die Seitentyp-Darstellung noch nicht. Sobald das Framework-Update eingespielt ist, funktioniert das Speichern ohne weitere Änderung.",
+    "save": "Seitentypen speichern",
+    "saved": "Seitentypen gespeichert"
   },
   "branding": {
     "title": "Farben",
