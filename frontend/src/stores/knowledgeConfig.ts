@@ -50,17 +50,22 @@ export const useKnowledgeConfig = defineStore('knowledgeConfig', () => {
   }
 
   /**
-   * Persist the per-page-type presentation (icon, colour, label). The backend
-   * replaces the whole `pageTypeStyles` map, prunes entries whose page type no
-   * longer exists, and returns the updated config.
+   * Persist the page type vocabulary together with its presentation.
+   *
+   * Both go in one request on purpose: the backend prunes styles whose page
+   * type is no longer in `pageTypes`, so sending the list without the styles
+   * would drop the presentation of a type that was merely renamed. One request
+   * also means the two can never end up half-saved.
    */
-  const savePageTypeStyles = async (
+  const savePageTypes = async (
     tenantId: string,
+    pageTypes: string[],
     pageTypeStyles: Record<string, WikiPageTypeStyle>,
   ): Promise<WikiKnowledgeConfig> => {
     saving.value = true
     try {
       return await fetcher.put<WikiKnowledgeConfig>(api(tenantId), {
+        pageTypes,
         pageTypeStyles,
       })
     } finally {
@@ -68,5 +73,27 @@ export const useKnowledgeConfig = defineStore('knowledgeConfig', () => {
     }
   }
 
-  return { loading, saving, loadConfig, saveAttributes, savePageTypeStyles }
+  /**
+   * How many pages carry each page type, organisation-wide. A page type absent
+   * from the result is unused. Admin-only, and the editor needs it before it
+   * can let anyone rename or remove an entry.
+   */
+  const loadPageTypeUsage = async (
+    tenantId: string,
+  ): Promise<Record<string, number>> => {
+    const response = await fetcher.get<{
+      success: boolean
+      data: Record<string, number>
+    }>(`/api/v1/tenant/${tenantId}/wiki/page-type-usage`)
+    return response.data ?? {}
+  }
+
+  return {
+    loading,
+    saving,
+    loadConfig,
+    saveAttributes,
+    savePageTypes,
+    loadPageTypeUsage,
+  }
 })
