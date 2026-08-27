@@ -12,10 +12,11 @@ submodule). **Not** `symbiosika/wiki`.
 > it end to end (page type icons in the sidebar tree, above the page title, and
 > an admin editor under Manage → Document tags).
 >
-> **Line-precise export:** `framework-page-type-styles.patch` at the wiki repo
-> root is a `git diff` of exactly these changes. Apply it in a clean framework
-> checkout with `git apply framework-page-type-styles.patch`, review, commit,
-> push.
+> **Superseded by a real PR:** symbiosika/symbiosika-framework#129 carries
+> these changes against the framework's `develop` (CI green). The
+> `framework-page-type-styles.patch` at the wiki repo root was the interim
+> vehicle and is now only a fallback — it also predates the app-agnostic
+> revision of `color` described below, so prefer the PR.
 >
 > **⚠️ The submodule pointer is deliberately NOT bumped.** I could not push the
 > framework commit from this session, and pointing the wiki submodule at a
@@ -61,15 +62,23 @@ interface KnowledgePageTypeStyle {
 }
 ```
 
-- **`KNOWLEDGE_PAGE_TYPE_COLORS`** — closed palette (`slate`, `red`, `orange`,
-  `amber`, `green`, `teal`, `blue`, `violet`, `pink`), validated by the config
-  route so a typo is rejected on write rather than silently rendering nothing.
-- **`icon` stays a bounded free string** (≤ 64 chars). Which icons exist is a
-  client concern: the wiki frontend resolves an emoji as-is, a name from its
-  bundled allowlist to that icon, and anything else to no icon. Keeping the
-  framework out of that decision means the allowlist can grow without a
-  framework release, and a config written by a newer client never breaks an
-  older one.
+- **`icon` and `color` are opaque client tokens**, bounded only in length
+  (≤ 64 and ≤ 32 chars). Which icons and which colours exist belongs to the
+  consuming app's design system, not to the framework: this wiki uses Material
+  icon names, emoji and Tailwind palette keys, another app could use hex values
+  or its own brand tokens. A client resolves what it knows and renders nothing
+  (or a neutral default) for the rest, so a config written by a newer or
+  different client never breaks an older one — and this wiki's palette and icon
+  allowlist can grow without a framework release.
+
+  An earlier revision validated `color` against a closed nine-key palette baked
+  into the framework. Dropped: those keys were Tailwind names, i.e. a frontend
+  styling decision living in app-agnostic infrastructure, duplicated in two
+  places that had to be kept in step. It also contradicted this very config
+  file's own convention — `KnowledgeAttributeDefinition` is free-form unless a
+  *tenant* opts into a closed value list. The validation bought little: the
+  admin UI only offers its own swatches, and an unknown value already renders
+  as a neutral tone rather than breaking anything.
 - **Pruning on save:** `setKnowledgeTenantConfig` drops style entries whose page
   type is no longer in `pageTypes`. Without it, removing a page type would leave
   its icon behind to reappear if the same name were added again later.
