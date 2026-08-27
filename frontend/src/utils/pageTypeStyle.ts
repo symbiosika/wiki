@@ -81,16 +81,23 @@ export const pageTypeSwatchClasses = (color: PageTypeColor): string =>
 export interface ResolvedPageTypeStyle {
   /** The page type key, as stored on the page. */
   pageType: string
-  /** Display label — the configured label, else the key itself. */
-  label: string
+  /**
+   * The label an administrator configured, or undefined when none is set.
+   *
+   * Deliberately NOT pre-resolved to the key: callers own the fallback chain,
+   * because the next step down is the shipped translation of the default
+   * vocabulary and this module has no i18n. Resolving it here would create a
+   * second label source that disagrees with the one in the view.
+   */
+  configuredLabel?: string
   icon: ResolvedWikiIcon
   iconClasses: string
 }
 
 /**
- * Resolve how a page type should be presented. Returns null when the page
- * carries no type, or when the type has neither an icon nor a label configured
- * — there is nothing to show then, and callers can skip rendering entirely.
+ * Resolve how a page type should be presented. Returns null only when there is
+ * no page type at all — a type without configured presentation still resolves,
+ * so callers get a consistent shape and can decide what to render.
  */
 export const resolvePageTypeStyle = (
   pageType: string | null | undefined,
@@ -98,11 +105,11 @@ export const resolvePageTypeStyle = (
 ): ResolvedPageTypeStyle | null => {
   if (!pageType) return null
   const style = styles?.[pageType]
-  const icon = resolveWikiIcon(style?.icon)
+  const configuredLabel = style?.label?.trim()
   return {
     pageType,
-    label: style?.label?.trim() || pageType,
-    icon,
+    ...(configuredLabel ? { configuredLabel } : {}),
+    icon: resolveWikiIcon(style?.icon),
     iconClasses: pageTypeIconClasses(style?.color),
   }
 }

@@ -231,7 +231,9 @@
         class="mt-6 flex shrink-0 items-center gap-1.5 text-xs font-medium tracking-wide text-surface-500 uppercase sm:mt-8 dark:text-surface-400"
       >
         <PageTypeIcon :page-type="page.pageType" size="h-4 w-4" />
-        <span class="truncate">{{ pageTypeStyle.label }}</span>
+        <span class="truncate">{{
+          pageTypeLabel(pageTypeStyle.pageType)
+        }}</span>
       </div>
 
       <textarea
@@ -389,13 +391,17 @@
             </p>
           </section>
 
-          <!-- classification (pageType); shown read-only as a disabled select -->
+          <!--
+            page type. The same field the chip above the title shows, so it
+            carries the same name, the same label and the same icon — anything
+            else reads like two separate concepts.
+          -->
           <section
             v-if="pageTypeOptions.length || page.pageType"
             class="flex flex-col gap-1"
           >
             <label class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.classification') }}
+              {{ $t('Wiki.info.pageType') }}
             </label>
             <Select
               v-model="pageTypeModel"
@@ -406,7 +412,21 @@
               :disabled="!editable"
               class="w-full"
               :placeholder="$t('Wiki.pageType.empty')"
-            />
+            >
+              <template #option="{ option }">
+                <span class="flex items-center gap-2">
+                  <PageTypeIcon :page-type="option.value" />
+                  <span class="truncate">{{ option.label }}</span>
+                </span>
+              </template>
+              <template #value="{ value, placeholder }">
+                <span v-if="value" class="flex items-center gap-2">
+                  <PageTypeIcon :page-type="value" />
+                  <span class="truncate">{{ pageTypeLabel(value) }}</span>
+                </span>
+                <span v-else>{{ placeholder }}</span>
+              </template>
+            </Select>
           </section>
 
           <!-- status (trust signal); shown read-only as a disabled select -->
@@ -863,8 +883,9 @@ const onBlocksChange = async (blocks: WikiBlock[]) => {
 // moment a value is picked (or cleared).
 
 /**
- * Human label for a facet value. Falls back to the raw value so tenant-custom
- * vocabularies (outside the shipped i18n keys) still render.
+ * Human label for a facet value from the shipped translations. Falls back to
+ * the raw value so tenant-custom vocabularies (outside the shipped i18n keys)
+ * still render.
  */
 const facetLabel = (
   facet: 'pageType' | 'status',
@@ -894,8 +915,24 @@ const setStatus = async (value: string | null) => {
 const facetOptions = (facet: 'pageType' | 'status', vocabulary: string[]) =>
   vocabulary.map((value) => ({ label: facetLabel(facet, value), value }))
 
+/**
+ * The one label chain for a page type: the label an administrator configured,
+ * else the shipped translation of the default vocabulary, else the raw key.
+ *
+ * Everything that names a page type goes through this — the chip above the
+ * title and the Info selector — so the two can never disagree. The shipped
+ * translations only cover the default vocabulary, which is why the configured
+ * label has to win rather than the other way round.
+ */
+const pageTypeLabel = (value: string): string =>
+  wiki.state.config?.pageTypeStyles?.[value]?.label?.trim() ||
+  facetLabel('pageType', value)
+
 const pageTypeOptions = computed(() =>
-  facetOptions('pageType', wiki.state.config?.pageTypes ?? []),
+  (wiki.state.config?.pageTypes ?? []).map((value) => ({
+    label: pageTypeLabel(value),
+    value,
+  })),
 )
 
 const statusOptions = computed(() =>

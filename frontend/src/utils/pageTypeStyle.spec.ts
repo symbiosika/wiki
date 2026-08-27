@@ -101,25 +101,26 @@ describe('resolvePageTypeStyle', () => {
     expect(resolvePageTypeStyle('', styles)).toBeNull()
   })
 
-  it('resolves icon, colour and label', () => {
+  it('resolves icon, colour and the configured label', () => {
     const resolved = resolvePageTypeStyle('FAQ', styles)
     expect(resolved).not.toBeNull()
-    expect(resolved!.label).toBe('Häufige Fragen')
+    expect(resolved!.configuredLabel).toBe('Häufige Fragen')
     expect(resolved!.icon.kind).toBe('component')
     expect(resolved!.iconClasses).toContain('text-blue-')
   })
 
-  it('falls back to the page type key as label', () => {
-    expect(resolvePageTypeStyle('policy', styles)!.label).toBe('policy')
+  it('leaves configuredLabel unset when no label is configured', () => {
+    // the view owns the fallback chain (configured -> translation -> key), so
+    // this must NOT pre-resolve to the key: doing so would give the chip and
+    // the Info selector two different labels for the same page type
+    const resolved = resolvePageTypeStyle('policy', styles)
+    expect(resolved!.pageType).toBe('policy')
+    expect(resolved!.configuredLabel).toBeUndefined()
   })
 
   it('still resolves a type that has no style configured', () => {
-    // the type is valid, it just has no presentation yet — callers render the
-    // label and skip the icon
-    const resolved = resolvePageTypeStyle('manual', styles)
-    expect(resolved).toEqual({
+    expect(resolvePageTypeStyle('manual', styles)).toEqual({
       pageType: 'manual',
-      label: 'manual',
       icon: { kind: 'none' },
       iconClasses: 'text-surface-400 dark:text-surface-500',
     })
@@ -129,10 +130,12 @@ describe('resolvePageTypeStyle', () => {
     expect(resolvePageTypeStyle('manual', undefined)!.icon).toEqual({
       kind: 'none',
     })
-    expect(resolvePageTypeStyle('manual', null)!.label).toBe('manual')
+    expect(resolvePageTypeStyle('manual', null)!.pageType).toBe('manual')
   })
 
   it('ignores a whitespace-only label', () => {
-    expect(resolvePageTypeStyle('x', { x: { label: '   ' } })!.label).toBe('x')
+    expect(
+      resolvePageTypeStyle('x', { x: { label: '   ' } })!.configuredLabel,
+    ).toBeUndefined()
   })
 })

@@ -7,8 +7,8 @@
   <span
     v-if="resolved && resolved.icon.kind !== 'none'"
     class="flex shrink-0 items-center justify-center"
-    :title="resolved.label"
-    :aria-label="resolved.label"
+    :title="resolved.configuredLabel ?? resolved.pageType"
+    :aria-label="resolved.configuredLabel ?? resolved.pageType"
   >
     <component
       :is="resolved.icon.component"
