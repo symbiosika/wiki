@@ -87,7 +87,7 @@
   "info": {
     "button": "Info",
     "hint": "Show document details",
-    "classification": "Classification",
+    "pageType": "Page type",
     "status": "Status",
     "location": "Location",
     "scope": "Scope",
@@ -150,8 +150,8 @@
     "organisation": "Organisation"
   },
   "pageType": {
-    "empty": "Classify",
-    "hint": "Choose the page classification",
+    "empty": "Choose page type",
+    "hint": "Choose the page type",
     "values": {
       "FAQ": "FAQ",
       "manual": "Manual",

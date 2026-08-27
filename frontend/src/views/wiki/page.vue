@@ -220,13 +220,30 @@
         min-height floor to stop it. That made the title vanish and become
         unclickable on long pages.
       -->
+      <!--
+        type chip above the title — the same icon and colour the sidebar tree
+        uses, so a page announces its kind before it is read. Only rendered when
+        the page carries a type; otherwise the title keeps its original top
+        margin (see the class binding below).
+      -->
+      <div
+        v-if="pageTypeStyle"
+        class="mt-6 flex shrink-0 items-center gap-1.5 text-xs font-medium tracking-wide text-surface-500 uppercase sm:mt-8 dark:text-surface-400"
+      >
+        <PageTypeIcon :page-type="page.pageType" size="h-4 w-4" />
+        <span class="truncate">{{
+          pageTypeLabel(pageTypeStyle.pageType)
+        }}</span>
+      </div>
+
       <textarea
         ref="titleRef"
         v-model="title"
         rows="1"
         :readonly="!editable"
         :placeholder="$t('Wiki.titlePlaceholder')"
-        class="mt-6 w-full shrink-0 resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:mt-8 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
+        class="w-full shrink-0 resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
+        :class="pageTypeStyle ? 'mt-1' : 'mt-6 sm:mt-8'"
         @input="onTitleInput"
         @keydown.enter.prevent="focusEditor"
       />
@@ -374,13 +391,17 @@
             </p>
           </section>
 
-          <!-- classification (pageType); shown read-only as a disabled select -->
+          <!--
+            page type. The same field the chip above the title shows, so it
+            carries the same name, the same label and the same icon — anything
+            else reads like two separate concepts.
+          -->
           <section
             v-if="pageTypeOptions.length || page.pageType"
             class="flex flex-col gap-1"
           >
             <label class="font-medium text-surface-500 dark:text-surface-400">
-              {{ $t('Wiki.info.classification') }}
+              {{ $t('Wiki.info.pageType') }}
             </label>
             <Select
               v-model="pageTypeModel"
@@ -391,7 +412,21 @@
               :disabled="!editable"
               class="w-full"
               :placeholder="$t('Wiki.pageType.empty')"
-            />
+            >
+              <template #option="{ option }">
+                <span class="flex items-center gap-2">
+                  <PageTypeIcon :page-type="option.value" />
+                  <span class="truncate">{{ option.label }}</span>
+                </span>
+              </template>
+              <template #value="{ value, placeholder }">
+                <span v-if="value" class="flex items-center gap-2">
+                  <PageTypeIcon :page-type="value" />
+                  <span class="truncate">{{ pageTypeLabel(value) }}</span>
+                </span>
+                <span v-else>{{ placeholder }}</span>
+              </template>
+            </Select>
           </section>
 
           <!-- status (trust signal); shown read-only as a disabled select -->
@@ -523,11 +558,13 @@ import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue
 import WikiTableOfContents from '@/components/wiki/WikiTableOfContents.vue'
 import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
+import PageTypeIcon from '@/components/wiki/PageTypeIcon.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
 import { useWikiPresence } from '@/composables/useWikiPresence'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'
 import { blocksToMarkdown } from '@/utils/wikiMarkdown'
+import { resolvePageTypeStyle } from '@/utils/pageTypeStyle'
 
 const wiki = useWiki()
 const app = useApp()
@@ -846,8 +883,9 @@ const onBlocksChange = async (blocks: WikiBlock[]) => {
 // moment a value is picked (or cleared).
 
 /**
- * Human label for a facet value. Falls back to the raw value so tenant-custom
- * vocabularies (outside the shipped i18n keys) still render.
+ * Human label for a facet value from the shipped translations. Falls back to
+ * the raw value so tenant-custom vocabularies (outside the shipped i18n keys)
+ * still render.
  */
 const facetLabel = (
   facet: 'pageType' | 'status',
@@ -877,12 +915,37 @@ const setStatus = async (value: string | null) => {
 const facetOptions = (facet: 'pageType' | 'status', vocabulary: string[]) =>
   vocabulary.map((value) => ({ label: facetLabel(facet, value), value }))
 
+/**
+ * The one label chain for a page type: the label an administrator configured,
+ * else the shipped translation of the default vocabulary, else the raw key.
+ *
+ * Everything that names a page type goes through this — the chip above the
+ * title and the Info selector — so the two can never disagree. The shipped
+ * translations only cover the default vocabulary, which is why the configured
+ * label has to win rather than the other way round.
+ */
+const pageTypeLabel = (value: string): string =>
+  wiki.state.config?.pageTypeStyles?.[value]?.label?.trim() ||
+  facetLabel('pageType', value)
+
 const pageTypeOptions = computed(() =>
-  facetOptions('pageType', wiki.state.config?.pageTypes ?? []),
+  (wiki.state.config?.pageTypes ?? []).map((value) => ({
+    label: pageTypeLabel(value),
+    value,
+  })),
 )
 
 const statusOptions = computed(() =>
   facetOptions('status', wiki.state.config?.statuses ?? []),
+)
+
+/**
+ * Icon/colour/label configured for this page's type, or null when the page has
+ * no type. Drives the chip above the title; the icon itself is rendered by
+ * `PageTypeIcon`, which resolves the same style independently.
+ */
+const pageTypeStyle = computed(() =>
+  resolvePageTypeStyle(page.value?.pageType, wiki.state.config?.pageTypeStyles),
 )
 
 /**

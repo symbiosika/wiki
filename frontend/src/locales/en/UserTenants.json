@@ -70,6 +70,7 @@
   "metadata": {
     "tabTitle": "Document tags",
     "title": "Document tags",
+    "attributesTitle": "Document tags",
     "description": "Define the key-value tags every document in this organisation can use. Each key can allow free text or a fixed list of values.",
     "key": "Key",
     "keyPlaceholder": "e.g. manufacturer",
@@ -89,6 +90,23 @@
     "duplicateKey": "Each tag key must be unique.",
     "loadError": "Failed to load document tags",
     "saveError": "Failed to save document tags"
+  },
+  "pageTypes": {
+    "title": "Page types",
+    "description": "Give each page type an icon and a colour. Both appear in the wiki tree and above the page title, so the kind of a page is visible at a glance. The list of types itself is validated whenever a page is saved and is not edited here.",
+    "empty": "No page types are configured for this organisation.",
+    "pickIcon": "Choose icon",
+    "icon": "Icon",
+    "iconSearch": "Search icons …",
+    "iconNoMatch": "No icon found.",
+    "clearIcon": "Remove icon",
+    "emoji": "Emoji",
+    "emojiPlaceholder": "e.g. 📘",
+    "emojiInvalid": "Please enter a single emoji.",
+    "noColor": "No colour",
+    "notPersisted": "The icons could not be saved: this server does not support page type presentation yet. Saving works without any further change once the framework update is deployed.",
+    "save": "Save page types",
+    "saved": "Page types saved"
   },
   "branding": {
     "title": "Colors",

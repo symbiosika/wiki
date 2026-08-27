@@ -1,0 +1,241 @@
+diff --git a/src/index.ts b/src/index.ts
+index f747eb9..c4da663 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -687,10 +687,13 @@ export {
+   setKnowledgeTenantConfig,
+   DEFAULT_PAGE_TYPES,
+   DEFAULT_STATUSES,
++  KNOWLEDGE_PAGE_TYPE_COLORS,
+ } from "./lib/knowledge/knowledge-config";
+ export type {
+   KnowledgeTenantConfig,
+   KnowledgeAttributeDefinition,
++  KnowledgePageTypeStyle,
++  KnowledgePageTypeColor,
+ } from "./lib/knowledge/knowledge-config";
+ 
+ /**
+diff --git a/src/lib/knowledge/facets.test.ts b/src/lib/knowledge/facets.test.ts
+index 70598ea..2bcc335 100644
+--- a/src/lib/knowledge/facets.test.ts
++++ b/src/lib/knowledge/facets.test.ts
+@@ -121,6 +121,76 @@ describe("controlled facets", () => {
+     });
+   });
+ });
++describe("page type presentation (pageTypeStyles)", () => {
++  beforeAll(async () => {
++    await initTests();
++  });
++
++  test("defaults to an empty map", async () => {
++    const cfg = await getKnowledgeTenantConfig(TENANT);
++    expect(cfg.pageTypeStyles).toBeDefined();
++    expect(typeof cfg.pageTypeStyles).toBe("object");
++  });
++
++  test("stores icon, colour and label per page type", async () => {
++    const saved = await setKnowledgeTenantConfig(TENANT, {
++      pageTypeStyles: {
++        manual: { icon: "book-open-page-variant-outline", color: "blue" },
++        FAQ: { icon: "\u{1F4D8}", label: "H\u00e4ufige Fragen" },
++      },
++    });
++    expect(saved.pageTypeStyles.manual).toEqual({
++      icon: "book-open-page-variant-outline",
++      color: "blue",
++    });
++    expect(saved.pageTypeStyles.FAQ?.label).toBe("H\u00e4ufige Fragen");
++
++    // survives a round trip through the store
++    const reread = await getKnowledgeTenantConfig(TENANT);
++    expect(reread.pageTypeStyles.manual?.color).toBe("blue");
++  });
++
++  test("is cosmetic — it never gates a page write", async () => {
++    // "text" has no style configured, yet a page of that type still saves
++    const page = await createKnowledgeText({
++      tenantId: TENANT,
++      title: "Unstyled type",
++      text: "content",
++      pageType: "text",
++    });
++    expect(page.pageType).toBe("text");
++  });
++
++  test("prunes styles whose page type is removed from the vocabulary", async () => {
++    await setKnowledgeTenantConfig(TENANT, {
++      pageTypes: ["manual", "FAQ", "policy", "note", "text"],
++      pageTypeStyles: {
++        manual: { color: "blue" },
++        policy: { color: "red" },
++      },
++    });
++
++    // dropping "policy" from the vocabulary must drop its presentation too,
++    // so re-adding the name later does not resurrect a stale icon
++    const shrunk = await setKnowledgeTenantConfig(TENANT, {
++      pageTypes: ["manual", "FAQ", "note", "text"],
++    });
++    expect(Object.keys(shrunk.pageTypeStyles).sort()).toEqual(["manual"]);
++
++    const reread = await getKnowledgeTenantConfig(TENANT);
++    expect(reread.pageTypeStyles.policy).toBeUndefined();
++    expect(reread.pageTypeStyles.manual?.color).toBe("blue");
++  });
++
++  test("restores the default vocabulary for the suites that follow", async () => {
++    const restored = await setKnowledgeTenantConfig(TENANT, {
++      pageTypes: ["manual", "FAQ", "policy", "note", "text"],
++      pageTypeStyles: {},
++    });
++    expect(restored.pageTypeStyles).toEqual({});
++  });
++});
++
+ describe("catalog attributes", () => {
+   beforeAll(async () => {
+     await initTests();
+diff --git a/src/lib/knowledge/knowledge-config.ts b/src/lib/knowledge/knowledge-config.ts
+index c232924..90ec4aa 100644
+--- a/src/lib/knowledge/knowledge-config.ts
++++ b/src/lib/knowledge/knowledge-config.ts
+@@ -43,6 +43,48 @@ export interface KnowledgeAttributeDefinition {
+   type?: "string" | "number" | "date" | "boolean" | "enum";
+ }
+ 
++/**
++ * Colour keys a page type may carry. Deliberately a small closed list: the
++ * frontend maps each key onto Tailwind palette utility classes, so a value
++ * outside this list has no rendering. Kept here (not only in the frontend) so
++ * the config route can reject typos on write.
++ */
++export const KNOWLEDGE_PAGE_TYPE_COLORS = [
++  "slate",
++  "red",
++  "orange",
++  "amber",
++  "green",
++  "teal",
++  "blue",
++  "violet",
++  "pink",
++] as const;
++
++export type KnowledgePageTypeColor =
++  (typeof KNOWLEDGE_PAGE_TYPE_COLORS)[number];
++
++/**
++ * Presentation for one page type — icon, colour and display label. Purely
++ * cosmetic: it never gates a write, and a page type works without one.
++ *
++ * Kept in a separate map (keyed by page type) instead of enriching the
++ * `pageTypes` vocabulary itself, so facet validation, the MCP surface and
++ * every existing `pageTypes` consumer keep seeing a plain `string[]`.
++ *
++ * `icon` is resolved by the frontend in three steps: an emoji is rendered as
++ * is, a known icon name from the frontend's bundled allowlist becomes that
++ * icon, anything else renders nothing. Storing an unknown name is therefore
++ * harmless and never breaks a page.
++ */
++export interface KnowledgePageTypeStyle {
++  /** Emoji, or an icon name from the frontend's bundled allowlist. */
++  icon?: string;
++  color?: KnowledgePageTypeColor;
++  /** Display label; falls back to the page type key itself. */
++  label?: string;
++}
++
+ export interface KnowledgeTenantConfig {
+   /**
+    * Whether pages in `auto` summary mode are (re)generated in the background.
+@@ -59,6 +101,12 @@ export interface KnowledgeTenantConfig {
+    * Controlled vocabulary for the `status` facet (closed list).
+    */
+   statuses: string[];
++  /**
++   * Presentation per page type, keyed by the page type as it appears in
++   * `pageTypes`. Additive and optional — entries for page types that no longer
++   * exist are ignored on read and pruned when the config is saved.
++   */
++  pageTypeStyles: Record<string, KnowledgePageTypeStyle>;
+   /**
+    * Catalog attribute keys allowed on knowledge pages. Writes that set an
+    * attribute key outside this list (or a value outside a key's closed value
+@@ -75,6 +123,7 @@ const DEFAULT_KNOWLEDGE_TENANT_CONFIG: KnowledgeTenantConfig = {
+   autoSummaries: true,
+   pageTypes: DEFAULT_PAGE_TYPES,
+   statuses: DEFAULT_STATUSES,
++  pageTypeStyles: {},
+   attributes: [],
+ };
+ 
+@@ -120,13 +169,33 @@ export const getKnowledgeTenantConfig = async (
+   return { ...DEFAULT_KNOWLEDGE_TENANT_CONFIG, ...stored };
+ };
+ 
++/**
++ * Drop presentation entries whose page type is no longer part of the
++ * vocabulary, so removing a page type does not leave its icon/colour behind to
++ * reappear when the same name is added again later.
++ */
++const prunePageTypeStyles = (
++  pageTypes: string[],
++  styles: Record<string, KnowledgePageTypeStyle> | undefined
++): Record<string, KnowledgePageTypeStyle> => {
++  if (!styles) return {};
++  const allowed = new Set(pageTypes);
++  return Object.fromEntries(
++    Object.entries(styles).filter(([key]) => allowed.has(key))
++  );
++};
++
+ /** Upsert (patch) a tenant's knowledge config. */
+ export const setKnowledgeTenantConfig = async (
+   tenantId: string,
+   patch: Partial<KnowledgeTenantConfig>
+ ): Promise<KnowledgeTenantConfig> => {
+   const current = await getKnowledgeTenantConfig(tenantId);
+-  const next = { ...current, ...patch };
++  const merged = { ...current, ...patch };
++  const next = {
++    ...merged,
++    pageTypeStyles: prunePageTypeStyles(merged.pageTypes, merged.pageTypeStyles),
++  };
+   try {
+     await getOrganisationSpecificData(tenantId, KNOWLEDGE_CONFIG_KEY);
+     await updateOrganisationSpecificData(tenantId, KNOWLEDGE_CONFIG_KEY, {
+diff --git a/src/routes/tenant/[tenantId]/knowledge/texts/index.ts b/src/routes/tenant/[tenantId]/knowledge/texts/index.ts
+index 51f71dc..0a7105b 100644
+--- a/src/routes/tenant/[tenantId]/knowledge/texts/index.ts
++++ b/src/routes/tenant/[tenantId]/knowledge/texts/index.ts
+@@ -34,6 +34,7 @@ import {
+ import {
+   getKnowledgeTenantConfig,
+   setKnowledgeTenantConfig,
++  KNOWLEDGE_PAGE_TYPE_COLORS,
+ } from "../../../../../lib/knowledge/knowledge-config";
+ import { enqueueSummaryBackfill } from "../../../../../lib/knowledge/summaries";
+ import { getUsedAttributeValues } from "../../../../../lib/knowledge/knowledge-texts";
+@@ -877,6 +878,20 @@ export default function defineRoutesForKnowledgeTexts(
+         autoSummaries: v.optional(v.boolean()),
+         pageTypes: v.optional(v.array(v.string())),
+         statuses: v.optional(v.array(v.string())),
++        // Presentation per page type. Cosmetic only, so the icon stays a
++        // bounded free string (the frontend resolves emoji / known icon names
++        // and renders nothing for anything else) while the colour is checked
++        // against the closed palette to catch typos on write.
++        pageTypeStyles: v.optional(
++          v.record(
++            v.string(),
++            v.object({
++              icon: v.optional(v.pipe(v.string(), v.maxLength(64))),
++              color: v.optional(v.picklist(KNOWLEDGE_PAGE_TYPE_COLORS)),
++              label: v.optional(v.pipe(v.string(), v.maxLength(120))),
++            })
++          )
++        ),
+         attributes: v.optional(
+           v.array(
+             v.object({

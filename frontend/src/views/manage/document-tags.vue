@@ -4,6 +4,40 @@
 
     <ManageTabs />
 
+    <!--
+      Page type presentation. Kept above the attribute definitions because it
+      changes what everyone sees in the sidebar, while attributes are a
+      back-office concern. Saved through its own request: the two lists are
+      independent parts of the knowledge config.
+    -->
+    <section class="mb-8">
+      <h2
+        class="mb-1 text-sm font-semibold text-surface-800 dark:text-surface-100"
+      >
+        {{ $t('UserTenants.pageTypes.title') }}
+      </h2>
+      <p class="mb-3 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('UserTenants.pageTypes.description') }}
+      </p>
+
+      <PageTypeStyleEditor v-model="pageTypeStyles" :page-types="pageTypes" />
+
+      <div class="mt-3 flex justify-end">
+        <Button
+          :label="$t('UserTenants.pageTypes.save')"
+          size="small"
+          :loading="knowledgeConfig.saving"
+          :disabled="knowledgeConfig.loading || !pageTypeStylesDirty"
+          @click="savePageTypeStyles"
+        />
+      </div>
+    </section>
+
+    <h2
+      class="mb-1 text-sm font-semibold text-surface-800 dark:text-surface-100"
+    >
+      {{ $t('UserTenants.metadata.attributesTitle') }}
+    </h2>
     <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
       {{ $t('UserTenants.metadata.description') }}
     </p>
@@ -109,7 +143,12 @@
 import { useToast } from 'primevue/usetoast'
 import IconTrash from '~icons/mdi/trash-can-outline'
 import IconPlus from '~icons/mdi/plus'
-import type { KnowledgeAttributeDefinition } from '@/types/wiki'
+import type {
+  KnowledgeAttributeDefinition,
+  WikiKnowledgeConfig,
+  WikiPageTypeStyle,
+} from '@/types/wiki'
+import PageTypeStyleEditor from '@/components/manage/PageTypeStyleEditor.vue'
 import { useKnowledgeConfig } from '@/stores/knowledgeConfig'
 
 const { t } = useI18n()
@@ -117,6 +156,7 @@ const toast = useToast()
 const route = useRoute()
 const app = useApp()
 const knowledgeConfig = useKnowledgeConfig()
+const wiki = useWiki()
 
 // Document tags are configured for the currently active organisation.
 const tenantId = computed(() => String(route.params.tenantId))
@@ -132,6 +172,18 @@ interface AttributeRow {
 }
 const attributeRows = ref<AttributeRow[]>([])
 const savedAttributesJson = ref('[]')
+
+/**
+ * Page type vocabulary (read-only here — it is validated on every page write,
+ * so it is not edited from this screen) plus its editable presentation map.
+ */
+const pageTypes = ref<string[]>([])
+const pageTypeStyles = ref<Record<string, WikiPageTypeStyle>>({})
+const savedPageTypeStylesJson = ref('{}')
+
+const pageTypeStylesDirty = computed(
+  () => JSON.stringify(pageTypeStyles.value) !== savedPageTypeStylesJson.value,
+)
 
 onMounted(async () => {
   await app.waitForInit()
@@ -180,6 +232,7 @@ const loadMetadata = async () => {
     savedAttributesJson.value = JSON.stringify(
       toDefinitions(attributeRows.value),
     )
+    applyPageTypeConfig(config)
   } catch {
     toast.add({
       severity: 'error',
@@ -228,6 +281,62 @@ const saveMetadata = async () => {
       severity: 'success',
       summary: t('Common.success'),
       detail: t('UserTenants.metadata.saved'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.metadata.saveError'),
+      life: 4000,
+    })
+  }
+}
+
+/** Hydrate the page type rows and reset their dirty baseline. */
+const applyPageTypeConfig = (config: WikiKnowledgeConfig) => {
+  pageTypes.value = config.pageTypes
+  pageTypeStyles.value = { ...(config.pageTypeStyles ?? {}) }
+  savedPageTypeStylesJson.value = JSON.stringify(pageTypeStyles.value)
+}
+
+const savePageTypeStyles = async () => {
+  try {
+    const sentCount = Object.keys(pageTypeStyles.value).length
+    const config = await knowledgeConfig.savePageTypeStyles(
+      tenantId.value,
+      pageTypeStyles.value,
+    )
+    applyPageTypeConfig(config)
+    // The wiki store caches the config for the sidebar and the open page, so
+    // the new icons would otherwise only show up after a full reload.
+    await wiki.reloadConfig(tenantId.value)
+
+    /*
+     * A backend that predates `pageTypeStyles` validates the request body
+     * against a schema without that key and silently drops it, so the request
+     * succeeds while nothing is stored. Reporting success there would be a
+     * lie, so compare what came back: sending entries and getting none means
+     * the server does not know the field yet. Self-heals once it does — no
+     * version check, no feature flag.
+     */
+    if (
+      sentCount > 0 &&
+      Object.keys(config.pageTypeStyles ?? {}).length === 0
+    ) {
+      toast.add({
+        severity: 'warn',
+        summary: t('Common.error'),
+        detail: t('UserTenants.pageTypes.notPersisted'),
+        life: 8000,
+      })
+      return
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.pageTypes.saved'),
       life: 3000,
     })
   } catch {
