@@ -11,9 +11,12 @@ declare global {
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
   const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
+  const PAGE_TYPE_COLORS: typeof import('./utils/pageTypeStyle').PAGE_TYPE_COLORS
   const SIDEBAR_MAX_WIDTH: typeof import('./stores/layout').SIDEBAR_MAX_WIDTH
   const SIDEBAR_MIN_WIDTH: typeof import('./stores/layout').SIDEBAR_MIN_WIDTH
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
+  const WIKI_ICONS: typeof import('./utils/wikiIcons').WIKI_ICONS
+  const WIKI_ICON_NAMES: typeof import('./utils/wikiIcons').WIKI_ICON_NAMES
   const applyBrandColors: typeof import('./utils/brandColor').applyBrandColors
   const applyTheme: typeof import('./utils/theme').applyTheme
   const authenticatedImageUrl: typeof import('./utils/fetcher').authenticatedImageUrl
@@ -50,6 +53,7 @@ declare global {
   const h: typeof import('vue').h
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
+  const isEmojiIcon: typeof import('./utils/wikiIcons').isEmojiIcon
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -78,6 +82,8 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pageOptionsForScope: typeof import('./utils/wikiTreeOptions').pageOptionsForScope
+  const pageTypeIconClasses: typeof import('./utils/pageTypeStyle').pageTypeIconClasses
+  const pageTypeSwatchClasses: typeof import('./utils/pageTypeStyle').pageTypeSwatchClasses
   const parseServerDate: typeof import('./utils/date').parseServerDate
   const parseUrlLine: typeof import('./utils/urlImportLines').parseUrlLine
   const parseUrlLines: typeof import('./utils/urlImportLines').parseUrlLines
@@ -93,6 +99,8 @@ declare global {
   const renderMarkdownInline: typeof import('./utils/markdown').renderMarkdownInline
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveDark: typeof import('./utils/theme').resolveDark
+  const resolvePageTypeStyle: typeof import('./utils/pageTypeStyle').resolvePageTypeStyle
+  const resolveWikiIcon: typeof import('./utils/wikiIcons').resolveWikiIcon
   const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags
   const scopeLabel: typeof import('./utils/wikiTreeOptions').scopeLabel
   const sessionLabel: typeof import('./types/chatSession').sessionLabel
@@ -169,6 +177,9 @@ declare global {
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
   import('./stores/documentAssistant')
   // @ts-ignore
+  export type { EmbeddingProviderStatus, EmbeddingSettings, EmbeddingBackfillResult, EmbeddingSettingsUpdate } from './stores/main'
+  import('./stores/main')
+  // @ts-ignore
   export type { Passkey } from './stores/passkeys'
   import('./stores/passkeys')
   // @ts-ignore
@@ -199,7 +210,7 @@ declare global {
   export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
-  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, AgentInstructions, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
+  export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiPageTypeStyle, AgentInstructions, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
   import('./types/wiki')
   // @ts-ignore
   export type { BrandColors } from './utils/brandColor'
@@ -207,6 +218,9 @@ declare global {
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')
+  // @ts-ignore
+  export type { PageTypeColor, ResolvedPageTypeStyle } from './utils/pageTypeStyle'
+  import('./utils/pageTypeStyle')
   // @ts-ignore
   export type { TeamsStatus, TeamsFailure, TeamsTheme } from './utils/teamsSession'
   import('./utils/teamsSession')
@@ -216,6 +230,9 @@ declare global {
   // @ts-ignore
   export type { ParsedUrlLine } from './utils/urlImportLines'
   import('./utils/urlImportLines')
+  // @ts-ignore
+  export type { ResolvedWikiIcon } from './utils/wikiIcons'
+  import('./utils/wikiIcons')
   // @ts-ignore
   export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
   import('./utils/wikiPdf')

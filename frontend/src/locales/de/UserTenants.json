@@ -70,6 +70,7 @@
   "metadata": {
     "tabTitle": "Dokument-Tags",
     "title": "Dokument-Tags",
+    "attributesTitle": "Dokument-Tags",
     "description": "Lege die Schlüssel-Wert-Tags fest, die jedes Dokument dieser Organisation nutzen kann. Jeder Schlüssel erlaubt entweder Freitext oder eine feste Werteliste.",
     "key": "Schlüssel",
     "keyPlaceholder": "z. B. hersteller",
@@ -89,6 +90,20 @@
     "duplicateKey": "Jeder Tag-Schlüssel muss eindeutig sein.",
     "loadError": "Dokument-Tags konnten nicht geladen werden",
     "saveError": "Dokument-Tags konnten nicht gespeichert werden"
+  },
+  "pageTypes": {
+    "title": "Seitentypen",
+    "description": "Gib jedem Seitentyp ein Icon und eine Farbe. Beides erscheint im Wiki-Baum und über dem Seitentitel, sodass die Art einer Seite auf einen Blick erkennbar ist. Die Liste der Typen selbst wird beim Speichern einer Seite geprüft und hier nicht bearbeitet.",
+    "empty": "Für diese Organisation sind keine Seitentypen konfiguriert.",
+    "pickIcon": "Icon wählen",
+    "icon": "Icon",
+    "iconSearch": "Icons durchsuchen …",
+    "iconNoMatch": "Kein Icon gefunden.",
+    "clearIcon": "Icon entfernen",
+    "emoji": "Emoji",
+    "emojiPlaceholder": "z. B. 📘",
+    "emojiInvalid": "Bitte nur ein Emoji eingeben.",
+    "noColor": "Keine Farbe"
   },
   "branding": {
     "title": "Farben",

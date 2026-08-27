@@ -220,13 +220,28 @@
         min-height floor to stop it. That made the title vanish and become
         unclickable on long pages.
       -->
+      <!--
+        type chip above the title — the same icon and colour the sidebar tree
+        uses, so a page announces its kind before it is read. Only rendered when
+        the page carries a type; otherwise the title keeps its original top
+        margin (see the class binding below).
+      -->
+      <div
+        v-if="pageTypeStyle"
+        class="mt-6 flex shrink-0 items-center gap-1.5 text-xs font-medium tracking-wide text-surface-500 uppercase sm:mt-8 dark:text-surface-400"
+      >
+        <PageTypeIcon :page-type="page.pageType" size="h-4 w-4" />
+        <span class="truncate">{{ pageTypeStyle.label }}</span>
+      </div>
+
       <textarea
         ref="titleRef"
         v-model="title"
         rows="1"
         :readonly="!editable"
         :placeholder="$t('Wiki.titlePlaceholder')"
-        class="mt-6 w-full shrink-0 resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:mt-8 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
+        class="w-full shrink-0 resize-none overflow-hidden bg-transparent text-3xl font-bold text-surface-900 outline-none placeholder:text-surface-300 sm:text-4xl dark:text-surface-0 dark:placeholder:text-surface-600"
+        :class="pageTypeStyle ? 'mt-1' : 'mt-6 sm:mt-8'"
         @input="onTitleInput"
         @keydown.enter.prevent="focusEditor"
       />
@@ -523,11 +538,13 @@ import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue
 import WikiTableOfContents from '@/components/wiki/WikiTableOfContents.vue'
 import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
+import PageTypeIcon from '@/components/wiki/PageTypeIcon.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
 import { useApp } from '@/stores/main'
 import { useWikiPresence } from '@/composables/useWikiPresence'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'
 import { blocksToMarkdown } from '@/utils/wikiMarkdown'
+import { resolvePageTypeStyle } from '@/utils/pageTypeStyle'
 
 const wiki = useWiki()
 const app = useApp()
@@ -883,6 +900,15 @@ const pageTypeOptions = computed(() =>
 
 const statusOptions = computed(() =>
   facetOptions('status', wiki.state.config?.statuses ?? []),
+)
+
+/**
+ * Icon/colour/label configured for this page's type, or null when the page has
+ * no type. Drives the chip above the title; the icon itself is rendered by
+ * `PageTypeIcon`, which resolves the same style independently.
+ */
+const pageTypeStyle = computed(() =>
+  resolvePageTypeStyle(page.value?.pageType, wiki.state.config?.pageTypeStyles),
 )
 
 /**

@@ -135,6 +135,7 @@ export const useWiki = defineStore('wiki', () => {
         autoSummaries: true,
         pageTypes: [],
         statuses: [],
+        pageTypeStyles: {},
         attributes: [],
       }
     }

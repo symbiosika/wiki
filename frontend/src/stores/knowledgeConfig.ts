@@ -3,6 +3,7 @@ import { fetcher } from '@/utils/fetcher'
 import type {
   KnowledgeAttributeDefinition,
   WikiKnowledgeConfig,
+  WikiPageTypeStyle,
 } from '@/types/wiki'
 
 /**
@@ -21,9 +22,7 @@ export const useKnowledgeConfig = defineStore('knowledgeConfig', () => {
   const loading = ref(false)
   const saving = ref(false)
 
-  const loadConfig = async (
-    tenantId: string,
-  ): Promise<WikiKnowledgeConfig> => {
+  const loadConfig = async (tenantId: string): Promise<WikiKnowledgeConfig> => {
     loading.value = true
     try {
       return await fetcher.get<WikiKnowledgeConfig>(api(tenantId))
@@ -50,5 +49,24 @@ export const useKnowledgeConfig = defineStore('knowledgeConfig', () => {
     }
   }
 
-  return { loading, saving, loadConfig, saveAttributes }
+  /**
+   * Persist the per-page-type presentation (icon, colour, label). The backend
+   * replaces the whole `pageTypeStyles` map, prunes entries whose page type no
+   * longer exists, and returns the updated config.
+   */
+  const savePageTypeStyles = async (
+    tenantId: string,
+    pageTypeStyles: Record<string, WikiPageTypeStyle>,
+  ): Promise<WikiKnowledgeConfig> => {
+    saving.value = true
+    try {
+      return await fetcher.put<WikiKnowledgeConfig>(api(tenantId), {
+        pageTypeStyles,
+      })
+    } finally {
+      saving.value = false
+    }
+  }
+
+  return { loading, saving, loadConfig, saveAttributes, savePageTypeStyles }
 })
