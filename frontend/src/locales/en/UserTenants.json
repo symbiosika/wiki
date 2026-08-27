@@ -103,7 +103,8 @@
     "emoji": "Emoji",
     "emojiPlaceholder": "e.g. 📘",
     "emojiInvalid": "Please enter a single emoji.",
-    "noColor": "No colour"
+    "noColor": "No colour",
+    "notPersisted": "The icons could not be saved: this server does not support page type presentation yet. Saving works without any further change once the framework update is deployed."
   },
   "branding": {
     "title": "Colors",

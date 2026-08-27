@@ -302,6 +302,7 @@ const applyPageTypeConfig = (config: WikiKnowledgeConfig) => {
 
 const savePageTypeStyles = async () => {
   try {
+    const sentCount = Object.keys(pageTypeStyles.value).length
     const config = await knowledgeConfig.savePageTypeStyles(
       tenantId.value,
       pageTypeStyles.value,
@@ -310,6 +311,28 @@ const savePageTypeStyles = async () => {
     // The wiki store caches the config for the sidebar and the open page, so
     // the new icons would otherwise only show up after a full reload.
     await wiki.reloadConfig(tenantId.value)
+
+    /*
+     * A backend that predates `pageTypeStyles` validates the request body
+     * against a schema without that key and silently drops it, so the request
+     * succeeds while nothing is stored. Reporting success there would be a
+     * lie, so compare what came back: sending entries and getting none means
+     * the server does not know the field yet. Self-heals once it does — no
+     * version check, no feature flag.
+     */
+    if (
+      sentCount > 0 &&
+      Object.keys(config.pageTypeStyles ?? {}).length === 0
+    ) {
+      toast.add({
+        severity: 'warn',
+        summary: t('Common.error'),
+        detail: t('UserTenants.pageTypes.notPersisted'),
+        life: 8000,
+      })
+      return
+    }
+
     toast.add({
       severity: 'success',
       summary: t('Common.success'),

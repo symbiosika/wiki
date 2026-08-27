@@ -17,10 +17,13 @@ submodule). **Not** `symbiosika/wiki`.
 > checkout with `git apply framework-page-type-styles.patch`, review, commit,
 > push.
 >
-> **⚠️ Submodule pointer reconciliation:** I cannot push to the framework repo
-> (session scope is `symbiosika/wiki` only), so commit `7612625` is
-> **local-only** and the wiki submodule pointer references it. Once the change
-> lands upstream the commit will have a different SHA — then re-point:
+> **⚠️ The submodule pointer is deliberately NOT bumped.** I could not push the
+> framework commit from this session, and pointing the wiki submodule at a
+> local-only SHA breaks CI hard — `actions/checkout` fails with
+> `upload-pack: not our ref`, taking `build-backend`, `Backend tests` and
+> `release-framework` down with it. The pointer therefore stays on the upstream
+> commit the base branch already uses, and this patch is the vehicle for the
+> framework change. Apply and push it, then bump the pointer:
 >
 > ```bash
 > cd backend/framework && git fetch origin && git checkout <upstream-sha>
@@ -28,8 +31,14 @@ submodule). **Not** `symbiosika/wiki`.
 > git commit -m "chore: bump framework to upstream pageTypeStyles"
 > ```
 >
-> (Or push the local commit as-is to preserve the SHA — then no re-point is
-> needed.)
+> **Until then the feature is inert, and says so.** A framework without
+> `pageTypeStyles` validates the config request against a schema that lacks the
+> key and silently drops it, so the write succeeds while nothing is stored. The
+> admin screen detects exactly that (entries sent, none returned) and shows
+> "this server does not support page type presentation yet" instead of a success
+> toast. Reads degrade the same way: no styles means no icons, never a crash.
+> Both paths self-heal the moment the framework lands — no version check, no
+> feature flag.
 
 ## Why
 
