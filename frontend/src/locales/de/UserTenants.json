@@ -93,7 +93,7 @@
   },
   "pageTypes": {
     "title": "Seitentypen",
-    "description": "Gib jedem Seitentyp ein Icon und eine Farbe. Beides erscheint im Wiki-Baum und über dem Seitentitel, sodass die Art einer Seite auf einen Blick erkennbar ist. Die Liste der Typen selbst wird beim Speichern einer Seite geprüft und hier nicht bearbeitet.",
+    "description": "Verwalte die Seitentypen dieser Organisation und gib jedem ein Icon und eine Farbe. Beides erscheint im Wiki-Baum und über dem Seitentitel. Ein Typ, den Seiten noch verwenden, kann umgestylt, aber nicht umbenannt oder gelöscht werden — bestehende Seiten ließen sich sonst nicht mehr speichern.",
     "empty": "Für diese Organisation sind keine Seitentypen konfiguriert.",
     "pickIcon": "Icon wählen",
     "icon": "Icon",
@@ -106,7 +106,17 @@
     "noColor": "Keine Farbe",
     "notPersisted": "Die Icons konnten nicht gespeichert werden: dieser Server unterstützt die Seitentyp-Darstellung noch nicht. Sobald das Framework-Update eingespielt ist, funktioniert das Speichern ohne weitere Änderung.",
     "save": "Seitentypen speichern",
-    "saved": "Seitentypen gespeichert"
+    "saved": "Seitentypen gespeichert",
+    "key": "Schlüssel",
+    "keyPlaceholder": "z. B. handbuch",
+    "color": "Farbe",
+    "add": "Seitentyp hinzufügen",
+    "remove": "Seitentyp entfernen",
+    "inUseLocked": "Von {count} Seite(n) verwendet — Umbenennen und Löschen gesperrt.",
+    "unused": "Von keiner Seite verwendet.",
+    "emptyKey": "Jeder Seitentyp braucht einen Schlüssel.",
+    "duplicateKey": "Jeder Schlüssel muss eindeutig sein.",
+    "label": "Bezeichnung"
   },
   "branding": {
     "title": "Farben",

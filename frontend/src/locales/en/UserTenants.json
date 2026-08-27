@@ -93,7 +93,7 @@
   },
   "pageTypes": {
     "title": "Page types",
-    "description": "Give each page type an icon and a colour. Both appear in the wiki tree and above the page title, so the kind of a page is visible at a glance. The list of types itself is validated whenever a page is saved and is not edited here.",
+    "description": "Manage this organisation's page types and give each one an icon and a colour. Both appear in the wiki tree and above the page title. A type that pages still use can be restyled but not renamed or removed — existing pages would otherwise no longer save.",
     "empty": "No page types are configured for this organisation.",
     "pickIcon": "Choose icon",
     "icon": "Icon",
@@ -106,7 +106,17 @@
     "noColor": "No colour",
     "notPersisted": "The icons could not be saved: this server does not support page type presentation yet. Saving works without any further change once the framework update is deployed.",
     "save": "Save page types",
-    "saved": "Page types saved"
+    "saved": "Page types saved",
+    "key": "Key",
+    "keyPlaceholder": "e.g. manual",
+    "color": "Colour",
+    "add": "Add page type",
+    "remove": "Remove page type",
+    "inUseLocked": "Used by {count} page(s) — renaming and removal locked.",
+    "unused": "Not used by any page.",
+    "emptyKey": "Every page type needs a key.",
+    "duplicateKey": "Each key must be unique.",
+    "label": "Label"
   },
   "branding": {
     "title": "Colors",
