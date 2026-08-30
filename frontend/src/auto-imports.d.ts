@@ -7,6 +7,9 @@
 export {}
 declare global {
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
+  const CHOICE_COLORS: typeof import('./utils/collections').CHOICE_COLORS
+  const COLLECTION_FIELD_TYPES: typeof import('./utils/collections').COLLECTION_FIELD_TYPES
+  const CSV_BOM: typeof import('./utils/collectionExport').CSV_BOM
   const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
@@ -25,17 +28,23 @@ declare global {
   const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const bootstrapTeamsSession: typeof import('./utils/teamsSession').bootstrapTeamsSession
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
+  const choiceClasses: typeof import('./utils/collections').choiceClasses
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
+  const csvFileName: typeof import('./utils/collectionExport').csvFileName
   const customRef: typeof import('vue').customRef
   const defineAsyncComponent: typeof import('vue').defineAsyncComponent
   const defineComponent: typeof import('vue').defineComponent
+  const displayValue: typeof import('./utils/collections').displayValue
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
+  const emptyRecordData: typeof import('./utils/collections').emptyRecordData
+  const escapeCsvCell: typeof import('./utils/collectionExport').escapeCsvCell
   const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
+  const filterKindFor: typeof import('./utils/collections').filterKindFor
   const findPageTitle: typeof import('./utils/wikiTreeOptions').findPageTitle
   const flagsFromScope: typeof import('./utils/wikiTreeOptions').flagsFromScope
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
@@ -54,6 +63,7 @@ declare global {
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
   const isEmojiIcon: typeof import('./utils/wikiIcons').isEmojiIcon
+  const isNarrowType: typeof import('./utils/collections').isNarrowType
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -63,6 +73,7 @@ declare global {
   const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
+  const matchesSearch: typeof import('./utils/collections').matchesSearch
   const nextTick: typeof import('vue').nextTick
   const normalizeHex: typeof import('./utils/brandColor').normalizeHex
   const onActivated: typeof import('vue').onActivated
@@ -92,6 +103,7 @@ declare global {
   const ptViewMerge: typeof import('./volt/utils').ptViewMerge
   const reactive: typeof import('vue').reactive
   const readonly: typeof import('vue').readonly
+  const recordLabel: typeof import('./utils/collections').recordLabel
   const ref: typeof import('vue').ref
   const refreshTeamsSession: typeof import('./utils/teamsSession').refreshTeamsSession
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
@@ -108,11 +120,14 @@ declare global {
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const showToast: typeof import('./stores/toast').showToast
+  const sortValue: typeof import('./utils/collections').sortValue
   const splitSubPath: typeof import('./utils/urlImportLines').splitSubPath
   const storeTheme: typeof import('./utils/theme').storeTheme
   const submitTeamsInvitationCode: typeof import('./utils/teamsSession').submitTeamsInvitationCode
   const teamsAuthHeaders: typeof import('./utils/teamsSession').teamsAuthHeaders
   const teamsState: typeof import('./utils/teamsSession').teamsState
+  const toCsv: typeof import('./utils/collectionExport').toCsv
+  const toMarkdownBlocks: typeof import('./utils/collectionExport').toMarkdownBlocks
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
@@ -215,6 +230,9 @@ declare global {
   // @ts-ignore
   export type { BrandColors } from './utils/brandColor'
   import('./utils/brandColor')
+  // @ts-ignore
+  export type { CollectionFieldType, CollectionFieldChoice, CollectionFieldOptions, CollectionField, CollectionSettings, Collection, CollectionRecord, FilterKind } from './utils/collections'
+  import('./utils/collections')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'
   import('./utils/fetcher')

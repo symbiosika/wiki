@@ -7,6 +7,7 @@ import defineDocumentAssistantRoutes from "./routes/tenant/[tenantId]/document-a
 import defineUrlImportRoutes from "./routes/tenant/[tenantId]/url-import";
 import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-processing-agents";
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
+import defineCollectionRoutes from "./routes/tenant/[tenantId]/collections";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
 import defineAppInfoRoutes from "./routes/public/app-info";
 import defineTeamsAuthRoutes from "./routes/public/teams-auth";
@@ -154,6 +155,7 @@ const server = defineServer({
         defineUrlImportRoutes(app);
         definePostProcessingAgentRoutes(app);
         defineAiTestRoutes(app);
+        defineCollectionRoutes(app);
         defineOrganisationLogoRoutes(app);
       },
     },
