@@ -53,6 +53,8 @@ const emit = defineEmits<{
   updateField: [{ id: string; patch: Partial<CollectionField> }]
   removeField: [string]
   reorderFields: [string[]]
+  updateCollection: [{ name?: string | null; description?: string | null; settings?: any }]
+  deleteCollection: []
 }>()
 
 const { t, locale } = useI18n()
@@ -60,7 +62,7 @@ const confirm = useConfirm()
 
 const search = ref('')
 const selection = ref<CollectionRecord[]>([])
-const fieldsDialog = ref(false)
+const settingsDialog = ref(false)
 const recordDialog = ref(false)
 const editingRecord = ref<CollectionRecord | null>(null)
 const showFilters = ref(false)
@@ -250,9 +252,16 @@ function confirmDeleteSelected() {
         <IconSearch
           class="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-surface-400"
         />
+        <!--
+          `p-small:pl-9` as well as `pl-9`: Volt's InputText sets its small-size
+          padding as the VARIANT class `p-small:px-[0.625rem]`, and tailwind-merge
+          does not treat a plain `pl-9` as conflicting with it. Without the
+          variant form the placeholder keeps its 0.625rem offset and renders on
+          top of the magnifier.
+        -->
         <InputText
           v-model="search"
-          class="w-full pl-8"
+          class="w-full pl-9 p-small:pl-9"
           size="small"
           :placeholder="$t('Collections.searchPlaceholder')"
         />
@@ -270,17 +279,17 @@ function confirmDeleteSelected() {
       <!-- filter toggle -->
       <button
         type="button"
-        class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition-colors"
+        class="flex items-center gap-1 rounded-full border px-2 py-1.5 text-sm transition-colors"
         :class="
           showFilters || activeFilterCount > 0
             ? 'border-primary text-primary'
             : 'border-surface-200 text-surface-600 hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300'
         "
         :title="$t('Collections.filter.toggle')"
+        :aria-label="$t('Collections.filter.toggle')"
         @click="showFilters = !showFilters"
       >
         <IconFilter class="h-4 w-4" />
-        <span class="hidden sm:inline">{{ $t('Collections.filter.button') }}</span>
         <span
           v-if="activeFilterCount > 0"
           class="rounded-full bg-primary px-1.5 text-xs text-white"
@@ -300,7 +309,12 @@ function confirmDeleteSelected() {
 
       <div class="flex-1" />
 
-      <!-- bulk actions appear only with a selection -->
+      <!--
+        Icon-only actions with a tooltip: the toolbar sits inside a wiki page,
+        not on a dedicated admin screen, so it should stay quiet next to the
+        prose. The delete action keeps its count as a label — how many rows are
+        about to go is not something to hide behind a hover.
+      -->
       <Button
         v-if="editable && selection.length > 0"
         :label="$t('Collections.record.deleteSelected', { count: selection.length })"
@@ -314,19 +328,21 @@ function confirmDeleteSelected() {
 
       <Button
         v-if="editable"
-        :label="$t('Collections.fields.button')"
         severity="secondary"
         outlined
         size="small"
-        @click="fieldsDialog = true"
+        :title="$t('Collections.settings.button')"
+        :aria-label="$t('Collections.settings.button')"
+        @click="settingsDialog = true"
       >
         <template #icon><IconSettings /></template>
       </Button>
 
       <Button
         v-if="editable"
-        :label="$t('Collections.record.add')"
         size="small"
+        :title="$t('Collections.record.add')"
+        :aria-label="$t('Collections.record.add')"
         @click="openCreate"
       >
         <template #icon><IconPlus /></template>
@@ -570,14 +586,17 @@ function confirmDeleteSelected() {
       @save="onDialogSave"
     />
 
-    <CollectionFieldsDialog
-      v-model:visible="fieldsDialog"
+    <CollectionSettingsDialog
+      v-model:visible="settingsDialog"
+      :collection="collection"
       :fields="collection.fields"
       :saving="saving"
       @add="emit('addField', $event)"
       @update="emit('updateField', $event)"
       @remove="emit('removeField', $event)"
       @reorder="emit('reorderFields', $event)"
+      @update-collection="emit('updateCollection', $event)"
+      @delete-collection="emit('deleteCollection')"
     />
   </div>
 </template>

@@ -53,7 +53,12 @@ export interface Collection {
   id: string
   tenantId: string
   knowledgeTextId: string
-  name: string
+  /** the table's own name; null means "use the page title" */
+  name: string | null
+  /** title of the wiki page the table lives on */
+  pageTitle: string
+  /** name ?? pageTitle — what to show */
+  displayName: string
   description: string | null
   settings: CollectionSettings
   fields: CollectionField[]

@@ -58,10 +58,28 @@ export interface CollectionContext {
   userId: string;
 }
 
-/** A collection plus its schema and the anchor page's title. */
+/**
+ * A collection plus its schema and both names.
+ *
+ * `name` is the table's own name and may be null; `pageTitle` is the anchor
+ * page's title; `displayName` is what a UI or an agent should show. Callers get
+ * all three rather than one merged field so that "no name set" stays visible —
+ * the settings dialog has to be able to show an empty input, not the page title
+ * pre-filled as if someone had typed it.
+ */
 export interface CollectionWithFields extends CollectionSelect {
-  name: string;
+  pageTitle: string;
+  displayName: string;
   fields: CollectionFieldSelect[];
+}
+
+/** The name to show for a collection: its own, else the page's title. */
+export function resolveDisplayName(
+  name: string | null,
+  pageTitle: string,
+): string {
+  const own = name?.trim();
+  return own && own.length > 0 ? own : pageTitle;
 }
 
 /**
@@ -186,18 +204,24 @@ async function loadFields(
  */
 export async function listCollections(
   ctx: CollectionContext,
-): Promise<Array<CollectionSelect & { name: string }>> {
+): Promise<Array<CollectionSelect & { pageTitle: string; displayName: string }>> {
   const rows = await getDb()
     .select()
     .from(collections)
     .where(eq(collections.tenantId, ctx.tenantId))
     .orderBy(asc(collections.createdAt));
 
-  const visible: Array<CollectionSelect & { name: string }> = [];
+  const visible: Array<
+    CollectionSelect & { pageTitle: string; displayName: string }
+  > = [];
   for (const row of rows) {
     try {
       const page = await readablePage(row.knowledgeTextId, ctx);
-      visible.push({ ...row, name: page.title });
+      visible.push({
+        ...row,
+        pageTitle: page.title,
+        displayName: resolveDisplayName(row.name, page.title),
+      });
     } catch {
       // not visible for this user — omit it, exactly like a hidden page
     }
@@ -213,7 +237,8 @@ export async function getCollection(
   const { collection, pageTitle } = await loadReadable(collectionId, ctx);
   return {
     ...collection,
-    name: pageTitle,
+    pageTitle,
+    displayName: resolveDisplayName(collection.name, pageTitle),
     fields: await loadFields(collection.id),
   };
 }
@@ -238,7 +263,8 @@ export async function getCollectionByPageId(
   if (!collection) return null;
   return {
     ...collection,
-    name: page.title,
+    pageTitle: page.title,
+    displayName: resolveDisplayName(collection.name, page.title),
     fields: await loadFields(collection.id),
   };
 }
@@ -246,6 +272,8 @@ export async function getCollectionByPageId(
 export interface CreateCollectionInput {
   /** the wiki page that becomes this collection */
   knowledgeTextId: string;
+  /** optional own name; falls back to the page title */
+  name?: string | null;
   description?: string | null;
   settings?: CollectionSettings;
   fields?: CreateFieldInput[];
@@ -281,6 +309,7 @@ export async function createCollection(
     .values({
       tenantId: ctx.tenantId,
       knowledgeTextId: input.knowledgeTextId,
+      name: input.name?.trim() || null,
       description: input.description ?? null,
       settings: input.settings ?? {},
       createdBy: ctx.userId,
@@ -294,14 +323,19 @@ export async function createCollection(
 
   return {
     ...collection,
-    name: page.title,
+    pageTitle: page.title,
+    displayName: resolveDisplayName(collection.name, page.title),
     fields: await loadFields(collection.id),
   };
 }
 
 export async function updateCollection(
   collectionId: string,
-  patch: { description?: string | null; settings?: CollectionSettings },
+  patch: {
+    name?: string | null;
+    description?: string | null;
+    settings?: CollectionSettings;
+  },
   ctx: CollectionContext,
 ): Promise<CollectionWithFields> {
   const collection = await loadWritable(collectionId, ctx);
@@ -309,6 +343,8 @@ export async function updateCollection(
   const updated = await getDb()
     .update(collections)
     .set({
+      // an empty name clears it and falls back to the page title again
+      ...(patch.name !== undefined ? { name: patch.name?.trim() || null } : {}),
       ...(patch.description !== undefined
         ? { description: patch.description }
         : {}),

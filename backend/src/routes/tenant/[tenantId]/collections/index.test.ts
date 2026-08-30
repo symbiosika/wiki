@@ -111,8 +111,10 @@ describe("Collection routes", () => {
     expect(created.status).toBe(200);
     const collectionId = created.jsonResponse?.id;
     expect(collectionId).toBeTruthy();
-    // the page title is the collection name — never stored twice
-    expect(created.jsonResponse?.name).toBe("Vereinsmitglieder");
+    // no own name yet, so the page title stands in
+    expect(created.jsonResponse?.name).toBe(null);
+    expect(created.jsonResponse?.pageTitle).toBe("Vereinsmitglieder");
+    expect(created.jsonResponse?.displayName).toBe("Vereinsmitglieder");
     expect(created.jsonResponse?.fields).toHaveLength(2);
     expect(created.jsonResponse?.fields[0].key).toBe("name");
 
@@ -253,6 +255,40 @@ describe("Collection routes", () => {
     expect(pageRows).toHaveLength(1);
   });
 
+  test("a table can carry its own name, and falls back to the page title", async () => {
+    const page = await makePage("Ohne Titel");
+    const created = await testFetcher.post(app, base, token, {
+      knowledgeTextId: page.id,
+      fields: [{ label: "Eintrag", type: "text" }],
+    });
+    const collectionId = created.jsonResponse?.id;
+    // a page nobody named yet gives an agent nothing to go on
+    expect(created.jsonResponse?.displayName).toBe("Ohne Titel");
+
+    const named = await testFetcher.put(app, `${base}/${collectionId}`, token, {
+      name: "Aktive Mitglieder 2026",
+    });
+    expect(named.status).toBe(200);
+    expect(named.jsonResponse?.name).toBe("Aktive Mitglieder 2026");
+    expect(named.jsonResponse?.displayName).toBe("Aktive Mitglieder 2026");
+    // the page keeps its own title — the two are separate things
+    expect(named.jsonResponse?.pageTitle).toBe("Ohne Titel");
+
+    // and it is the name the listing reports
+    const listed = await testFetcher.get(app, base, token);
+    const entry = (listed.jsonResponse ?? []).find(
+      (c: any) => c.id === collectionId,
+    );
+    expect(entry.displayName).toBe("Aktive Mitglieder 2026");
+
+    // clearing it falls back to the page title again
+    const cleared = await testFetcher.put(app, `${base}/${collectionId}`, token, {
+      name: "   ",
+    });
+    expect(cleared.jsonResponse?.name).toBe(null);
+    expect(cleared.jsonResponse?.displayName).toBe("Ohne Titel");
+  });
+
   test("deleting a column removes its values from every record", async () => {
     const page = await makePage("Angebote");
     const created = await testFetcher.post(app, base, token, {
@@ -320,6 +356,16 @@ describe("Collection routes", () => {
       .where(eq(knowledgeText.id, page.id));
     expect(rows[0]!.text).toContain("Wiki-Hosting");
     expect(rows[0]!.text).toContain("| Produkt |");
+
+    // a named table puts its name in the mirror, so search can hit it
+    await testFetcher.put(app, `${base}/${collectionId}`, token, {
+      name: "Preisliste",
+    });
+    rows = await getDb()
+      .select()
+      .from(knowledgeText)
+      .where(eq(knowledgeText.id, page.id));
+    expect(rows[0]!.text).toContain("### Preisliste");
 
     // later writes keep the mirror current
     await testFetcher.post(app, `${base}/${collectionId}/records`, token, {

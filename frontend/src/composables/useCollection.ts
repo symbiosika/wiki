@@ -109,6 +109,7 @@ export function useCollection(
   }
 
   async function updateSettings(patch: {
+    name?: string | null
     description?: string | null
     settings?: CollectionSettings
   }) {

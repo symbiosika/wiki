@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
- * Column configuration: add, rename, retype, reorder, hide and delete columns.
+ * Everything about the table's setup in ONE dialog: its name and description,
+ * its columns, whether it is mirrored into the page text, and deleting it.
  *
- * Deliberately one dialog rather than a per-column popover — defining the shape
- * of a table is a task people do in one sitting, and seeing all columns at once
- * is what makes "is the order right?" answerable.
+ * Previously the columns lived here and the rest behind a second icon in the
+ * panel header. Two entry points for "configure this table" is one too many —
+ * nobody can predict which of them holds the switch they want.
  *
  * Reordering is done with up/down buttons instead of drag-and-drop: for the
  * handful of columns a collection has, buttons are faster, keyboard-accessible
@@ -17,6 +18,7 @@ import IconUp from '~icons/mdi/arrow-up'
 import IconDown from '~icons/mdi/arrow-down'
 import IconEye from '~icons/mdi/eye-outline'
 import IconEyeOff from '~icons/mdi/eye-off-outline'
+import type { Collection } from '@/utils/collections'
 import {
   COLLECTION_FIELD_TYPES,
   CHOICE_COLORS,
@@ -27,6 +29,7 @@ import {
 
 const props = defineProps<{
   visible: boolean
+  collection: Collection
   fields: CollectionField[]
   saving?: boolean
 }>()
@@ -37,6 +40,9 @@ const emit = defineEmits<{
   update: [{ id: string; patch: Partial<CollectionField> }]
   remove: [string]
   reorder: [string[]]
+  /** name / description / settings of the table itself */
+  updateCollection: [{ name?: string | null; description?: string | null; settings?: any }]
+  deleteCollection: []
 }>()
 
 const { t } = useI18n()
@@ -51,6 +57,52 @@ const typeOptions = computed(() =>
 
 /** the column currently expanded for editing */
 const openId = ref<string | null>(null)
+
+// --- the table itself ----------------------------------------------------
+
+/**
+ * Name and description are buffered locally and committed on blur, so typing
+ * does not fire a request per keystroke. The name placeholder shows the page
+ * title: that is what the table is called while it has no name of its own.
+ */
+const nameDraft = ref('')
+const descriptionDraft = ref('')
+
+watch(
+  () => [props.visible, props.collection?.id] as const,
+  ([visible]) => {
+    if (!visible) return
+    nameDraft.value = props.collection?.name ?? ''
+    descriptionDraft.value = props.collection?.description ?? ''
+  },
+  { immediate: true },
+)
+
+function commitName() {
+  const next = nameDraft.value.trim()
+  if (next === (props.collection?.name ?? '')) return
+  emit('updateCollection', { name: next || null })
+}
+
+function commitDescription() {
+  const next = descriptionDraft.value.trim()
+  if (next === (props.collection?.description ?? '')) return
+  emit('updateCollection', { description: next || null })
+}
+
+function toggleMaterialize(value: boolean) {
+  emit('updateCollection', { settings: { materialize: value } })
+}
+
+function confirmDeleteCollection() {
+  confirm.require({
+    message: t('Collections.deleteConfirm'),
+    header: t('Collections.delete'),
+    rejectProps: { label: t('Common.cancel'), severity: 'secondary', outlined: true },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    accept: () => emit('deleteCollection'),
+  })
+}
 
 // ---- new column ---------------------------------------------------------
 
@@ -160,11 +212,48 @@ function confirmRemove(field: CollectionField) {
   <Dialog
     :visible="visible"
     modal
-    :header="$t('Collections.fields.title')"
+    :header="$t('Collections.settings.title')"
     class="w-[640px] max-w-[94vw]"
     @update:visible="emit('update:visible', $event)"
   >
-    <div class="flex max-h-[64vh] flex-col gap-3 overflow-y-auto px-0.5 py-1">
+    <div class="flex max-h-[64vh] flex-col gap-4 overflow-y-auto px-0.5 py-1">
+      <!-- name + description of the table itself -->
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <div class="flex flex-1 flex-col gap-1">
+          <label class="text-xs text-surface-500 dark:text-surface-400">
+            {{ $t('Collections.settings.name') }}
+          </label>
+          <InputText
+            v-model="nameDraft"
+            class="w-full"
+            :placeholder="collection.pageTitle"
+            @blur="commitName"
+            @keydown.enter="commitName"
+          />
+          <span class="text-xs text-surface-400 dark:text-surface-500">
+            {{ $t('Collections.settings.nameHint') }}
+          </span>
+        </div>
+        <div class="flex flex-1 flex-col gap-1">
+          <label class="text-xs text-surface-500 dark:text-surface-400">
+            {{ $t('Collections.settings.description') }}
+          </label>
+          <InputText
+            v-model="descriptionDraft"
+            class="w-full"
+            :placeholder="$t('Collections.descriptionPlaceholder')"
+            @blur="commitDescription"
+            @keydown.enter="commitDescription"
+          />
+        </div>
+      </div>
+
+      <div class="border-t border-surface-200 dark:border-surface-700" />
+
+      <p class="text-sm font-medium text-surface-700 dark:text-surface-300">
+        {{ $t('Collections.fields.title') }}
+      </p>
+
       <!-- existing columns -->
       <div
         v-for="(field, index) in fields"
@@ -428,6 +517,44 @@ function confirmRemove(field: CollectionField) {
             <template #icon><IconPlus /></template>
           </Button>
         </div>
+      </div>
+
+      <div class="border-t border-surface-200 dark:border-surface-700" />
+
+      <!-- mirroring into the page text -->
+      <div class="flex items-start gap-2">
+        <Checkbox
+          :model-value="collection.settings?.materialize ?? false"
+          binary
+          input-id="materialize"
+          @update:model-value="toggleMaterialize"
+        />
+        <label for="materialize" class="text-sm">
+          <span class="text-surface-800 dark:text-surface-100">
+            {{ $t('Collections.settings.materialize') }}
+          </span>
+          <!--
+            Not decoration: mirroring copies the rows into the page body, which
+            is what the AI search and the public view read. For a table of
+            members that is a privacy decision.
+          -->
+          <span class="mt-0.5 block text-xs text-surface-500 dark:text-surface-400">
+            {{ $t('Collections.settings.materializeHint') }}
+          </span>
+        </label>
+      </div>
+
+      <div class="border-t border-surface-200 pt-3 dark:border-surface-700">
+        <Button
+          :label="$t('Collections.delete')"
+          severity="danger"
+          outlined
+          size="small"
+          @click="confirmDeleteCollection"
+        />
+        <p class="mt-1.5 text-xs text-surface-500 dark:text-surface-400">
+          {{ $t('Collections.deleteHint') }}
+        </p>
       </div>
     </div>
 

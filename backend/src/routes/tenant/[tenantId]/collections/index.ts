@@ -108,14 +108,18 @@ const createFieldBody = v.object({
   hidden: v.optional(v.boolean()),
 });
 
+const nameSchema = v.pipe(v.string(), v.maxLength(200));
+
 const createCollectionBody = v.object({
   knowledgeTextId: v.pipe(v.string(), v.uuid()),
+  name: v.optional(v.nullable(nameSchema)),
   description: v.optional(v.nullable(v.string())),
   settings: v.optional(settingsSchema),
   fields: v.optional(v.array(createFieldBody)),
 });
 
 const updateCollectionBody = v.object({
+  name: v.optional(v.nullable(nameSchema)),
   description: v.optional(v.nullable(v.string())),
   settings: v.optional(settingsSchema),
 });

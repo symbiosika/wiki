@@ -1,6 +1,5 @@
 {
   "heading": "Table",
-  "addToPage": "Add a table to this page",
   "defaultColumn": "Name",
   "descriptionPlaceholder": "Add a description …",
   "searchPlaceholder": "Search entries …",
@@ -14,9 +13,13 @@
   "deleteConfirm": "Delete the table with all entries and columns? The page itself stays.",
   "deleteHint": "Deletes all entries and columns. The wiki page is kept.",
   "settings": {
-    "title": "Table settings",
+    "title": "Set up table",
     "materialize": "Mirror the table into the page text",
-    "materializeHint": "Makes the entries visible to search, AI answers and — on published pages — the public view. Leave off for personal data."
+    "materializeHint": "Makes the entries visible to search, AI answers and — on published pages — the public view. Leave off for personal data.",
+    "button": "Set up table",
+    "name": "Table name",
+    "nameHint": "Without a name the page title is used. The name is also what the API and AI agents see.",
+    "description": "Description"
   },
   "filter": {
     "button": "Filter",
@@ -69,5 +72,7 @@
     "multiSelect": "Multi-select",
     "url": "Link",
     "email": "Email"
-  }
+  },
+  "orStartTable": "… or",
+  "startTable": "turn this into a table"
 }

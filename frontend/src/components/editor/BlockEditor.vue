@@ -359,11 +359,15 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 
 /*
  * A page whose real content is a collection table does not need half a
- * viewport of empty editor between its intro paragraph and the table. The
- * class is set by views/wiki/page.vue once the page is known to have one.
+ * viewport of empty editor between its intro paragraph and the table — just
+ * enough to click into and write a line of context above it. Same for a blank
+ * page showing the "or start a table" invitation, which has to sit right under
+ * the placeholder to read as part of the same sentence. Both classes are set
+ * by views/wiki/page.vue.
  */
-.wiki-page--with-collection .wiki-editor .wiki-prose {
-  @apply min-h-32;
+.wiki-page--with-collection .wiki-editor .wiki-prose,
+.wiki-page--empty .wiki-editor .wiki-prose {
+  @apply min-h-0;
 }
 
 .wiki-editor .wiki-prose > * + * {

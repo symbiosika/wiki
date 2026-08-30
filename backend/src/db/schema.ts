@@ -816,7 +816,17 @@ export const collections = pgBaseTable(
       .notNull()
       .unique()
       .references(() => knowledgeText.id, { onDelete: "cascade" }),
-    /** shown above the table; the *name* is the page title */
+    /**
+     * The table's own name. Optional: when unset the anchor page's title is
+     * used, which is right for a page that *is* the table ("Vereinsmitglieder").
+     * It exists because the two are not always the same thing — a page called
+     * "Mitglieder" can hold a table named "Aktive 2026" — and because the API
+     * and the MCP tools need something meaningful to address a table by. A
+     * page still titled "Ohne Titel" would otherwise show up nameless to an
+     * agent. Resolved for callers as `displayName` (see lib/collections/store).
+     */
+    name: text("name"),
+    /** shown under the name as the table's caption */
     description: text("description"),
     settings: jsonb("settings")
       .$type<CollectionSettings>()

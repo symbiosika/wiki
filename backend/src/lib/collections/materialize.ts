@@ -163,9 +163,18 @@ export async function materializeCollection(
         .from(collectionRecords)
         .where(eq(collectionRecords.collectionId, collection.id));
 
+      const table = renderCollectionMarkdown(
+        fields,
+        records,
+        counted[0]?.count ?? 0,
+      );
+      // Prefix the table with its own name when it has one. The page title is
+      // already indexed; a differently-named table would otherwise be
+      // unfindable by the name people actually use for it.
+      const heading = collection.name?.trim();
       nextText = mergeIntoBody(
         page.text,
-        renderCollectionMarkdown(fields, records, counted[0]?.count ?? 0),
+        heading && table ? `### ${heading}\n\n${table}` : table,
       );
     } else {
       nextText = stripFromBody(page.text);

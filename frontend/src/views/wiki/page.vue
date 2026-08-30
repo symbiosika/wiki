@@ -251,7 +251,10 @@
       <!-- block editor -->
       <div
         class="flex-1 pt-4 pb-32"
-        :class="{ 'wiki-page--with-collection': hasCollection }"
+        :class="{
+          'wiki-page--with-collection': hasCollection,
+          'wiki-page--empty': pageEmpty && !hasCollection,
+        }"
       >
         <!--
           NOTE: bound directly to the store state (not a local copy set after
@@ -277,6 +280,7 @@
           :tenant-id="tenantId"
           :page-id="page.id"
           :editable="editable"
+          :page-empty="pageEmpty"
           @has-collection="hasCollection = $event"
         />
 
@@ -622,6 +626,27 @@ const toc = ref<WikiTocEntry[]>([])
 const tocOpen = ref(false)
 /** true once the page is known to carry a collection (see CollectionPanel) */
 const hasCollection = ref(false)
+
+/**
+ * True while the page body holds nothing at all.
+ *
+ * Drives the "or start a table" invitation, which is only offered on a blank
+ * page. Reads the store's blocks rather than the editor instance so it is
+ * already correct on first render, and treats a single empty paragraph — what
+ * a fresh page actually contains — as empty.
+ */
+const pageEmpty = computed(() => {
+  const blocks = wiki.state.blocks ?? []
+  return blocks.every((block) => stripHtml(block.content ?? '').trim() === '')
+})
+
+/** Text content of a block, so an empty `<p></p>` does not read as content. */
+function stripHtml(value: string): string {
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+}
 
 const toggleAssistant = () => {
   if (assistant.open) {

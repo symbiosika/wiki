@@ -28,7 +28,8 @@ function slimCollection(data: unknown): unknown {
   if (!c || typeof c !== "object") return data;
   return {
     id: c.id,
-    name: c.name,
+    // the table's own name when it has one, else the page title
+    name: c.displayName ?? c.name,
     pageId: c.knowledgeTextId,
     description: c.description ?? undefined,
     fields: (c.fields ?? []).map((f: any) => ({
@@ -70,9 +71,11 @@ export function registerCollectionTools(mcp: any): void {
       title: "List collections (tables)",
       description:
         "Lists the typed tables (collections) the user can see — things like " +
-        "members, current offers or a product list. Returns id, name and the " +
-        "id of the wiki page each one lives on. Use `get_collection` next to " +
-        "learn a table's columns before reading or writing rows.",
+        "members, current offers or a product list. Returns each table's id, " +
+        "its name (its own name, or the title of the page it lives on when it " +
+        "has none) and that page's id. Match the user's wording against these " +
+        "names, then call `get_collection` to learn a table's columns before " +
+        "reading or writing rows.",
       inputSchema: z.object({}),
     },
     async (_args, authInfo) =>
@@ -81,7 +84,7 @@ export function registerCollectionTools(mcp: any): void {
           Array.isArray(data)
             ? data.map((c: any) => ({
                 id: c.id,
-                name: c.name,
+                name: c.displayName ?? c.name,
                 pageId: c.knowledgeTextId,
                 description: c.description ?? undefined,
               }))

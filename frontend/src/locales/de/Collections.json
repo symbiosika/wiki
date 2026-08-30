@@ -1,6 +1,5 @@
 {
   "heading": "Tabelle",
-  "addToPage": "Tabelle zu dieser Seite hinzufügen",
   "defaultColumn": "Name",
   "descriptionPlaceholder": "Beschreibung hinzufügen …",
   "searchPlaceholder": "Einträge durchsuchen …",
@@ -14,9 +13,13 @@
   "deleteConfirm": "Tabelle mit allen Einträgen und Spalten löschen? Die Seite selbst bleibt bestehen.",
   "deleteHint": "Löscht alle Einträge und Spalten. Die Wiki-Seite bleibt erhalten.",
   "settings": {
-    "title": "Tabellen-Einstellungen",
+    "title": "Tabelle einrichten",
     "materialize": "Tabelle in den Seitentext spiegeln",
-    "materializeHint": "Macht die Einträge für Suche, KI-Antworten und – bei veröffentlichten Seiten – die öffentliche Ansicht sichtbar. Bei personenbezogenen Daten bewusst ausgeschaltet lassen."
+    "materializeHint": "Macht die Einträge für Suche, KI-Antworten und – bei veröffentlichten Seiten – die öffentliche Ansicht sichtbar. Bei personenbezogenen Daten bewusst ausgeschaltet lassen.",
+    "button": "Tabelle einrichten",
+    "name": "Name der Tabelle",
+    "nameHint": "Ohne Namen wird der Seitentitel verwendet. Der Name wird auch über die API und von KI-Agenten genutzt.",
+    "description": "Beschreibung"
   },
   "filter": {
     "button": "Filter",
@@ -69,5 +72,7 @@
     "multiSelect": "Mehrfachauswahl",
     "url": "Link",
     "email": "E-Mail"
-  }
+  },
+  "orStartTable": "… oder",
+  "startTable": "eine Tabelle daraus machen"
 }
