@@ -119,12 +119,14 @@ const showInvitation = computed(
   </section>
 
   <!--
-    Blank page: sits directly under the editor's placeholder line as the second
-    half of one sentence — write text, or make this a table.
+    Blank page: sits under the editor's placeholder line as the second half of
+    one sentence — write text, or make this a table. The gap above is not
+    cosmetic: pinned any tighter, the empty paragraph is hard to hit with the
+    cursor and writing on the page becomes fiddly.
   -->
   <p
     v-else-if="showInvitation"
-    class="-mt-1 text-[15px] leading-7 text-surface-400 dark:text-surface-500"
+    class="mt-3 text-[15px] leading-7 text-surface-400 dark:text-surface-500"
   >
     {{ $t('Collections.orStartTable') }}
     <button

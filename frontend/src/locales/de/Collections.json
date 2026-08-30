@@ -74,5 +74,11 @@
     "email": "E-Mail"
   },
   "orStartTable": "… oder",
-  "startTable": "eine Tabelle daraus machen"
+  "startTable": "eine Tabelle daraus machen",
+  "export": {
+    "button": "Exportieren",
+    "csv": "Als CSV herunterladen ({count})",
+    "markdown": "Als Markdown kopieren ({count})",
+    "copyFailed": "Kopieren in die Zwischenablage nicht möglich."
+  }
 }

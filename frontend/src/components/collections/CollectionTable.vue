@@ -20,7 +20,15 @@ import IconExpand from '~icons/mdi/arrow-expand'
 import IconSearch from '~icons/mdi/magnify'
 import IconClose from '~icons/mdi/close'
 import IconFilter from '~icons/mdi/filter-variant'
+import IconExport from '~icons/mdi/tray-arrow-down'
+import IconCheck from '~icons/mdi/check'
 import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+import {
+  toCsv,
+  toMarkdownBlocks,
+  csvFileName,
+} from '@/utils/collectionExport'
 import {
   displayValue,
   sortValue,
@@ -59,6 +67,7 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 const confirm = useConfirm()
+const toast = useToast()
 
 const search = ref('')
 const selection = ref<CollectionRecord[]>([])
@@ -167,6 +176,79 @@ const booleanOptions = computed(() => [
 function colorOf(field: CollectionField, value: unknown): string | undefined {
   return (field.options?.choices ?? []).find((c) => c.value === value)?.color
 }
+
+// ---- export -------------------------------------------------------------
+
+/**
+ * What an export contains: the checked rows when there is a selection,
+ * otherwise everything the current search and filters leave visible. Both
+ * readings of "the current selection" end up doing the obvious thing, and
+ * neither ever exports rows the user cannot see on screen.
+ *
+ * Available in read-only mode too — taking a copy of data you are allowed to
+ * read is not an edit.
+ */
+const exportRecords = computed(() =>
+  selection.value.length > 0 ? selection.value : filteredRecords.value,
+)
+
+const exportMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+function downloadCsv() {
+  const csv = toCsv(props.fields, exportRecords.value, locale.value)
+  // a Blob + object URL, so nothing round-trips through the server
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = csvFileName(props.collection.displayName)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  // revoke on the next tick: revoking synchronously can cancel the download
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+async function copyMarkdown() {
+  const markdown = toMarkdownBlocks(
+    props.collection.displayName,
+    props.fields,
+    exportRecords.value,
+    locale.value,
+  )
+  try {
+    await navigator.clipboard.writeText(markdown)
+    copied.value = true
+    if (copiedTimer) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  } catch (error) {
+    // a denied clipboard permission is the usual cause, and it is not fixable
+    // from here — say so rather than failing silently
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Collections.export.copyFailed'),
+      life: 4000,
+    })
+  }
+}
+
+const exportMenuItems = computed(() => [
+  {
+    label: t('Collections.export.csv', { count: exportRecords.value.length }),
+    command: downloadCsv,
+  },
+  {
+    label: t('Collections.export.markdown', { count: exportRecords.value.length }),
+    command: copyMarkdown,
+  },
+])
+
+onBeforeUnmount(() => {
+  if (copiedTimer) clearTimeout(copiedTimer)
+})
 
 // ---- record actions -----------------------------------------------------
 
@@ -308,6 +390,28 @@ function confirmDeleteSelected() {
       </button>
 
       <div class="flex-1" />
+
+      <!--
+        Export is offered in read-only mode as well: copying data you may read
+        is not an edit, and "give me this list as a spreadsheet" is most of what
+        a member table gets used for.
+      -->
+      <button
+        type="button"
+        class="flex items-center gap-1 rounded-full border px-2 py-1.5 text-sm transition-colors"
+        :class="
+          copied
+            ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+            : 'border-surface-200 text-surface-600 hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300'
+        "
+        :title="$t('Collections.export.button')"
+        :aria-label="$t('Collections.export.button')"
+        @click="exportMenuRef?.toggle($event)"
+      >
+        <IconCheck v-if="copied" class="h-4 w-4" />
+        <IconExport v-else class="h-4 w-4" />
+      </button>
+      <Menu ref="exportMenuRef" :model="exportMenuItems" popup />
 
       <!--
         Icon-only actions with a tooltip: the toolbar sits inside a wiki page,

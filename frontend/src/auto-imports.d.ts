@@ -9,6 +9,7 @@ declare global {
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
   const CHOICE_COLORS: typeof import('./utils/collections').CHOICE_COLORS
   const COLLECTION_FIELD_TYPES: typeof import('./utils/collections').COLLECTION_FIELD_TYPES
+  const CSV_BOM: typeof import('./utils/collectionExport').CSV_BOM
   const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
@@ -32,6 +33,7 @@ declare global {
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
+  const csvFileName: typeof import('./utils/collectionExport').csvFileName
   const customRef: typeof import('vue').customRef
   const defineAsyncComponent: typeof import('vue').defineAsyncComponent
   const defineComponent: typeof import('vue').defineComponent
@@ -39,6 +41,7 @@ declare global {
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
   const emptyRecordData: typeof import('./utils/collections').emptyRecordData
+  const escapeCsvCell: typeof import('./utils/collectionExport').escapeCsvCell
   const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
   const filterKindFor: typeof import('./utils/collections').filterKindFor
@@ -123,6 +126,8 @@ declare global {
   const submitTeamsInvitationCode: typeof import('./utils/teamsSession').submitTeamsInvitationCode
   const teamsAuthHeaders: typeof import('./utils/teamsSession').teamsAuthHeaders
   const teamsState: typeof import('./utils/teamsSession').teamsState
+  const toCsv: typeof import('./utils/collectionExport').toCsv
+  const toMarkdownBlocks: typeof import('./utils/collectionExport').toMarkdownBlocks
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs

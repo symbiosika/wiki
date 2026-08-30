@@ -74,5 +74,11 @@
     "email": "Email"
   },
   "orStartTable": "… or",
-  "startTable": "turn this into a table"
+  "startTable": "turn this into a table",
+  "export": {
+    "button": "Export",
+    "csv": "Download as CSV ({count})",
+    "markdown": "Copy as Markdown ({count})",
+    "copyFailed": "Could not copy to the clipboard."
+  }
 }
