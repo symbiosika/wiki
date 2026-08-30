@@ -25,15 +25,15 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
-import {
-  annotateEmbeddedImages,
-  extractEmbeddedImageRefs,
-} from "./_shapes.ts";
-import { callApi, fail, ok, tenantPath, type ToolResult } from "../app-api.ts";
-import { ISSUER } from "../config.ts";
-import { buildAppHtml } from "../ui/build.ts";
-import type { AuthInfo } from "@modelcontextprotocol/server";
+import type {
+  McpRequestContext,
+  McpResourceDefinition,
+  McpToolDefinition,
+} from "@framework/types";
+import { defineTool } from "./_define";
+import { annotateEmbeddedImages, extractEmbeddedImageRefs } from "./_shapes";
+import { callApi, fail, ok, tenantPath, type ToolResult } from "../api";
+import { buildAppHtml, type AppName } from "../ui/build";
 
 export const PAGE_VIEW_RESOURCE_URI = "ui://symbiosika-wiki/page-view.html";
 export const IMAGE_VIEW_RESOURCE_URI = "ui://symbiosika-wiki/image-view.html";
@@ -74,13 +74,10 @@ export function parseImageRef(imageRef: string): string | null {
 }
 
 async function fetchPageImage(
-  authInfo: AuthInfo | undefined,
+  ctx: McpRequestContext,
   pageId: string,
   imageRef: string,
 ): Promise<ToolResult> {
-  const token = authInfo?.token;
-  if (!token) return fail("Not authenticated.");
-
   const filename = parseImageRef(imageRef);
   if (!filename) {
     return fail(
@@ -89,14 +86,14 @@ async function fetchPageImage(
     );
   }
 
-  const path = tenantPath(authInfo, `/wiki/${pageId}/images/${filename}`);
+  const path = tenantPath(ctx, `/wiki/${pageId}/images/${filename}`);
   let res: Response;
   try {
-    res = await fetch(`${ISSUER}${path}`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
+    res = await ctx.fetchApi(path);
   } catch (err) {
-    return fail(`Network error while loading the image: ${(err as Error).message}`);
+    return fail(
+      `Network error while loading the image: ${(err as Error).message}`,
+    );
   }
   if (!res.ok) {
     return fail(
@@ -105,7 +102,8 @@ async function fetchPageImage(
     );
   }
 
-  const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
+  const mimeType =
+    res.headers.get("content-type") ?? "application/octet-stream";
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.byteLength > MAX_IMAGE_BYTES) {
     return fail(
@@ -125,55 +123,44 @@ async function fetchPageImage(
   };
 }
 
-/** Register one app HTML view as an MCP resource (built lazily on read). */
-function registerAppResource(
-  mcp: any,
-  name: "page-view" | "image-view",
+/** One app HTML view as an MCP resource (built lazily on read). */
+const appResource = (
+  name: AppName,
   uri: string,
   title: string,
   description: string,
-): void {
-  mcp.registerResource(
-    `wiki-${name}`,
-    uri,
-    {
-      title,
-      description,
-      mimeType: RESOURCE_MIME_TYPE,
-      _meta: APP_RESOURCE_META,
-    },
-    async () => ({
-      contents: [
-        {
-          uri,
-          mimeType: RESOURCE_MIME_TYPE,
-          text: await buildAppHtml(name),
-          _meta: APP_RESOURCE_META,
-        },
-      ],
-    }),
-  );
-}
+): McpResourceDefinition => ({
+  uri,
+  name: `wiki-${name}`,
+  title,
+  description,
+  mimeType: RESOURCE_MIME_TYPE,
+  _meta: APP_RESOURCE_META,
+  read: async () => ({
+    mimeType: RESOURCE_MIME_TYPE,
+    text: await buildAppHtml(name),
+    _meta: APP_RESOURCE_META,
+  }),
+});
 
-export function registerAppUiTools(mcp: any): void {
-  registerAppResource(
-    mcp,
+export const appResources: McpResourceDefinition[] = [
+  appResource(
     "page-view",
     PAGE_VIEW_RESOURCE_URI,
     "Wiki page view",
     "Interactive rendering of a wiki page (used by the view_page tool).",
-  );
-  registerAppResource(
-    mcp,
+  ),
+  appResource(
     "image-view",
     IMAGE_VIEW_RESOURCE_URI,
     "Wiki image view",
     "Single image / gallery view of wiki page images (used by the " +
       "view_image and view_page_images tools).",
-  );
+  ),
+];
 
+export const appUiTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "view_page",
       title: "Show a page to the user (rendered view)",
@@ -197,11 +184,11 @@ export function registerAppUiTools(mcp: any): void {
       }),
       _meta: PAGE_VIEW_TOOL_META,
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       args.anchor
         ? callApi(
-            authInfo,
-            tenantPath(authInfo, `/knowledge/texts/${args.pageId}/section`),
+            ctx,
+            tenantPath(ctx, `/knowledge/texts/${args.pageId}/section`),
             {
               query: { anchor: args.anchor },
               // section returns { id, anchor, heading, level, content } —
@@ -218,14 +205,13 @@ export function registerAppUiTools(mcp: any): void {
             },
           )
         : callApi(
-            authInfo,
-            tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+            ctx,
+            tenantPath(ctx, `/knowledge/texts/${args.pageId}/simplified`),
             { transform: annotateEmbeddedImages },
           ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "view_image",
       title: "Show one page image to the user (large view)",
@@ -251,7 +237,7 @@ export function registerAppUiTools(mcp: any): void {
       }),
       _meta: IMAGE_VIEW_TOOL_META,
     },
-    async (args, authInfo) => {
+    async (args, ctx) => {
       const filename = parseImageRef(args.image);
       if (!filename) {
         return fail(
@@ -262,7 +248,7 @@ export function registerAppUiTools(mcp: any): void {
       }
       // sanity check server-side (page visible + file referenced) so the
       // model gets a real error instead of a silently empty view.
-      const probe = await fetchPageImage(authInfo, args.pageId, filename);
+      const probe = await fetchPageImage(ctx, args.pageId, filename);
       if (probe.isError) return probe;
       return ok({
         pageId: args.pageId,
@@ -270,10 +256,9 @@ export function registerAppUiTools(mcp: any): void {
         ...(args.caption ? { caption: args.caption } : {}),
       });
     },
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "view_page_images",
       title: "Show all images of a page (gallery)",
@@ -286,10 +271,10 @@ export function registerAppUiTools(mcp: any): void {
       }),
       _meta: IMAGE_VIEW_TOOL_META,
     },
-    async (args, authInfo) => {
+    async (args, ctx) => {
       const page = await callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/simplified`),
       );
       if (page.isError) return page;
       const data = (page.structuredContent ?? {}) as Record<string, unknown>;
@@ -305,10 +290,9 @@ export function registerAppUiTools(mcp: any): void {
         images: refs,
       });
     },
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_image",
       title: "Get an image embedded in a page",
@@ -329,7 +313,6 @@ export function registerAppUiTools(mcp: any): void {
           ),
       }),
     },
-    async (args, authInfo) =>
-      fetchPageImage(authInfo, args.pageId, args.image),
-  );
-}
+    async (args, ctx) => fetchPageImage(ctx, args.pageId, args.image),
+  ),
+];

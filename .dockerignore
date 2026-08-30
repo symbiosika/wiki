@@ -17,7 +17,6 @@ backend/dist
 backend/static/upload
 frontend/dist
 frontend-public/dist
-mcp-server/dist
 
 # secrets / local config
 **/.env

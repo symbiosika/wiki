@@ -9,19 +9,19 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
-import { callApi, tenantPath } from "../app-api.ts";
+import type { McpToolDefinition } from "@framework/types";
+import { defineTool } from "./_define";
+import { callApi, tenantPath } from "../api";
 import {
   annotateEmbeddedImages,
   pageMetadata,
   pageVersion,
   slimBatchRows,
   slimHistoryRows,
-} from "./_shapes.ts";
+} from "./_shapes";
 
-export function registerReadTools(mcp: any): void {
+export const readTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "get_page",
       title: "Get a page (content)",
@@ -35,16 +35,15 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/simplified`),
         { transform: annotateEmbeddedImages },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_metadata",
       title: "Get page metadata",
@@ -59,16 +58,15 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}`),
         { transform: pageMetadata },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_pages",
       title: "Get several pages at once (batch)",
@@ -89,8 +87,8 @@ export function registerReadTools(mcp: any): void {
           .describe("Include the full body text (default true)."),
       }),
     },
-    async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/batch"), {
+    async (args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts/batch"), {
         method: "POST",
         json: {
           ids: args.pageIds,
@@ -98,10 +96,9 @@ export function registerReadTools(mcp: any): void {
         },
         transform: slimBatchRows,
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_outline",
       title: "Get a page's heading outline",
@@ -114,15 +111,14 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/outline`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/outline`),
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "read_page_section",
       title: "Read one section of a page",
@@ -138,16 +134,15 @@ export function registerReadTools(mcp: any): void {
           .describe("The section's anchor slug from the outline."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/section`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/section`),
         { query: { anchor: args.anchor } },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "read_page_content",
       title: "Read page content (line range)",
@@ -172,16 +167,15 @@ export function registerReadTools(mcp: any): void {
           .describe("Maximum number of lines to return."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/content`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/content`),
         { query: { fromLine: args.fromLine, maxLines: args.maxLines } },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_subtree",
       title: "Get a page and its subtree",
@@ -210,10 +204,10 @@ export function registerReadTools(mcp: any): void {
           .describe("Total character budget across all node contents."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/simplified`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/simplified`),
         {
           query: {
             recursive: "true",
@@ -222,10 +216,9 @@ export function registerReadTools(mcp: any): void {
           },
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_chunk_context",
       title: "Get chunks around a position",
@@ -265,10 +258,10 @@ export function registerReadTools(mcp: any): void {
           .describe("How many chunks after the centre to include (default 2, max 20)."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/chunk-context`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/chunk-context`),
         {
           query: {
             order: args.order,
@@ -277,10 +270,9 @@ export function registerReadTools(mcp: any): void {
           },
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_links",
       title: "Get outgoing links",
@@ -293,15 +285,14 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/links`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/links`),
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_backlinks",
       title: "Get backlinks",
@@ -312,15 +303,14 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/backlinks`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/backlinks`),
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_related_pages",
       title: "Get semantically related pages",
@@ -332,15 +322,14 @@ export function registerReadTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/related`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/related`),
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_history",
       title: "Get page version history",
@@ -359,16 +348,15 @@ export function registerReadTools(mcp: any): void {
           .describe("Maximum number of versions to return."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/history`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/history`),
         { query: { limit: args.limit }, transform: slimHistoryRows },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_page_version",
       title: "Get one historic version of a page",
@@ -383,14 +371,14 @@ export function registerReadTools(mcp: any): void {
           .describe("The history entry id from `get_page_history`."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
+        ctx,
         tenantPath(
-          authInfo,
+          ctx,
           `/knowledge/texts/${args.pageId}/history/${args.versionId}`,
         ),
         { transform: pageVersion },
       ),
-  );
-}
+  ),
+];

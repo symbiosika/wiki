@@ -13,7 +13,7 @@ import {
   pageVersion,
   slimOverview,
   slimBatchRows,
-} from "./_shapes.ts";
+} from "./_shapes";
 
 /** A full knowledgeText row as the app API returns it (list columns + text). */
 const fullRow = {

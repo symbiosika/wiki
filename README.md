@@ -20,9 +20,10 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
   `/docs/` aus `backend/public/` (das Haupt-Frontend liegt dagegen hinter dem
   Login unter `/static/app/`). Siehe
   [`frontend-public/README.md`](./frontend-public/README.md).
-- **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
-  den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
-  Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
+- **MCP-Server** (`backend/src/mcp/`): in den Backend-Prozess eingebetteter
+  MCP-Server (erreichbar unter `/mcp`, OAuth2/API-Token-Auth über das
+  Framework), über den eine Chat-App das Wiki als "Brain" nutzen kann
+  (Identität, Discovery, Lesen, Schreiben).
 - **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
   aufnehmen → **Live-Transkription** (der Text erscheint schon während des
   Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →

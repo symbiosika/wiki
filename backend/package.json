@@ -27,6 +27,7 @@
     "@hono/swagger-ui": "0.5.2",
     "@hono/valibot-validator": "0.5.3",
     "@mistralai/mistralai": "^1.11.0",
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@mozilla/readability": "^0.6.0",
     "@simplewebauthn/server": "^13.0.0",
     "@simplewebauthn/types": "^12.0.0",
@@ -40,6 +41,7 @@
     "hono-openapi": "1.1.0",
     "jsonwebtoken": "9.0.2",
     "linkedom": "^0.18.12",
+    "marked": "^18.0.7",
     "nanoid": "5.1.6",
     "nodemailer": "7.0.9",
     "pg": "8.16.3",
@@ -47,7 +49,8 @@
     "postgres": "3.4.7",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
-    "valibot": "^1.2.0"
+    "valibot": "^1.2.0",
+    "zod": "^4.4.3"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -58,7 +61,7 @@
     "docker:down": "docker compose down",
     "docker:remove": "docker compose down -v",
     "dev": "infisical run -- bun --hot run src/index.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun --minify",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --minify && bun run ./src/mcp/ui/prebuild.ts",
     "clean": "rm -rf ./lib/",
     "app:migrate": "drizzle-kit migrate",
     "app:generate": "drizzle-kit generate",

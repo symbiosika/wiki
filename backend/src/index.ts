@@ -22,6 +22,7 @@ import {
 } from "./lib/wiki/public-flag";
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
 import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
+import { wikiMcpServer } from "./mcp";
 
 /**
  * Operational instrumentation (boot/crash/signal events, heartbeat, slow and
@@ -71,10 +72,9 @@ const server = defineServer({
 
   // OAuth2 / OIDC Authorization Server. Enabling it mounts all OAuth
   // endpoints (/oauth/authorize, /oauth/token, /oauth/introspect,
-  // /oauth/userinfo, /.well-known/*, …). The standalone MCP server in
-  // ../mcp-server acts as an OAuth2 resource server: it validates the
-  // bearer tokens minted here via /oauth/introspect using the same
-  // shared secret. The MCP server issues no tokens of its own.
+  // /oauth/userinfo, /.well-known/*, …). The embedded MCP server below
+  // validates its tokens in-process; the introspection endpoint (and its
+  // shared secret) stays available for external resource servers.
   oauth2: {
     enabled: true,
     introspectionSecret: process.env.OAUTH_INTROSPECTION_SECRET,
@@ -102,6 +102,12 @@ const server = defineServer({
   customDbSchema: {
     ...appDbSchema,
   },
+  // The wiki MCP server, embedded behind /mcp at the domain root. The
+  // framework handles auth (OAuth2 access tokens with audience check, API
+  // tokens), RFC 9728 discovery and CORS; the tools call this app's own HTTP
+  // API in-process as the authenticated user. Wire-compatible with the former
+  // standalone ../mcp-server — see ./src/mcp.
+  mcpServers: [wikiMcpServer],
   // Clean, minimal transactional emails (see ./lib/email-templates). These
   // override the framework defaults: centred logo, one heading, one button,
   // no coloured background. Kept bilingual (German first, English below).

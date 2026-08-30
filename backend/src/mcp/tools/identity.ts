@@ -4,12 +4,12 @@
  * before reading or writing wiki pages.
  */
 
-import { defineTool } from "./_helpers.ts";
-import { callApi, resolveTenantId } from "../app-api.ts";
+import type { McpToolDefinition } from "@framework/types";
+import { defineTool } from "./_define";
+import { callApi, resolveTenantId } from "../api";
 
-export function registerIdentityTools(mcp: any): void {
+export const identityTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "whoami",
       title: "Who am I",
@@ -19,12 +19,12 @@ export function registerIdentityTools(mcp: any): void {
         "wiki tools operate on. Call this first to confirm identity and " +
         "context before other actions.",
     },
-    async (_args, authInfo) => {
-      const result = await callApi(authInfo, "/oauth/userinfo");
+    async (_args, ctx) => {
+      const result = await callApi(ctx, "/oauth/userinfo");
       if (result.isError) return result;
       let tenantId: string | null = null;
       try {
-        tenantId = resolveTenantId(authInfo);
+        tenantId = resolveTenantId(ctx);
       } catch {
         tenantId = null;
       }
@@ -37,10 +37,9 @@ export function registerIdentityTools(mcp: any): void {
         structuredContent: merged,
       };
     },
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "list_organisations",
       title: "List my organisations",
@@ -49,6 +48,6 @@ export function registerIdentityTools(mcp: any): void {
         "with id, name and role. The wiki tools operate on the organisation " +
         "bound to the current token; this is mainly informational.",
     },
-    async (_args, authInfo) => callApi(authInfo, "/api/v1/user/tenants"),
-  );
-}
+    async (_args, ctx) => callApi(ctx, "/api/v1/user/tenants"),
+  ),
+];

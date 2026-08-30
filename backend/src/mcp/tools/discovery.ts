@@ -12,13 +12,13 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
-import { callApi, tenantPath } from "../app-api.ts";
-import { slimOverview, slimPageRow, slimPageRows } from "./_shapes.ts";
+import type { McpToolDefinition } from "@framework/types";
+import { defineTool } from "./_define";
+import { callApi, tenantPath } from "../api";
+import { slimOverview, slimPageRow, slimPageRows } from "./_shapes";
 
-export function registerDiscoveryTools(mcp: any): void {
+export const discoveryTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "get_wiki_overview",
       title: "Get the wiki overview (start here)",
@@ -37,16 +37,15 @@ export function registerDiscoveryTools(mcp: any): void {
           .describe("How many recent changes to include (default 10)."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, "/knowledge/texts/overview"),
+        ctx,
+        tenantPath(ctx, "/knowledge/texts/overview"),
         { query: { recentLimit: args.recentLimit }, transform: slimOverview },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_wiki_tree",
       title: "Get the wiki page tree",
@@ -58,12 +57,11 @@ export function registerDiscoveryTools(mcp: any): void {
         "this for the full structure; `get_wiki_overview` is the cheaper " +
         "starting point.",
     },
-    async (_args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/wiki/tree")),
-  );
+    async (_args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/wiki/tree")),
+  ),
 
   defineTool(
-    mcp,
     {
       name: "search_wiki",
       title: "Search the wiki",
@@ -112,8 +110,8 @@ export function registerDiscoveryTools(mcp: any): void {
           .describe("Optional: restrict the search to a specific team."),
       }),
     },
-    async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/search"), {
+    async (args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts/search"), {
         query: {
           q: args.query,
           mode: args.mode,
@@ -124,10 +122,9 @@ export function registerDiscoveryTools(mcp: any): void {
           teamId: args.teamId,
         },
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "resolve_page",
       title: "Resolve a page by title",
@@ -140,15 +137,14 @@ export function registerDiscoveryTools(mcp: any): void {
         title: z.string().min(1).describe("The exact page title."),
       }),
     },
-    async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/resolve"), {
+    async (args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts/resolve"), {
         query: { title: args.title },
         transform: slimPageRow,
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "list_recent_changes",
       title: "List recent changes",
@@ -178,10 +174,10 @@ export function registerDiscoveryTools(mcp: any): void {
           .describe("Maximum number of items (default 50, cap 200)."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, "/knowledge/texts/recent-changes"),
+        ctx,
+        tenantPath(ctx, "/knowledge/texts/recent-changes"),
         {
           query: {
             since: args.since,
@@ -194,10 +190,9 @@ export function registerDiscoveryTools(mcp: any): void {
           transform: slimPageRows,
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "list_pages",
       title: "List pages (flat)",
@@ -225,8 +220,8 @@ export function registerDiscoveryTools(mcp: any): void {
           .describe("1-based page number (needs `limit`)."),
       }),
     },
-    async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts"), {
+    async (args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts"), {
         query: {
           teamId: args.teamId,
           limit: args.limit,
@@ -234,10 +229,9 @@ export function registerDiscoveryTools(mcp: any): void {
         },
         transform: slimPageRows,
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_wiki_config",
       title: "Get the wiki facet vocabularies",
@@ -247,7 +241,7 @@ export function registerDiscoveryTools(mcp: any): void {
         "these lists are rejected) and whether AI auto-summaries are enabled. " +
         "Check this before setting facets on pages.",
     },
-    async (_args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/config")),
-  );
-}
+    async (_args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts/config")),
+  ),
+];
