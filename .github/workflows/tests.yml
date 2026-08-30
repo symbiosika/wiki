@@ -4,11 +4,11 @@ name: Tests
 # pull request. Unlike build.yml there is no path filtering and no change
 # detection: a push must always tell you whether the tests are green.
 #
-# The three suites are independent jobs so they run in parallel and a failure
+# The suites are independent jobs so they run in parallel and a failure
 # points straight at the affected part of the stack:
 #   backend      – bun test against an embedded PGlite database (.scripts/test-local.ts)
+#                  (includes the embedded MCP server under backend/src/mcp)
 #   frontend     – vitest (happy-dom)
-#   mcp-server   – bun test
 on:
   push:
   pull_request:
@@ -85,26 +85,3 @@ jobs:
         working-directory: frontend
         run: bun run test
 
-  # ---------------------------------------------------------------------------
-  # MCP SERVER – bun test (src/**/*.test.ts).
-  # ---------------------------------------------------------------------------
-  mcp-server:
-    name: MCP server tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        working-directory: mcp-server
-        run: bun install
-
-      - name: Run tests
-        working-directory: mcp-server
-        run: bun test

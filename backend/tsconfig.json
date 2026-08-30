@@ -29,5 +29,8 @@
       "@framework/*": ["./framework/src/*"]
     }
   },
-  "include": ["src", "framework/src", "seeds"]
+  "include": ["src", "framework/src", "seeds"],
+  // The MCP-App views are BROWSER code (DOM APIs), bundled at runtime by
+  // Bun.build — they don't belong in the server's type program.
+  "exclude": ["src/mcp/ui/page-view.ts", "src/mcp/ui/image-view.ts"]
 }

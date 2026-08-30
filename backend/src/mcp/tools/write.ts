@@ -8,13 +8,13 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
-import { callApi, tenantPath, resolveTenantId } from "../app-api.ts";
-import { pageMetadata } from "./_shapes.ts";
+import type { McpToolDefinition } from "@framework/types";
+import { defineTool } from "./_define";
+import { callApi, tenantPath, resolveTenantId } from "../api";
+import { pageMetadata } from "./_shapes";
 
-export function registerWriteTools(mcp: any): void {
+export const writeTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "create_page",
       title: "Create a page",
@@ -57,11 +57,11 @@ export function registerWriteTools(mcp: any): void {
           .describe("Facet: trust status (controlled vocabulary)."),
       }),
     },
-    async (args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/knowledge/texts"), {
+    async (args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/knowledge/texts"), {
         method: "POST",
         json: {
-          tenantId: resolveTenantId(authInfo),
+          tenantId: resolveTenantId(ctx),
           title: args.title,
           text: args.content ?? "",
           // "text" mode: the markdown lives in the text column, so the
@@ -77,10 +77,9 @@ export function registerWriteTools(mcp: any): void {
         },
         transform: pageMetadata,
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "update_page",
       title: "Update a page (title / move / facets)",
@@ -140,8 +139,8 @@ export function registerWriteTools(mcp: any): void {
           ),
       }),
     },
-    async (args, authInfo) => {
-      const body: Record<string, unknown> = { tenantId: resolveTenantId(authInfo) };
+    async (args, ctx) => {
+      const body: Record<string, unknown> = { tenantId: resolveTenantId(ctx) };
       if (args.title !== undefined) body.title = args.title;
       if (args.parentId !== undefined) body.parentId = args.parentId;
       if (args.teamId !== undefined) body.teamId = args.teamId;
@@ -155,15 +154,14 @@ export function registerWriteTools(mcp: any): void {
         body.summaryMode = "manual";
       }
       return callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}`),
         { method: "PUT", json: body, transform: pageMetadata },
       );
     },
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "append_to_page",
       title: "Append to a page",
@@ -188,19 +186,18 @@ export function registerWriteTools(mcp: any): void {
           .describe('Separator before the appended text (default "\\n\\n").'),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/append`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/append`),
         {
           method: "POST",
           json: { text: args.content, separator: args.separator },
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "edit_page_content",
       title: "Edit page content (find & replace)",
@@ -233,10 +230,10 @@ export function registerWriteTools(mcp: any): void {
           .describe("Replace every occurrence instead of requiring uniqueness."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}/content`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}/content`),
         {
           method: "PATCH",
           json: {
@@ -246,10 +243,9 @@ export function registerWriteTools(mcp: any): void {
           },
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "delete_page",
       title: "Delete a page",
@@ -261,11 +257,11 @@ export function registerWriteTools(mcp: any): void {
         pageId: z.string().describe("The page id to delete."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/knowledge/texts/${args.pageId}`),
+        ctx,
+        tenantPath(ctx, `/knowledge/texts/${args.pageId}`),
         { method: "DELETE" },
       ),
-  );
-}
+  ),
+];

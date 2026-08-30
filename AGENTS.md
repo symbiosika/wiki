@@ -17,7 +17,6 @@ There is never a good reason to hand back code without having run them.
 | `frontend/**` | `bun run test` | ~3 s |
 | `frontend/**` (types) | `bun run type-check` | ~30 s |
 | `backend/**` (types) | `bun run typecheck` | ~30 s |
-| `mcp-server/**` (types) | `bun run typecheck` | ~10 s |
 
 `bun run test:local` boots its own embedded PGlite database on port 5499,
 applies framework + app migrations, sets every required env var, runs the
@@ -89,10 +88,9 @@ deploys on push to `develop` (staging) / `main` (production).
 
 ## 3. Project Structure
 
-Monorepo with three apps:
-- `backend/` – Bun + Hono API server. Framework lives in `backend/framework/` (path alias: `@framework/*` → `./framework/src/*`). OAuth2/OIDC authorization server enabled via `oauth2` in `src/index.ts`.
+Monorepo:
+- `backend/` – Bun + Hono API server. Framework lives in `backend/framework/` (path alias: `@framework/*` → `./framework/src/*`). OAuth2/OIDC authorization server enabled via `oauth2` in `src/index.ts`. The MCP server is embedded here (`backend/src/mcp/`, mounted at `/mcp` via `mcpServers` in `defineServer`): it lets a chat app use the wiki as its "brain" — identity/discovery/read/write tools over the `knowledge/texts` API, authenticated in-process (OAuth2 access tokens with audience check, framework API tokens, session JWTs).
 - `frontend/` – Vue 3 SPA (Vite, Tailwind v4, PrimeVue/Volt)
-- `mcp-server/` – standalone Bun MCP server (OAuth2 resource server). Lets a chat app use the wiki as its "brain": identity/discovery/read/write tools over the `knowledge/texts` API. Issues no tokens; validates the backend's OAuth tokens via `/oauth/introspect`. See `mcp-server/README.md`.
 
 Hard rules:
 - **NEVER change framework code** (`backend/framework/**`) — it is a submodule of a separate repo.

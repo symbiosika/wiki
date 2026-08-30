@@ -1,16 +1,18 @@
 /**
- * Thin client for the wiki app API (resource-server view).
+ * Thin client for the wiki app API, on top of the framework's in-process
+ * `ctx.fetchApi`.
  *
- * Every call runs in the name of the user: we forward the user's credential
- * unchanged to the app — an OAuth access token as `Authorization: Bearer`, or a
- * framework API token as `X-API-KEY`. Server-side, EXACTLY the user's
- * permissions apply (role, team/organisation membership, visibility of personal
- * pages). The MCP server implements NO authorization of its own — it only
- * surfaces endpoints and returns app errors (403/404/…) transparently.
+ * Historically the MCP server was a separate process that called this app
+ * over HTTP with the forwarded user credential. Embedded in the backend, the
+ * calls go through `ctx.fetchApi` instead — same routes, same route-level
+ * permission checks, no network. The tools keep talking to the HTTP API on
+ * purpose: the routes are where authorisation lives. Every call runs in the
+ * name of the user; the MCP layer implements NO authorization of its own —
+ * it only surfaces endpoints and returns app errors (403/404/…)
+ * transparently.
  */
 
-import type { AuthInfo } from "@modelcontextprotocol/server";
-import { ISSUER, API_BASE_PATH, FALLBACK_TENANT_ID } from "./config.ts";
+import type { McpRequestContext, McpToolResult } from "@framework/types";
 
 /** Content blocks a tool can return (text, or binary images as base64). */
 export type ToolContent =
@@ -18,16 +20,22 @@ export type ToolContent =
   | { type: "image"; data: string; mimeType: string };
 
 /** MCP tool result (content blocks + optional structured content). */
-export type ToolResult = {
-  isError?: boolean;
-  content: ToolContent[];
-  structuredContent?: Record<string, unknown>;
-};
+export type ToolResult = McpToolResult;
 
 /** Text-only tool result (what `ok`/`fail` produce). */
 export type TextToolResult = ToolResult & {
   content: { type: "text"; text: string }[];
 };
+
+/**
+ * Fallback tenant (organisation) id, used only if a validated credential
+ * carries no `tenant` binding. Normally the credential's tenant wins. Read
+ * lazily so tests (and late-configured deployments) see the current value.
+ */
+const fallbackTenantId = () => process.env.WIKI_TENANT_ID || "";
+
+/** API prefix of the wiki app. */
+export const API_BASE_PATH = "/api/v1";
 
 /** Success result. Arrays are wrapped in `{ items }` (MCP requires an object). */
 export function ok(data: unknown): TextToolResult {
@@ -52,23 +60,22 @@ export function fail(message: string): TextToolResult {
 /**
  * Resolve the organisation (tenant) id for the API paths.
  *
- * The token's own `tenant` binding always wins. For OAuth access tokens that
- * binding is chosen by the user at authorize time (sole membership, or the
- * organisation picker), so a *missing* binding is an error — NOT a cue to fall
- * back to WIKI_TENANT_ID. On a multi-tenant deployment that silent fallback
- * would map the user into some other organisation, leaking the wrong org's
- * data or failing confusingly with "User is not a member of this tenant".
- * We fail loud and ask the user to reconnect instead.
+ * The credential's own tenant binding always wins. For OAuth access tokens
+ * that binding is chosen by the user at authorize time (sole membership, or
+ * the organisation picker), so a *missing* binding is an error — NOT a cue to
+ * fall back to WIKI_TENANT_ID. On a multi-tenant deployment that silent
+ * fallback would map the user into some other organisation, leaking the wrong
+ * org's data or failing confusingly with "User is not a member of this
+ * tenant". We fail loud and ask the user to reconnect instead.
  *
- * WIKI_TENANT_ID is the intended path only for framework API tokens, which are
- * single-org by design (and already carry it via `validateApiToken`).
+ * WIKI_TENANT_ID is the intended path only for non-OAuth credentials that
+ * carry no binding of their own (a plain session JWT on a single-org
+ * deployment; framework API tokens normally already carry their tenant).
  */
-export function resolveTenantId(authInfo: AuthInfo | undefined): string {
-  const fromToken = (authInfo?.extra as any)?.tenant as string | undefined;
-  if (fromToken) return fromToken;
+export function resolveTenantId(ctx: McpRequestContext): string {
+  if (ctx.tenantId) return ctx.tenantId;
 
-  const kind = (authInfo?.extra as any)?.kind as string | undefined;
-  if (kind === "oauth") {
+  if (ctx.tokenKind === "oauth") {
     throw new Error(
       "This access token is not bound to an organisation. Reconnect the wiki " +
         "connector and choose your organisation during sign-in. " +
@@ -77,16 +84,17 @@ export function resolveTenantId(authInfo: AuthInfo | undefined): string {
     );
   }
 
-  if (FALLBACK_TENANT_ID) return FALLBACK_TENANT_ID;
+  const fallback = fallbackTenantId();
+  if (fallback) return fallback;
   throw new Error(
-    "No organisation id available: the token carries no `tenant` field and " +
-      "WIKI_TENANT_ID is not set.",
+    "No organisation id available: the credential carries no tenant binding " +
+      "and WIKI_TENANT_ID is not set.",
   );
 }
 
 /** Build a tenant-scoped API path: /api/v1/tenant/:tenantId<suffix>. */
-export function tenantPath(authInfo: AuthInfo | undefined, suffix: string) {
-  return `${API_BASE_PATH}/tenant/${resolveTenantId(authInfo)}${suffix}`;
+export function tenantPath(ctx: McpRequestContext, suffix: string) {
+  return `${API_BASE_PATH}/tenant/${resolveTenantId(ctx)}${suffix}`;
 }
 
 type CallOptions = {
@@ -104,34 +112,29 @@ type CallOptions = {
   transform?: (data: unknown) => unknown;
 };
 
+const withQuery = (
+  path: string,
+  query: CallOptions["query"] | undefined,
+): string => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `${path}?${qs}` : path;
+};
+
 /**
  * Run an API call against the app and return a ready-made ToolResult. On
  * non-2xx the status code + server message becomes the error text.
  */
 export async function callApi(
-  authInfo: AuthInfo | undefined,
+  ctx: McpRequestContext,
   path: string,
   opts: CallOptions = {},
 ): Promise<ToolResult> {
-  const token = authInfo?.token;
-  if (!token) return fail("Not authenticated.");
-
-  const url = new URL(`${ISSUER}${path}`);
-  if (opts.query) {
-    for (const [k, val] of Object.entries(opts.query)) {
-      if (val !== undefined && val !== "")
-        url.searchParams.set(k, String(val));
-    }
-  }
-
-  // Forward the credential the way the app expects it: OAuth access tokens are
-  // JWTs sent as a Bearer, framework API tokens are opaque and are exchanged by
-  // the app when presented via `X-API-KEY` (see mcp auth `validateApiToken`).
-  const headers: Record<string, string> =
-    (authInfo?.extra as any)?.kind === "api"
-      ? { "x-api-key": token }
-      : { authorization: `Bearer ${token}` };
-  let body: BodyInit | undefined;
+  const headers: Record<string, string> = {};
+  let body: string | undefined;
   if (opts.json !== undefined) {
     headers["content-type"] = "application/json";
     body = JSON.stringify(opts.json);
@@ -139,7 +142,11 @@ export async function callApi(
 
   let res: Response;
   try {
-    res = await fetch(url, { method: opts.method ?? "GET", headers, body });
+    res = await ctx.fetchApi(withQuery(path, opts.query), {
+      method: opts.method ?? "GET",
+      headers,
+      body,
+    });
   } catch (err) {
     return fail(`Network error during API call: ${(err as Error).message}`);
   }

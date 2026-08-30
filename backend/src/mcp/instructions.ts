@@ -4,7 +4,7 @@
  * The MCP spec lets a server ship an `instructions` string that the host
  * (the MCP client / chat app) keeps in context whenever the server is
  * connected. This is the always-on, server-side counterpart to the (opt-in)
- * Agent Skill in `skill/SKILL.md`: it makes the assistant reach for the wiki on
+ * Agent Skill in `./skill/SKILL.md`: it makes the assistant reach for the wiki on
  * company questions even when no skill is loaded. Keep it short and
  * behavioural; the per-tool descriptions carry the mechanics.
  */

@@ -19,8 +19,9 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
-import { callApi, tenantPath } from "../app-api.ts";
+import type { McpToolDefinition } from "@framework/types";
+import { defineTool } from "./_define";
+import { callApi, tenantPath } from "../api";
 
 /** Drop bookkeeping columns that only cost the model context. */
 function slimCollection(data: unknown): unknown {
@@ -67,9 +68,8 @@ function slimRecord(data: unknown): unknown {
   return { ...r.data, id: r.id };
 }
 
-export function registerCollectionTools(mcp: any): void {
+export const collectionTools: McpToolDefinition[] = [
   defineTool(
-    mcp,
     {
       name: "list_collections",
       title: "List collections (tables)",
@@ -82,8 +82,8 @@ export function registerCollectionTools(mcp: any): void {
         "reading or writing rows.",
       inputSchema: z.object({}),
     },
-    async (_args, authInfo) =>
-      callApi(authInfo, tenantPath(authInfo, "/collections"), {
+    async (_args, ctx) =>
+      callApi(ctx, tenantPath(ctx, "/collections"), {
         transform: (data) =>
           Array.isArray(data)
             ? data.map((c: any) => ({
@@ -94,10 +94,9 @@ export function registerCollectionTools(mcp: any): void {
               }))
             : data,
       }),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "get_collection",
       title: "Get a collection's columns",
@@ -116,18 +115,17 @@ export function registerCollectionTools(mcp: any): void {
           .describe("Alternatively, the id of the page the table lives on."),
       }),
     },
-    async (args, authInfo) => {
+    async (args, ctx) => {
       const path = args.collectionId
         ? `/collections/${args.collectionId}`
         : `/collections/by-page/${args.pageId}`;
-      return callApi(authInfo, tenantPath(authInfo, path), {
+      return callApi(ctx, tenantPath(ctx, path), {
         transform: slimCollection,
       });
     },
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "query_collection_records",
       title: "Query records of a collection",
@@ -147,10 +145,10 @@ export function registerCollectionTools(mcp: any): void {
         offset: z.number().optional().describe("Rows to skip (paging)."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/collections/${args.collectionId}/records`),
+        ctx,
+        tenantPath(ctx, `/collections/${args.collectionId}/records`),
         {
           query: {
             search: args.search,
@@ -160,10 +158,9 @@ export function registerCollectionTools(mcp: any): void {
           transform: slimRecords,
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "create_collection_record",
       title: "Add a record to a collection",
@@ -180,20 +177,19 @@ export function registerCollectionTools(mcp: any): void {
           .describe("Column key → value for the new row."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
-        tenantPath(authInfo, `/collections/${args.collectionId}/records`),
+        ctx,
+        tenantPath(ctx, `/collections/${args.collectionId}/records`),
         {
           method: "POST",
           json: { data: args.values },
           transform: slimRecord,
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "update_collection_record",
       title: "Update a record",
@@ -211,11 +207,11 @@ export function registerCollectionTools(mcp: any): void {
           .describe("Column key → new value; omitted columns are untouched."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
+        ctx,
         tenantPath(
-          authInfo,
+          ctx,
           `/collections/${args.collectionId}/records/${args.recordId}`,
         ),
         {
@@ -224,10 +220,9 @@ export function registerCollectionTools(mcp: any): void {
           transform: slimRecord,
         },
       ),
-  );
+  ),
 
   defineTool(
-    mcp,
     {
       name: "delete_collection_record",
       title: "Delete a record",
@@ -239,14 +234,14 @@ export function registerCollectionTools(mcp: any): void {
         recordId: z.string().describe("The record id."),
       }),
     },
-    async (args, authInfo) =>
+    async (args, ctx) =>
       callApi(
-        authInfo,
+        ctx,
         tenantPath(
-          authInfo,
+          ctx,
           `/collections/${args.collectionId}/records/${args.recordId}`,
         ),
         { method: "DELETE" },
       ),
-  );
-}
+  ),
+];
