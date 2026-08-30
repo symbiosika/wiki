@@ -56,6 +56,10 @@ function escapeCell(value: string): string {
   return value
     .replace(/\|/g, "\\|")
     .replace(/\r?\n/g, " ")
+    // strip HTML-comment delimiters: a cell containing the block markers
+    // above would make mergeIntoBody/stripFromBody match inside the table
+    // and corrupt the page body on the next render
+    .replace(/<!--|-->/g, "")
     .trim();
 }
 
@@ -171,7 +175,7 @@ export async function materializeCollection(
       // Prefix the table with its own name when it has one. The page title is
       // already indexed; a differently-named table would otherwise be
       // unfindable by the name people actually use for it.
-      const heading = collection.name?.trim();
+      const heading = collection.name ? escapeCell(collection.name) : "";
       nextText = mergeIntoBody(
         page.text,
         heading && table ? `### ${heading}\n\n${table}` : table,

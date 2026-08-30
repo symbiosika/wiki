@@ -46,21 +46,25 @@ function slimCollection(data: unknown): unknown {
   };
 }
 
-/** Records as `{ id, ...values }` — the nested `data` wrapper helps nobody. */
+/**
+ * Records as `{ id, ...values }` — the nested `data` wrapper helps nobody.
+ * `id` is spread LAST: it is the record's UUID (needed for updates/deletes)
+ * and must win over any data column that happens to be keyed "id".
+ */
 function slimRecords(data: unknown): unknown {
   const d = data as any;
   if (!d || !Array.isArray(d.records)) return data;
   return {
     total: d.total,
     truncated: d.truncated || undefined,
-    records: d.records.map((r: any) => ({ id: r.id, ...r.data })),
+    records: d.records.map((r: any) => ({ ...r.data, id: r.id })),
   };
 }
 
 function slimRecord(data: unknown): unknown {
   const r = data as any;
   if (!r || typeof r !== "object" || !r.data) return data;
-  return { id: r.id, ...r.data };
+  return { ...r.data, id: r.id };
 }
 
 export function registerCollectionTools(mcp: any): void {

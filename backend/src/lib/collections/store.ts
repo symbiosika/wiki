@@ -102,19 +102,24 @@ export const MAX_RECORDS_PER_REQUEST = 5000;
 export function slugifyFieldKey(label: string, taken: string[]): string {
   const base =
     label
+      // NFC first so a decomposed "a"+combining diaeresis becomes "ä" before
+      // the transliteration below — NFKD would decompose the umlauts past it
+      .normalize("NFC")
       .toLowerCase()
-      .normalize("NFKD")
       // transliterate the German umlauts people will actually type
       .replace(/ä/g, "ae")
       .replace(/ö/g, "oe")
       .replace(/ü/g, "ue")
       .replace(/ß/g, "ss")
+      .normalize("NFKD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "")
       .slice(0, 48) || "field";
 
-  if (!taken.includes(base)) return base;
+  // "id" is the record's own id in flattened record shapes (the MCP tools
+  // return rows as `{ id, ...data }`) — a data key must never shadow it
+  if (base !== "id" && !taken.includes(base)) return base;
   let n = 2;
   while (taken.includes(`${base}_${n}`)) n++;
   return `${base}_${n}`;
@@ -275,7 +280,7 @@ export interface CreateCollectionInput {
   /** optional own name; falls back to the page title */
   name?: string | null;
   description?: string | null;
-  settings?: CollectionSettings;
+  settings?: CollectionSettingsPatch;
   fields?: CreateFieldInput[];
 }
 
@@ -311,7 +316,7 @@ export async function createCollection(
       knowledgeTextId: input.knowledgeTextId,
       name: input.name?.trim() || null,
       description: input.description ?? null,
-      settings: input.settings ?? {},
+      settings: input.settings ? mergeSettings({}, input.settings) : {},
       createdBy: ctx.userId,
     })
     .returning();
@@ -329,12 +334,32 @@ export async function createCollection(
   };
 }
 
+/**
+ * Settings a caller may send: any key may also be null, which DELETES it —
+ * the merge below keeps keys the patch does not mention, so JSON (which
+ * cannot express undefined) needs an explicit way to clear one.
+ */
+export type CollectionSettingsPatch = {
+  [K in keyof CollectionSettings]?: CollectionSettings[K] | null;
+};
+
+function mergeSettings(
+  current: CollectionSettings,
+  patch: CollectionSettingsPatch,
+): CollectionSettings {
+  const next: Record<string, unknown> = { ...current, ...patch };
+  for (const key of Object.keys(next)) {
+    if (next[key] === null) delete next[key];
+  }
+  return next as CollectionSettings;
+}
+
 export async function updateCollection(
   collectionId: string,
   patch: {
     name?: string | null;
     description?: string | null;
-    settings?: CollectionSettings;
+    settings?: CollectionSettingsPatch;
   },
   ctx: CollectionContext,
 ): Promise<CollectionWithFields> {
@@ -349,7 +374,7 @@ export async function updateCollection(
         ? { description: patch.description }
         : {}),
       ...(patch.settings !== undefined
-        ? { settings: { ...collection.settings, ...patch.settings } }
+        ? { settings: mergeSettings(collection.settings, patch.settings) }
         : {}),
       updatedAt: new Date().toISOString(),
     })
@@ -622,7 +647,7 @@ export interface ListRecordsResult {
   records: CollectionRecordSelect[];
   /** total matching the filter, before limit/offset */
   total: number;
-  /** true when `total` exceeded the cap and the list was truncated */
+  /** true when rows beyond this page exist (limit/offset cut the list off) */
   truncated: boolean;
 }
 
@@ -660,15 +685,17 @@ export async function listRecords(
     MAX_RECORDS_PER_REQUEST,
   );
 
+  const offset = options.offset ?? 0;
+
   const records = await getDb()
     .select()
     .from(collectionRecords)
     .where(where)
     .orderBy(asc(collectionRecords.position), asc(collectionRecords.createdAt))
     .limit(limit)
-    .offset(options.offset ?? 0);
+    .offset(offset);
 
-  return { records, total, truncated: total > records.length };
+  return { records, total, truncated: offset + records.length < total };
 }
 
 export async function createRecord(

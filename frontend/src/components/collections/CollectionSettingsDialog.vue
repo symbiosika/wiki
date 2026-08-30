@@ -58,6 +58,12 @@ const typeOptions = computed(() =>
 /** the column currently expanded for editing */
 const openId = ref<string | null>(null)
 
+// a type switch still waiting for its choices dies with the editor it was
+// made in — otherwise the closed row would silently show the wrong type
+watch(openId, (_next, previous) => {
+  if (previous) delete pendingTypes.value[previous]
+})
+
 // --- the table itself ----------------------------------------------------
 
 /**
@@ -151,6 +157,33 @@ function patch(field: CollectionField, patchData: Partial<CollectionField>) {
   emit('update', { id: field.id, patch: patchData })
 }
 
+/**
+ * Type changes to select/multiSelect on a column WITHOUT choices are buffered
+ * here instead of being sent right away: the server rejects a select column
+ * with no options, and the choices textarea only shows for select types — so
+ * the type switch has to wait locally until the user has typed the options,
+ * then both go to the server in one patch.
+ */
+const pendingTypes = ref<Record<string, CollectionFieldType>>({})
+
+function effectiveType(field: CollectionField): CollectionFieldType {
+  return pendingTypes.value[field.id] ?? field.type
+}
+
+function needsChoices(type: CollectionFieldType): boolean {
+  return type === 'select' || type === 'multiSelect'
+}
+
+function changeType(field: CollectionField, type: CollectionFieldType) {
+  const hasChoices = (field.options?.choices ?? []).length > 0
+  if (needsChoices(type) && !hasChoices) {
+    pendingTypes.value[field.id] = type
+    return
+  }
+  delete pendingTypes.value[field.id]
+  if (type !== field.type) patch(field, { type })
+}
+
 /** Local buffer for the choices textarea, flushed on blur. */
 const choiceDrafts = ref<Record<string, string>>({})
 
@@ -161,15 +194,19 @@ function choiceText(field: CollectionField): string {
 
 function commitChoices(field: CollectionField) {
   const text = choiceDrafts.value[field.id]
-  if (text === undefined) return
-  const choices = parseChoices(text)
+  const pendingType = pendingTypes.value[field.id]
+  if (text === undefined && pendingType === undefined) return
+  const choices = parseChoices(text ?? choiceText(field))
   delete choiceDrafts.value[field.id]
   if (choices.length === 0) return
   // keep the colour already assigned to a value that survived the edit
   const previous = new Map(
     (field.options?.choices ?? []).map((c) => [c.value, c.color]),
   )
+  delete pendingTypes.value[field.id]
   patch(field, {
+    // a buffered type switch is committed together with its first choices
+    ...(pendingType !== undefined ? { type: pendingType } : {}),
     options: {
       ...field.options,
       choices: choices.map((c) => ({ value: c.value, color: previous.get(c.value) })),
@@ -344,19 +381,19 @@ function confirmRemove(field: CollectionField) {
                 {{ $t('Collections.fields.type') }}
               </label>
               <Select
-                :model-value="field.type"
+                :model-value="effectiveType(field)"
                 :options="typeOptions"
                 option-label="label"
                 option-value="value"
                 class="w-full"
-                @update:model-value="patch(field, { type: $event })"
+                @update:model-value="changeType(field, $event)"
               />
             </div>
           </div>
 
           <!-- select options, one per line -->
           <div
-            v-if="field.type === 'select' || field.type === 'multiSelect'"
+            v-if="needsChoices(effectiveType(field))"
             class="flex flex-col gap-1"
           >
             <label class="text-xs text-surface-500 dark:text-surface-400">

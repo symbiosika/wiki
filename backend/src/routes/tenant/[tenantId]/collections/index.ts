@@ -31,6 +31,7 @@ import {
   checkUserPermission,
 } from "@framework/lib/utils/hono-middlewares";
 import { isTenantMember } from "@framework/routes/tenant";
+import log from "@framework/lib/log";
 import { HTTPException } from "hono/http-exception";
 import { describeRoute, validator } from "hono-openapi";
 import * as v from "valibot";
@@ -89,13 +90,17 @@ const fieldOptionsSchema = v.object({
   suffix: v.optional(v.pipe(v.string(), v.maxLength(16))),
 });
 
+// on update, null deletes a settings key (JSON cannot express undefined,
+// and the store merges patches over the existing settings)
 const settingsSchema = v.object({
-  titleFieldKey: v.optional(v.string()),
+  titleFieldKey: v.optional(v.nullable(v.string())),
   defaultSort: v.optional(
-    v.object({
-      key: v.string(),
-      direction: v.picklist(["asc", "desc"]),
-    }),
+    v.nullable(
+      v.object({
+        key: v.string(),
+        direction: v.picklist(["asc", "desc"]),
+      }),
+    ),
   ),
   materialize: v.optional(v.boolean()),
 });
@@ -153,8 +158,13 @@ const bulkDeleteBody = v.object({
 
 const listRecordsQuery = v.object({
   search: v.optional(v.pipe(v.string(), v.maxLength(200))),
-  limit: v.optional(v.pipe(v.string(), v.transform(Number), v.number())),
-  offset: v.optional(v.pipe(v.string(), v.transform(Number), v.number())),
+  // integer >= 0 — a negative or fractional value would reach Postgres as-is
+  limit: v.optional(
+    v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0)),
+  ),
+  offset: v.optional(
+    v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0)),
+  ),
 });
 
 const ok = { 200: { description: "Successful response" } };
@@ -181,7 +191,10 @@ function toHttpError(error: unknown): HTTPException {
   if (/no write access|access denied|not allowed/i.test(message)) {
     return new HTTPException(403, { message });
   }
-  return new HTTPException(400, { message });
+  // anything else is unexpected — log it, but never echo internal error text
+  // (driver messages, stack details) back to the client
+  log.error(`Unhandled collections error: ${message}`);
+  return new HTTPException(500, { message: "Internal server error" });
 }
 
 export default function defineCollectionRoutes(

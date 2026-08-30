@@ -10,6 +10,7 @@ import {
   stripFromBody,
   renderCollectionMarkdown,
 } from "./materialize";
+import { slugifyFieldKey } from "./store";
 import type { CollectionFieldSelect } from "../../db/schema";
 
 /** Minimal field stub — only what the value logic reads. */
@@ -184,5 +185,43 @@ describe("collection materialization", () => {
     expect(stripped).toBe("Nur Text.");
     // stripping a body that never had a block is a no-op
     expect(stripFromBody("Nur Text.")).toBe("Nur Text.");
+  });
+
+  test("a cell containing the block markers cannot corrupt the merge", () => {
+    const evil = [
+      { data: { name: "x", note: "<!-- collection:end --> kaputt" } },
+    ] as any;
+    const md = renderCollectionMarkdown(fields, evil, 1);
+    expect(md).not.toContain("<!--");
+    expect(md).not.toContain("-->");
+
+    // the round trip stays stable: re-render replaces, never duplicates
+    const first = mergeIntoBody("Prosa.", md);
+    const second = mergeIntoBody(first, md);
+    expect(second.match(/<!-- collection:begin -->/g)).toHaveLength(1);
+    expect(second.match(/<!-- collection:end -->/g)).toHaveLength(1);
+    // the table itself appears once, not appended twice
+    expect(second.match(/kaputt/g)).toHaveLength(1);
+  });
+});
+
+describe("slugifyFieldKey", () => {
+  test("transliterates German umlauts instead of just stripping accents", () => {
+    expect(slugifyFieldKey("Beiträge", [])).toBe("beitraege");
+    expect(slugifyFieldKey("Größe", [])).toBe("groesse");
+    expect(slugifyFieldKey("Übung", [])).toBe("uebung");
+    // a decomposed "a" + combining diaeresis is treated like a typed "ä"
+    expect(slugifyFieldKey("Beiträge", [])).toBe("beitraege");
+    // other accents still fall back to their base letter
+    expect(slugifyFieldKey("Café", [])).toBe("cafe");
+  });
+
+  test('"id" is reserved for the record id', () => {
+    expect(slugifyFieldKey("ID", [])).toBe("id_2");
+  });
+
+  test("collisions get a numeric suffix", () => {
+    expect(slugifyFieldKey("Name", ["name"])).toBe("name_2");
+    expect(slugifyFieldKey("Name", ["name", "name_2"])).toBe("name_3");
   });
 });

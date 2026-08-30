@@ -26,6 +26,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const form = ref<Record<string, unknown>>({})
+/** snapshot of the form as it was opened, to diff against on save */
+const initial = ref<Record<string, unknown>>({})
 
 const isEdit = computed(() => props.record !== null)
 
@@ -37,6 +39,7 @@ watch(
     form.value = props.record
       ? { ...emptyRecordData(props.fields), ...props.record.data }
       : emptyRecordData(props.fields)
+    initial.value = JSON.parse(JSON.stringify(form.value))
   },
   { immediate: true },
 )
@@ -46,7 +49,19 @@ function close() {
 }
 
 function submit() {
-  emit('save', { ...form.value })
+  if (!isEdit.value) {
+    emit('save', { ...form.value })
+    return
+  }
+  // only the changed fields: the server patches per key, so a concurrent
+  // edit of another column must not be overwritten with our stale copy
+  const patch: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(form.value)) {
+    if (JSON.stringify(value ?? null) !== JSON.stringify(initial.value[key] ?? null)) {
+      patch[key] = value
+    }
+  }
+  emit('save', patch)
 }
 </script>
 
