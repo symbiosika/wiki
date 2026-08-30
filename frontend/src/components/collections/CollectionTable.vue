@@ -65,8 +65,13 @@ const recordDialog = ref(false)
 const editingRecord = ref<CollectionRecord | null>(null)
 const showFilters = ref(false)
 
-/** Per-column filter values, keyed by field key. */
-const columnFilters = ref<Record<string, unknown>>({})
+/**
+ * Per-column filter values, keyed by field key. Typed as `any` on purpose: the
+ * inputs below v-model straight into this map, and a cast at the binding
+ * (`v-model="columnFilters[k] as string"`) is not a valid assignment target for
+ * the production build, even though vue-tsc accepts it.
+ */
+const columnFilters = ref<Record<string, any>>({})
 
 const activeFilterCount = computed(
   () =>
@@ -360,7 +365,7 @@ function confirmDeleteSelected() {
 
         <MultiSelect
           v-else-if="field.type === 'select' || field.type === 'multiSelect'"
-          v-model="columnFilters[field.key] as string[]"
+          v-model="columnFilters[field.key]"
           :options="choiceOptions(field)"
           option-label="label"
           option-value="value"
@@ -371,7 +376,7 @@ function confirmDeleteSelected() {
 
         <InputText
           v-else
-          v-model="columnFilters[field.key] as string"
+          v-model="columnFilters[field.key]"
           size="small"
           class="w-full"
           :placeholder="

@@ -18,8 +18,34 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:modelValue': [unknown] }>()
 
-const value = computed({
-  get: () => props.modelValue,
+/**
+ * One computed per value SHAPE rather than a single `unknown` one cast at each
+ * v-model site. `v-model="value as string"` compiles to
+ * `(_unref(value) as string) = $event`, which is not a valid assignment target
+ * — vue-tsc accepts it but the production build (rolldown) rejects it outright.
+ * Typing the ref instead of the binding keeps both happy.
+ */
+const textValue = computed<string>({
+  get: () => (props.modelValue == null ? '' : String(props.modelValue)),
+  set: (v) => emit('update:modelValue', v),
+})
+
+const boolValue = computed<boolean>({
+  get: () => props.modelValue === true,
+  set: (v) => emit('update:modelValue', v),
+})
+
+/**
+ * Select keeps null instead of '' so an empty value shows the placeholder
+ * rather than an apparently-selected blank option.
+ */
+const selectValue = computed<string | null>({
+  get: () => (props.modelValue == null || props.modelValue === '' ? null : String(props.modelValue)),
+  set: (v) => emit('update:modelValue', v),
+})
+
+const listValue = computed<string[]>({
+  get: () => (Array.isArray(props.modelValue) ? (props.modelValue as string[]) : []),
   set: (v) => emit('update:modelValue', v),
 })
 
@@ -65,14 +91,14 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
 <template>
   <Checkbox
     v-if="field.type === 'checkbox'"
-    v-model="value"
+    v-model="boolValue"
     binary
     :autofocus="autofocus"
   />
 
   <Textarea
     v-else-if="field.type === 'longText'"
-    v-model="value as string"
+    v-model="textValue"
     :rows="dense ? 2 : 4"
     :class="inputClass"
     :autofocus="autofocus"
@@ -92,7 +118,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
 
   <Select
     v-else-if="field.type === 'select'"
-    v-model="value as string"
+    v-model="selectValue"
     :options="choices"
     option-label="label"
     option-value="value"
@@ -103,7 +129,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
 
   <MultiSelect
     v-else-if="field.type === 'multiSelect'"
-    v-model="value as string[]"
+    v-model="listValue"
     :options="choices"
     option-label="label"
     option-value="value"
@@ -122,7 +148,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
 
   <InputText
     v-else
-    v-model="value as string"
+    v-model="textValue"
     :type="field.type === 'email' ? 'email' : 'text'"
     :class="inputClass"
     :autofocus="autofocus"
