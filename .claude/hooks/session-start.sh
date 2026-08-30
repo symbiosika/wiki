@@ -14,22 +14,11 @@ fi
 
 cd "${CLAUDE_PROJECT_DIR:-.}"
 
-# Framework submodule backs backend/. Best-effort: it lives in a separate repo
-# and may be unreachable under a restrictive network policy. If it is
-# missing, the backend type-check is unavailable, but the frontend still
-# works.
-git submodule update --init --recursive || {
-  echo "[session-start] framework submodule checkout skipped (no access)"
-  # The framework lives in a separate repo the cloud git proxy can't reach.
-  # It is published as a release asset on THIS repo by the
-  # "Release framework submodule" workflow. Pull it down when missing so the
-  # backend type-check works.
-  if [ ! -e backend/framework/package.json ] && [ -x .scripts/fetch-framework.sh ]; then
-    echo "[session-start] attempting framework download via .scripts/fetch-framework.sh"
-    .scripts/fetch-framework.sh \
-      || echo "[session-start] framework download failed (run .scripts/fetch-framework.sh manually)"
-  fi
-}
+# The framework lives in a separate repo and backs backend/. Checking it out
+# keeps the backend type-check working; if it fails the frontend still works,
+# so don't abort the rest of the setup.
+git submodule update --init --recursive \
+  || echo "[session-start] framework submodule checkout failed (backend type-check unavailable)"
 
 echo "[session-start] installing backend dependencies"
 (cd backend && bun install)
