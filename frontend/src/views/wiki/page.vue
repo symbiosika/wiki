@@ -232,7 +232,10 @@
       />
 
       <!-- block editor -->
-      <div class="flex-1 pt-4 pb-32">
+      <div
+        class="flex-1 pt-4 pb-32"
+        :class="{ 'wiki-page--with-collection': hasCollection }"
+      >
         <!--
           NOTE: bound directly to the store state (not a local copy set after
           await): the render flush runs before the awaiting caller resumes,
@@ -247,6 +250,17 @@
           :page-id="page.id"
           @change="onBlocksChange"
           @toc="toc = $event"
+        />
+
+        <!--
+          collection: the page's typed table, when it has one. Rendered below
+          the prose so the block editor stays the place for context above it.
+        -->
+        <CollectionPanel
+          :tenant-id="tenantId"
+          :page-id="page.id"
+          :editable="editable"
+          @has-collection="hasCollection = $event"
         />
 
         <!-- page references: backlinks, outgoing links, related pages -->
@@ -569,6 +583,8 @@ const reloadKey = ref(0)
 // Live headings emitted by the editor, and whether the ToC panel is open.
 const toc = ref<WikiTocEntry[]>([])
 const tocOpen = ref(false)
+/** true once the page is known to carry a collection (see CollectionPanel) */
+const hasCollection = ref(false)
 
 const toggleAssistant = () => {
   if (assistant.open) {

@@ -9,6 +9,8 @@
  *                  subtree, links, backlinks, related, history + single version
  *   - write      : create, update/move/curate facets, append, edit content,
  *                  delete
+ *   - collections: the typed tables that live on pages — list, read the
+ *                  column schema, query rows, add/update/delete a row
  *   - app UI     : view_page (rendered page/section view via MCP Apps),
  *                  view_image / view_page_images (large image + gallery)
  *                  and get_page_image (images as real image content blocks)
@@ -24,6 +26,7 @@ import { registerDiscoveryTools } from "./discovery.ts";
 import { registerReadTools } from "./read.ts";
 import { registerWriteTools } from "./write.ts";
 import { registerAppUiTools } from "./app-ui.ts";
+import { registerCollectionTools } from "./collections.ts";
 
 export function registerAllTools(mcp: any): void {
   registerIdentityTools(mcp);
@@ -31,4 +34,5 @@ export function registerAllTools(mcp: any): void {
   registerReadTools(mcp);
   registerWriteTools(mcp);
   registerAppUiTools(mcp);
+  registerCollectionTools(mcp);
 }

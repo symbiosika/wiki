@@ -18,6 +18,7 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-valibot";
+import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { PREFIX } from "./index";
 
 export const pgBaseTable = pgTableCreator((name: string) => `${PREFIX}${name}`);
@@ -719,3 +720,242 @@ export type ChatSessionSelect = typeof chatSessions.$inferSelect;
 export type ChatSessionInsert = typeof chatSessions.$inferInsert;
 export type ChatMessageSelect = typeof chatMessages.$inferSelect;
 export type ChatMessageInsert = typeof chatMessages.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Collections — typed tables as wiki pages
+//
+// A collection is a wiki page whose body is a table instead of prose: the user
+// defines a handful of typed columns (Airtable-lite) and adds records. Think
+// "Vereinsmitglieder", "aktuelle Angebote", "Hauptprodukte".
+//
+// The design rule is that a collection IS a page, not a sibling concept:
+// `knowledgeTextId` is a 1:1 FK to the knowledge_text row, and the page's title
+// is the collection's name (one source of truth, renamed in the normal page UI).
+// Everything the wiki already does then applies without a second
+// implementation — personal/team/organisation visibility, the page tree,
+// public publishing, backlinks, search. Read access is enforced by calling the
+// framework's getKnowledgeTextById() on the anchor page, write access by
+// checkKnowledgeTextWritePermission(); see lib/collections/store.ts.
+//
+// Records are jsonb, not real columns. Adding, retyping or dropping a column is
+// then an UPDATE instead of runtime DDL — which in a multi-tenant deployment
+// with a migration pipeline is the difference between a feature and an
+// incident. Up to ~10k records per collection this costs nothing: the row set
+// is bounded per collection and reached through an indexed collection_id.
+// ---------------------------------------------------------------------------
+
+/**
+ * Column types. Deliberately small — every entry here is a UI editor, a
+ * validator, a filter and a markdown renderer that has to exist and be tested.
+ * Relation types (link to a wiki page / a user) are the intended next step.
+ */
+export const COLLECTION_FIELD_TYPES = [
+  "text",
+  "longText",
+  "number",
+  "checkbox",
+  "date",
+  "select",
+  "multiSelect",
+  "url",
+  "email",
+] as const;
+
+export type CollectionFieldType = (typeof COLLECTION_FIELD_TYPES)[number];
+
+/** One choice of a select / multiSelect field. */
+export interface CollectionFieldChoice {
+  value: string;
+  /** optional colour token for the chip, e.g. "emerald" */
+  color?: string;
+}
+
+/** Per-field configuration; only some keys apply to some types. */
+export interface CollectionFieldOptions {
+  /** select / multiSelect */
+  choices?: CollectionFieldChoice[];
+  /** number: decimal places (0 = integer) */
+  precision?: number;
+  /** number: rendered suffix, e.g. "€" or "kg" */
+  suffix?: string;
+}
+
+/** Collection-level settings. */
+export interface CollectionSettings {
+  /**
+   * Field key used as the record's label (in dialogs, delete confirmations and
+   * the materialized markdown). Falls back to the first field.
+   */
+  titleFieldKey?: string;
+  /** Default sort applied when no user sort is active. */
+  defaultSort?: { key: string; direction: "asc" | "desc" };
+  /**
+   * Mirror the table into the page body as a markdown table so search, the RAG
+   * index, the MCP read tools and the public view see the data.
+   *
+   * Off by default: a collection may hold personal data (members, contacts),
+   * and materializing pushes it into the embedding pipeline and — below a
+   * published page — the public site. Opting in is a deliberate act.
+   */
+  materialize?: boolean;
+}
+
+export const collections = pgBaseTable(
+  "collections",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * The wiki page this collection lives on. Unique (1:1) and cascading: the
+     * page owns the collection, so deleting the page takes the schema and all
+     * records with it and never leaves orphans behind.
+     */
+    knowledgeTextId: uuid("knowledge_text_id")
+      .notNull()
+      .unique()
+      .references(() => knowledgeText.id, { onDelete: "cascade" }),
+    /** shown above the table; the *name* is the page title */
+    description: text("description"),
+    settings: jsonb("settings")
+      .$type<CollectionSettings>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("collections_tenant_idx").on(table.tenantId)],
+);
+
+export const collectionFields = pgBaseTable(
+  "collection_fields",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * Stable identifier used as the jsonb key in collection_records.data.
+     * Generated from the label on creation and never changed afterwards, so
+     * renaming a column does not have to rewrite every record.
+     */
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    /** one of COLLECTION_FIELD_TYPES */
+    type: text("type").$type<CollectionFieldType>().notNull().default("text"),
+    options: jsonb("options")
+      .$type<CollectionFieldOptions>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    required: boolean("required").notNull().default(false),
+    /**
+     * Column order. A plain integer, renumbered on reorder — a fractional index
+     * (as the page tree uses) buys nothing for the ~5-20 columns a collection
+     * realistically has.
+     */
+    position: integer("position").notNull().default(0),
+    /** hidden columns stay in the data, they are just not rendered */
+    hidden: boolean("hidden").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("collection_fields_collection_idx").on(
+      table.collectionId,
+      table.position,
+    ),
+    uniqueIndex("collection_fields_collection_key_idx").on(
+      table.collectionId,
+      table.key,
+    ),
+  ],
+);
+
+export const collectionRecords = pgBaseTable(
+  "collection_records",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /** field key → value, validated against collection_fields on every write */
+    data: jsonb("data")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    /** manual row order; new records are appended */
+    position: integer("position").notNull().default(0),
+    createdBy: uuid("created_by"),
+    updatedBy: uuid("updated_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("collection_records_collection_idx").on(
+      table.collectionId,
+      table.position,
+    ),
+    index("collection_records_data_idx").using("gin", table.data),
+  ],
+);
+
+// ---- relations --------------------------------------------------------------
+
+export const collectionsRelations = relations(collections, ({ many }) => ({
+  fields: many(collectionFields),
+  records: many(collectionRecords),
+}));
+
+export const collectionFieldsRelations = relations(
+  collectionFields,
+  ({ one }) => ({
+    collection: one(collections, {
+      fields: [collectionFields.collectionId],
+      references: [collections.id],
+    }),
+  }),
+);
+
+export const collectionRecordsRelations = relations(
+  collectionRecords,
+  ({ one }) => ({
+    collection: one(collections, {
+      fields: [collectionRecords.collectionId],
+      references: [collections.id],
+    }),
+  }),
+);
+
+// ---- valibot schemas + types ------------------------------------------------
+
+export const collectionSelectSchema = createSelectSchema(collections);
+export const collectionFieldSelectSchema = createSelectSchema(collectionFields);
+export const collectionRecordSelectSchema =
+  createSelectSchema(collectionRecords);
+
+export type CollectionSelect = typeof collections.$inferSelect;
+export type CollectionInsert = typeof collections.$inferInsert;
+export type CollectionFieldSelect = typeof collectionFields.$inferSelect;
+export type CollectionFieldInsert = typeof collectionFields.$inferInsert;
+export type CollectionRecordSelect = typeof collectionRecords.$inferSelect;
+export type CollectionRecordInsert = typeof collectionRecords.$inferInsert;

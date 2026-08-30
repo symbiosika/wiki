@@ -357,6 +357,15 @@ defineExpose({ flush, getBlocks, insertMarkdown })
   caret-color: var(--p-primary-color);
 }
 
+/*
+ * A page whose real content is a collection table does not need half a
+ * viewport of empty editor between its intro paragraph and the table. The
+ * class is set by views/wiki/page.vue once the page is known to have one.
+ */
+.wiki-page--with-collection .wiki-editor .wiki-prose {
+  @apply min-h-32;
+}
+
 .wiki-editor .wiki-prose > * + * {
   margin-top: 0.375rem;
 }

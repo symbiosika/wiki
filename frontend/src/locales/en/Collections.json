@@ -1,0 +1,73 @@
+{
+  "heading": "Table",
+  "addToPage": "Add a table to this page",
+  "defaultColumn": "Name",
+  "descriptionPlaceholder": "Add a description …",
+  "searchPlaceholder": "Search entries …",
+  "empty": "No entries yet. Create the first one.",
+  "noMatches": "No entries match the filters.",
+  "count": "{count} entries",
+  "countFiltered": "{shown} of {total} entries",
+  "truncated": "Only the first entries are loaded ({total} in total).",
+  "error": "Error",
+  "delete": "Delete table",
+  "deleteConfirm": "Delete the table with all entries and columns? The page itself stays.",
+  "deleteHint": "Deletes all entries and columns. The wiki page is kept.",
+  "settings": {
+    "title": "Table settings",
+    "materialize": "Mirror the table into the page text",
+    "materializeHint": "Makes the entries visible to search, AI answers and — on published pages — the public view. Leave off for personal data."
+  },
+  "filter": {
+    "button": "Filter",
+    "toggle": "Show/hide filters",
+    "clear": "Clear filters",
+    "contains": "contains …",
+    "numberHint": "e.g. >100",
+    "any": "Any",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "record": {
+    "add": "Entry",
+    "createTitle": "New entry",
+    "editTitle": "Edit entry",
+    "delete": "Delete entry",
+    "deleteSelected": "Delete {count}",
+    "deleteConfirm": "Delete entry \"{name}\"?",
+    "deleteManyConfirm": "Delete {count} entries?",
+    "expand": "Open entry",
+    "noColumns": "Create a column first."
+  },
+  "fields": {
+    "title": "Columns",
+    "button": "Columns",
+    "add": "New column",
+    "addButton": "Create column",
+    "name": "Name",
+    "namePlaceholder": "Column name",
+    "type": "Type",
+    "required": "Required",
+    "choices": "Options (one per line)",
+    "choicesPlaceholder": "active\ninactive\nformer",
+    "precision": "Decimal places",
+    "suffix": "Unit",
+    "hide": "Hide column",
+    "show": "Show column",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "delete": "Delete column",
+    "deleteConfirm": "Delete column \"{name}\" and all its values?"
+  },
+  "types": {
+    "text": "Text",
+    "longText": "Long text",
+    "number": "Number",
+    "checkbox": "Yes/No",
+    "date": "Date",
+    "select": "Select",
+    "multiSelect": "Multi-select",
+    "url": "Link",
+    "email": "Email"
+  }
+}
