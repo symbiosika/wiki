@@ -28,6 +28,8 @@ declare global {
   const blocksToMarkdown: typeof import('./utils/wikiMarkdown').blocksToMarkdown
   const bootstrapTeamsSession: typeof import('./utils/teamsSession').bootstrapTeamsSession
   const buildScopeOptions: typeof import('./utils/wikiTreeOptions').buildScopeOptions
+  const checkRecordData: typeof import('./utils/collections').checkRecordData
+  const checkValue: typeof import('./utils/collections').checkValue
   const choiceClasses: typeof import('./utils/collections').choiceClasses
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
@@ -63,6 +65,7 @@ declare global {
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
   const inject: typeof import('vue').inject
   const isEmojiIcon: typeof import('./utils/wikiIcons').isEmojiIcon
+  const isEmptyValue: typeof import('./utils/collections').isEmptyValue
   const isNarrowType: typeof import('./utils/collections').isNarrowType
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
@@ -231,7 +234,7 @@ declare global {
   export type { BrandColors } from './utils/brandColor'
   import('./utils/brandColor')
   // @ts-ignore
-  export type { CollectionFieldType, CollectionFieldChoice, CollectionFieldOptions, CollectionField, CollectionSettings, Collection, CollectionRecord, FilterKind } from './utils/collections'
+  export type { CollectionFieldType, CollectionFieldChoice, CollectionFieldOptions, CollectionField, CollectionSettings, Collection, CollectionRecord, FilterKind, ValueProblem } from './utils/collections'
   import('./utils/collections')
   // @ts-ignore
   export type { FetcherError } from './utils/fetcher'

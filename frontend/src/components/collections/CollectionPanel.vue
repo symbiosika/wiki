@@ -22,6 +22,8 @@ import IconTable from '~icons/mdi/table-large'
 // src/composables is not in the auto-import dirs (see vite.config.ts)
 import { useCollection } from '@/composables/useCollection'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   tenantId: string
   pageId: string
@@ -46,6 +48,7 @@ const {
   saving,
   truncated,
   total,
+  lastError,
   load,
   createCollection,
   updateSettings,
@@ -66,6 +69,34 @@ watch(() => props.pageId, load)
 watch(collection, (value) => emit('hasCollection', value !== null), {
   immediate: true,
 })
+
+/**
+ * Record writes coming from the row dialog carry a `done` callback: the dialog
+ * stays open until the save actually went through, so the failure is reported
+ * back to it (inline, next to the form) instead of only as a toast over a
+ * dialog that has already closed.
+ */
+async function onCreateRecord(event: {
+  data: Record<string, unknown>
+  done?: (error: string | null) => void
+}) {
+  const created = await createRecord(event.data, { silent: Boolean(event.done) })
+  event.done?.(created ? null : (lastError.value ?? t('Collections.error')))
+}
+
+async function onUpdateRecord(event: {
+  id: string
+  data: Record<string, unknown>
+  done?: (error: string | null) => void
+}) {
+  const updated = await updateRecord(event.id, event.data, {
+    silent: Boolean(event.done),
+    // an inline cell edit has already painted the new value into the row and
+    // must be rolled back; the dialog has not touched the row at all
+    revertOnError: !event.done,
+  })
+  event.done?.(updated ? null : (lastError.value ?? t('Collections.error')))
+}
 
 /** Offer to start a table only on a blank page nobody has written on yet. */
 const showInvitation = computed(
@@ -104,8 +135,8 @@ const showInvitation = computed(
         :editable="editable"
         :truncated="truncated"
         :total="total"
-        @create-record="createRecord"
-        @update-record="updateRecord($event.id, $event.data)"
+        @create-record="onCreateRecord"
+        @update-record="onUpdateRecord"
         @delete-record="deleteRecord"
         @delete-records="deleteRecordsBulk"
         @add-field="addField"

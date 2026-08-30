@@ -189,6 +189,88 @@ export function matchesSearch(
   )
 }
 
+/**
+ * Is this value "empty" for its column?
+ *
+ * Mirrors the server's required check (backend/src/lib/collections/values.ts)
+ * so the dialog can reject a missing value before the round trip instead of
+ * letting the request fail. An unchecked checkbox counts as empty: a required
+ * yes/no column means "this must be ticked".
+ */
+export function isEmptyValue(field: CollectionField, value: unknown): boolean {
+  if (field.type === 'checkbox') return value !== true
+  if (field.type === 'multiSelect') return !Array.isArray(value) || value.length === 0
+  return value === null || value === undefined || String(value).trim() === ''
+}
+
+/** What is wrong with one value — the UI turns this into a localized sentence. */
+export type ValueProblem = 'required' | 'number' | 'date' | 'email' | 'url'
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+/** Deliberately permissive: this rejects typos, it is not an RFC validator. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Check one value the way the server will (see `coerceValue` there).
+ *
+ * Doing it here as well is not duplication for its own sake: it is what lets
+ * the record form say "this column, this problem" in the user's language while
+ * the form is still open, instead of the round trip coming back with an
+ * English sentence about a dialog that has already closed.
+ */
+export function checkValue(
+  field: CollectionField,
+  value: unknown,
+): ValueProblem | null {
+  if (isEmptyValue(field, value)) return field.required ? 'required' : null
+
+  const text = String(value).trim()
+  switch (field.type) {
+    case 'number':
+      return Number.isFinite(Number(text)) ? null : 'number'
+    case 'date':
+      return DATE_RE.test(text.slice(0, 10)) && !Number.isNaN(Date.parse(text.slice(0, 10)))
+        ? null
+        : 'date'
+    case 'email':
+      return EMAIL_RE.test(text) ? null : 'email'
+    case 'url': {
+      // a bare "example.com" is what people actually type, and the server
+      // turns it into a URL — so accept it here too
+      const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`
+      try {
+        const url = new URL(candidate)
+        return url.protocol === 'http:' || url.protocol === 'https:' ? null : 'url'
+      } catch {
+        return 'url'
+      }
+    }
+    default:
+      return null
+  }
+}
+
+/**
+ * Check a whole (partial) record; returns one problem per offending column.
+ *
+ * `mode: 'patch'` only looks at the keys actually present, exactly like the
+ * server: a partial update must not be rejected over a column it does not
+ * touch.
+ */
+export function checkRecordData(
+  fields: CollectionField[],
+  data: Record<string, unknown>,
+  mode: 'create' | 'patch' = 'create',
+): Record<string, ValueProblem> {
+  const problems: Record<string, ValueProblem> = {}
+  for (const field of fields) {
+    if (mode === 'patch' && !Object.prototype.hasOwnProperty.call(data, field.key)) continue
+    const problem = checkValue(field, data[field.key])
+    if (problem) problems[field.key] = problem
+  }
+  return problems
+}
+
 /** A blank record shaped by the collection's schema. */
 export function emptyRecordData(
   fields: CollectionField[],

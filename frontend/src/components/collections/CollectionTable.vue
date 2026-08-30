@@ -52,9 +52,16 @@ const props = defineProps<{
   total?: number
 }>()
 
+/**
+ * `done` on the record emits is how the row dialog learns whether its save
+ * worked: it stays open on failure so the user can correct what they typed.
+ * Inline cell edits leave it out — they report through a toast and a revert.
+ */
 const emit = defineEmits<{
-  createRecord: [Record<string, unknown>]
-  updateRecord: [{ id: string; data: Record<string, unknown> }]
+  createRecord: [{ data: Record<string, unknown>; done?: (error: string | null) => void }]
+  updateRecord: [
+    { id: string; data: Record<string, unknown>; done?: (error: string | null) => void },
+  ]
   deleteRecord: [string]
   deleteRecords: [string[]]
   addField: [any]
@@ -262,13 +269,19 @@ function openEdit(record: CollectionRecord) {
   recordDialog.value = true
 }
 
-function onDialogSave(data: Record<string, unknown>) {
+/**
+ * The dialog closes itself once `done` reports success — closing here would
+ * throw away the form (and the user's input) before the server has answered.
+ */
+function onDialogSave(event: {
+  data: Record<string, unknown>
+  done: (error: string | null) => void
+}) {
   if (editingRecord.value) {
-    emit('updateRecord', { id: editingRecord.value.id, data })
+    emit('updateRecord', { id: editingRecord.value.id, data: event.data, done: event.done })
   } else {
-    emit('createRecord', data)
+    emit('createRecord', { data: event.data, done: event.done })
   }
-  recordDialog.value = false
 }
 
 /**

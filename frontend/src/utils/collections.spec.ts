@@ -6,6 +6,8 @@ import {
   emptyRecordData,
   recordLabel,
   filterKindFor,
+  checkValue,
+  checkRecordData,
   type CollectionField,
   type CollectionRecord,
 } from './collections'
@@ -139,5 +141,58 @@ describe('filterKindFor', () => {
     expect(filterKindFor('multiSelect')).toBe('choice')
     expect(filterKindFor('date')).toBe('date')
     expect(filterKindFor('longText')).toBe('text')
+  })
+})
+
+describe('checkValue', () => {
+  it('flags an empty required column, and only a required one', () => {
+    expect(checkValue(field({ type: 'text', required: true }), null)).toBe('required')
+    expect(checkValue(field({ type: 'text', required: true }), '  ')).toBe('required')
+    expect(checkValue(field({ type: 'text' }), null)).toBeNull()
+  })
+
+  it('treats an unticked checkbox and an empty list as empty', () => {
+    expect(checkValue(field({ type: 'checkbox', required: true }), false)).toBe('required')
+    expect(checkValue(field({ type: 'checkbox', required: true }), true)).toBeNull()
+    expect(checkValue(field({ type: 'multiSelect', required: true }), [])).toBe('required')
+    expect(checkValue(field({ type: 'multiSelect', required: true }), ['a'])).toBeNull()
+  })
+
+  it('checks the value against the column type', () => {
+    expect(checkValue(field({ type: 'number' }), '12.5')).toBeNull()
+    expect(checkValue(field({ type: 'number' }), 'zwölf')).toBe('number')
+    expect(checkValue(field({ type: 'date' }), '2026-03-01')).toBeNull()
+    expect(checkValue(field({ type: 'date' }), '01.03.2026')).toBe('date')
+    expect(checkValue(field({ type: 'email' }), 'a@b.de')).toBeNull()
+    expect(checkValue(field({ type: 'email' }), 'a@b')).toBe('email')
+  })
+
+  it('accepts a bare domain for a link column, like the server does', () => {
+    expect(checkValue(field({ type: 'url' }), 'example.com')).toBeNull()
+    expect(checkValue(field({ type: 'url' }), 'https://example.com/x')).toBeNull()
+    expect(checkValue(field({ type: 'url' }), 'ftp://example.com')).toBe('url')
+  })
+})
+
+describe('checkRecordData', () => {
+  const fields = [
+    field({ type: 'text', key: 'name', label: 'Name', required: true }),
+    field({ type: 'number', key: 'nr', label: 'Nr' }),
+  ]
+
+  it('reports one problem per offending column', () => {
+    expect(checkRecordData(fields, { name: '', nr: 'x' })).toEqual({
+      name: 'required',
+      nr: 'number',
+    })
+  })
+
+  it('passes a complete record', () => {
+    expect(checkRecordData(fields, { name: 'Anna', nr: '3' })).toEqual({})
+  })
+
+  it('ignores untouched columns in patch mode, as the server does', () => {
+    expect(checkRecordData(fields, { nr: '3' }, 'patch')).toEqual({})
+    expect(checkRecordData(fields, { name: '' }, 'patch')).toEqual({ name: 'required' })
   })
 })

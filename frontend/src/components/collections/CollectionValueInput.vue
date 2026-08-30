@@ -14,6 +14,8 @@ const props = defineProps<{
   /** render compactly for use inside a table cell */
   dense?: boolean
   autofocus?: boolean
+  /** mark the input as rejected — the form shows why underneath */
+  invalid?: boolean
 }>()
 
 const emit = defineEmits<{ 'update:modelValue': [unknown] }>()
@@ -94,6 +96,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     v-model="boolValue"
     binary
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 
   <Textarea
@@ -102,6 +105,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     :rows="dense ? 2 : 4"
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
     auto-resize
   />
 
@@ -114,6 +118,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     show-button-bar
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 
   <Select
@@ -125,6 +130,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     show-clear
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 
   <MultiSelect
@@ -136,6 +142,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     display="chip"
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 
   <InputText
@@ -144,6 +151,7 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     inputmode="decimal"
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 
   <InputText
@@ -152,5 +160,6 @@ const inputClass = computed(() => (props.dense ? 'w-full' : 'w-full'))
     :type="field.type === 'email' ? 'email' : 'text'"
     :class="inputClass"
     :autofocus="autofocus"
+    :invalid="invalid"
   />
 </template>
