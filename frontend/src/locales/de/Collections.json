@@ -42,6 +42,14 @@
     "expand": "Eintrag öffnen",
     "noColumns": "Lege zuerst eine Spalte an."
   },
+  "validation": {
+    "required": "Pflichtfeld – bitte ausfüllen.",
+    "requiredCheck": "Pflichtfeld – bitte ankreuzen.",
+    "number": "Bitte eine Zahl eingeben.",
+    "date": "Bitte ein gültiges Datum wählen.",
+    "email": "Bitte eine gültige E-Mail-Adresse eingeben.",
+    "url": "Bitte eine gültige Web-Adresse eingeben."
+  },
   "fields": {
     "title": "Spalten",
     "button": "Spalten",

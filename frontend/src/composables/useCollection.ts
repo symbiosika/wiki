@@ -29,14 +29,28 @@ export function useCollection(
   const truncated = ref(false)
   const total = ref(0)
 
+  /**
+   * Message of the last failed request. Callers that show the failure
+   * themselves — the record dialog puts it right in the form — read it instead
+   * of the toast.
+   */
+  const lastError = ref<string | null>(null)
+
   const toast = useToast()
   const { t } = useI18n()
 
   const base = () => `/api/v1/tenant/${tenantId.value}/collections`
 
-  /** Surface the server's message — it names the offending column. */
-  function reportError(error: unknown) {
+  /**
+   * Surface the server's message — it names the offending column.
+   *
+   * `silent` keeps the message out of the toast for callers that render it in
+   * place; it is still recorded in `lastError`.
+   */
+  function reportError(error: unknown, options?: { silent?: boolean }) {
     const message = error instanceof Error ? error.message : String(error)
+    lastError.value = message
+    if (options?.silent) return
     toast.add({
       severity: 'error',
       summary: t('Collections.error'),
@@ -82,12 +96,16 @@ export function useCollection(
     )
   }
 
-  async function withSaving<T>(fn: () => Promise<T>): Promise<T | null> {
+  async function withSaving<T>(
+    fn: () => Promise<T>,
+    options?: { silent?: boolean },
+  ): Promise<T | null> {
     saving.value = true
+    lastError.value = null
     try {
       return await fn()
     } catch (error) {
-      reportError(error)
+      reportError(error, options)
       return null
     } finally {
       saving.value = false
@@ -186,7 +204,10 @@ export function useCollection(
 
   // ---- records -----------------------------------------------------------
 
-  async function createRecord(data: Record<string, unknown>) {
+  async function createRecord(
+    data: Record<string, unknown>,
+    options?: { silent?: boolean },
+  ) {
     if (!collection.value) return null
     return await withSaving(async () => {
       const created = await fetcher.post<CollectionRecord>(
@@ -196,20 +217,26 @@ export function useCollection(
       records.value = [...records.value, created]
       total.value += 1
       return created
-    })
+    }, options)
   }
 
   /**
    * Patch a record.
    *
-   * On failure the local rows are reloaded: an inline cell edit has already
-   * mutated the row in place to give instant feedback, so without this a
-   * rejected value (a required field cleared, a number that is not a number)
-   * would keep sitting on screen as if it had been saved.
+   * `revertOnError` restores the row from the server: an inline cell edit has
+   * already mutated the row in place to give instant feedback, so without this
+   * a rejected value (a required field cleared, a number that is not a number)
+   * would keep sitting on screen as if it had been saved. A save from the row
+   * dialog never touched the row, so it does not need the round trip.
    */
-  async function updateRecord(recordId: string, data: Record<string, unknown>) {
+  async function updateRecord(
+    recordId: string,
+    data: Record<string, unknown>,
+    options?: { silent?: boolean; revertOnError?: boolean },
+  ) {
     if (!collection.value) return null
     saving.value = true
+    lastError.value = null
     try {
       const updated = await fetcher.put<CollectionRecord>(
         `${base()}/${collection.value.id}/records/${recordId}`,
@@ -218,11 +245,11 @@ export function useCollection(
       records.value = records.value.map((r) => (r.id === recordId ? updated : r))
       return updated
     } catch (error) {
-      reportError(error)
+      reportError(error, options)
       // Revert IN PLACE rather than reloading the array: an inline editor may
       // still be open and holds a reference to this very row object, so
       // replacing it would leave the editor bound to a detached copy.
-      await revertRecord(recordId)
+      if (options?.revertOnError !== false) await revertRecord(recordId)
       return null
     } finally {
       saving.value = false
@@ -281,6 +308,7 @@ export function useCollection(
     saving,
     truncated,
     total,
+    lastError,
     load,
     loadRecords,
     createCollection,

@@ -42,6 +42,14 @@
     "expand": "Open entry",
     "noColumns": "Create a column first."
   },
+  "validation": {
+    "required": "Required — please fill this in.",
+    "requiredCheck": "Required — please tick this.",
+    "number": "Please enter a number.",
+    "date": "Please pick a valid date.",
+    "email": "Please enter a valid email address.",
+    "url": "Please enter a valid web address."
+  },
   "fields": {
     "title": "Columns",
     "button": "Columns",
