@@ -18,6 +18,7 @@ import { defineMcpRoutes } from "@framework/lib/mcp";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
 import defineKnowledgeTextsRoutes from "@framework/routes/tenant/[tenantId]/knowledge/texts";
 import defineWikiRoutes from "../routes/tenant/[tenantId]/wiki";
+import defineCollectionRoutes from "../routes/tenant/[tenantId]/collections";
 
 let app: Hono;
 let user1Token: string;
@@ -57,6 +58,13 @@ const EXPECTED_TOOLS = [
   "append_to_page",
   "edit_page_content",
   "delete_page",
+  // collections
+  "list_collections",
+  "get_collection",
+  "query_collection_records",
+  "create_collection_record",
+  "update_collection_record",
+  "delete_collection_record",
   // app UI
   "view_page",
   "view_image",
@@ -115,6 +123,7 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
     const api = new Hono() as unknown as SymbiosikaFrameworkHonoApp;
     defineKnowledgeTextsRoutes(api, "");
     defineWikiRoutes(api, "");
+    defineCollectionRoutes(api, "");
     app.route("/api/v1", api as unknown as Hono);
 
     await deleteWikiTestPages();
@@ -221,6 +230,12 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
 
     const gone = await callTool("get_page", { pageId });
     expect(gone.isError).toBe(true);
+  });
+
+  test("list_collections resolves through the app's collections routes", async () => {
+    const result = await callTool("list_collections", {});
+    expect(result.isError).toBeUndefined();
+    expect(Array.isArray(result.structuredContent.items)).toBe(true);
   });
 
   test("get_wiki_tree resolves through the app's own wiki routes", async () => {

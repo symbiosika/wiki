@@ -19,6 +19,7 @@ import { identityTools } from "./tools/identity";
 import { discoveryTools } from "./tools/discovery";
 import { readTools } from "./tools/read";
 import { writeTools } from "./tools/write";
+import { collectionTools } from "./tools/collections";
 import { appUiTools, appResources } from "./tools/app-ui";
 
 /**
@@ -49,6 +50,7 @@ export const wikiMcpServer: McpServerDefinition = {
     ...discoveryTools,
     ...readTools,
     ...writeTools,
+    ...collectionTools,
     ...appUiTools,
   ],
   resources: appResources,

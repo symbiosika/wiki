@@ -1,0 +1,1 @@
+ALTER TABLE "app_collections" ADD COLUMN "name" text;
