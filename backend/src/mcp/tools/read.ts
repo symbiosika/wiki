@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, READ_ONLY } from "./_define";
 import { callApi, tenantPath } from "../api";
 import {
   annotateEmbeddedImages,
@@ -34,6 +34,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -57,6 +58,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -86,6 +88,7 @@ export const readTools: McpToolDefinition[] = [
           .optional()
           .describe("Include the full body text (default true)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts/batch"), {
@@ -110,6 +113,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -133,6 +137,7 @@ export const readTools: McpToolDefinition[] = [
           .string()
           .describe("The section's anchor slug from the outline."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -166,6 +171,7 @@ export const readTools: McpToolDefinition[] = [
           .optional()
           .describe("Maximum number of lines to return."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -203,6 +209,7 @@ export const readTools: McpToolDefinition[] = [
           .optional()
           .describe("Total character budget across all node contents."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -257,6 +264,7 @@ export const readTools: McpToolDefinition[] = [
           .optional()
           .describe("How many chunks after the centre to include (default 2, max 20)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -284,6 +292,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -302,6 +311,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -321,6 +331,7 @@ export const readTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -347,6 +358,7 @@ export const readTools: McpToolDefinition[] = [
           .optional()
           .describe("Maximum number of versions to return."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -370,6 +382,7 @@ export const readTools: McpToolDefinition[] = [
           .string()
           .describe("The history entry id from `get_page_history`."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(

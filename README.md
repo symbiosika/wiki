@@ -24,6 +24,16 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
   MCP-Server (erreichbar unter `/mcp`, OAuth2/API-Token-Auth über das
   Framework), über den eine Chat-App das Wiki als "Brain" nutzen kann
   (Identität, Discovery, Lesen, Schreiben).
+  - Jedes Tool trägt MCP-**Annotations** (`readOnlyHint`, `destructiveHint`,
+    `idempotentHint`, `openWorldHint`), damit Clients (Claude & Co.) Lesen und
+    Schreiben schon vor dem Aufruf unterscheiden können: alle lesenden Tools
+    sind `readOnlyHint: true`, die schreibenden markieren zusätzlich, ob sie
+    Bestehendes überschreiben (`destructiveHint`) und ob ein Wiederholen
+    denselben Zustand ergibt (`idempotentHint`). `openWorldHint` ist überall
+    `false` — das Wiki ist eine geschlossene Domäne. Gesetzt werden die Hints
+    zentral über `READ_ONLY` / `writeAnnotations()` in
+    [`backend/src/mcp/tools/_define.ts`](./backend/src/mcp/tools/_define.ts);
+    `annotations.test.ts` schlägt fehl, wenn ein neues Tool sie vergisst.
 - **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
   aufnehmen → **Live-Transkription** (der Text erscheint schon während des
   Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →

@@ -20,7 +20,7 @@
 
 import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, READ_ONLY, writeAnnotations } from "./_define";
 import { callApi, tenantPath } from "../api";
 
 /** Drop bookkeeping columns that only cost the model context. */
@@ -81,6 +81,7 @@ export const collectionTools: McpToolDefinition[] = [
         "names, then call `get_collection` to learn a table's columns before " +
         "reading or writing rows.",
       inputSchema: z.object({}),
+      annotations: READ_ONLY,
     },
     async (_args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/collections"), {
@@ -114,6 +115,7 @@ export const collectionTools: McpToolDefinition[] = [
           .optional()
           .describe("Alternatively, the id of the page the table lives on."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) => {
       const path = args.collectionId
@@ -144,6 +146,7 @@ export const collectionTools: McpToolDefinition[] = [
         limit: z.number().optional().describe("Max rows to return."),
         offset: z.number().optional().describe("Rows to skip (paging)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -176,6 +179,7 @@ export const collectionTools: McpToolDefinition[] = [
           .record(z.string(), z.any())
           .describe("Column key → value for the new row."),
       }),
+      annotations: writeAnnotations({ destructive: false, idempotent: false }),
     },
     async (args, ctx) =>
       callApi(
@@ -206,6 +210,7 @@ export const collectionTools: McpToolDefinition[] = [
           .record(z.string(), z.any())
           .describe("Column key → new value; omitted columns are untouched."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, ctx) =>
       callApi(
@@ -233,6 +238,7 @@ export const collectionTools: McpToolDefinition[] = [
         collectionId: z.string().describe("The collection id."),
         recordId: z.string().describe("The record id."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, ctx) =>
       callApi(

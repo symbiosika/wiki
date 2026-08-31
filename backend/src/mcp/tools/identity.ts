@@ -5,7 +5,7 @@
  */
 
 import type { McpToolDefinition } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, READ_ONLY } from "./_define";
 import { callApi, resolveTenantId } from "../api";
 
 export const identityTools: McpToolDefinition[] = [
@@ -18,6 +18,7 @@ export const identityTools: McpToolDefinition[] = [
         "OIDC userinfo endpoint, plus the active organisation (tenant) id the " +
         "wiki tools operate on. Call this first to confirm identity and " +
         "context before other actions.",
+      annotations: READ_ONLY,
     },
     async (_args, ctx) => {
       const result = await callApi(ctx, "/oauth/userinfo");
@@ -47,6 +48,7 @@ export const identityTools: McpToolDefinition[] = [
         "Lists the organisations (tenants) the signed-in user is a member of, " +
         "with id, name and role. The wiki tools operate on the organisation " +
         "bound to the current token; this is mainly informational.",
+      annotations: READ_ONLY,
     },
     async (_args, ctx) => callApi(ctx, "/api/v1/user/tenants"),
   ),

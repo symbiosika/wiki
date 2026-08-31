@@ -13,7 +13,7 @@
 
 import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, READ_ONLY } from "./_define";
 import { callApi, tenantPath } from "../api";
 import { slimOverview, slimPageRow, slimPageRows } from "./_shapes";
 
@@ -36,6 +36,7 @@ export const discoveryTools: McpToolDefinition[] = [
           .optional()
           .describe("How many recent changes to include (default 10)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -56,6 +57,7 @@ export const discoveryTools: McpToolDefinition[] = [
         "pages). Each node has id, title, parentId and nested children. Use " +
         "this for the full structure; `get_wiki_overview` is the cheaper " +
         "starting point.",
+      annotations: READ_ONLY,
     },
     async (_args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/wiki/tree")),
@@ -109,6 +111,7 @@ export const discoveryTools: McpToolDefinition[] = [
           .optional()
           .describe("Optional: restrict the search to a specific team."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts/search"), {
@@ -136,6 +139,7 @@ export const discoveryTools: McpToolDefinition[] = [
       inputSchema: z.object({
         title: z.string().min(1).describe("The exact page title."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts/resolve"), {
@@ -173,6 +177,7 @@ export const discoveryTools: McpToolDefinition[] = [
           .optional()
           .describe("Maximum number of items (default 50, cap 200)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(
@@ -219,6 +224,7 @@ export const discoveryTools: McpToolDefinition[] = [
           .optional()
           .describe("1-based page number (needs `limit`)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts"), {
@@ -240,6 +246,7 @@ export const discoveryTools: McpToolDefinition[] = [
         "vocabularies for the `pageType` and `status` facets (writes outside " +
         "these lists are rejected) and whether AI auto-summaries are enabled. " +
         "Check this before setting facets on pages.",
+      annotations: READ_ONLY,
     },
     async (_args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts/config")),

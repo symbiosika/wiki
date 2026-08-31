@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, writeAnnotations } from "./_define";
 import { callApi, tenantPath, resolveTenantId } from "../api";
 import { pageMetadata } from "./_shapes";
 
@@ -56,6 +56,7 @@ export const writeTools: McpToolDefinition[] = [
           .optional()
           .describe("Facet: trust status (controlled vocabulary)."),
       }),
+      annotations: writeAnnotations({ destructive: false, idempotent: false }),
     },
     async (args, ctx) =>
       callApi(ctx, tenantPath(ctx, "/knowledge/texts"), {
@@ -138,6 +139,7 @@ export const writeTools: McpToolDefinition[] = [
               "summary mode.",
           ),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, ctx) => {
       const body: Record<string, unknown> = { tenantId: resolveTenantId(ctx) };
@@ -185,6 +187,7 @@ export const writeTools: McpToolDefinition[] = [
           .optional()
           .describe('Separator before the appended text (default "\\n\\n").'),
       }),
+      annotations: writeAnnotations({ destructive: false, idempotent: false }),
     },
     async (args, ctx) =>
       callApi(
@@ -229,6 +232,7 @@ export const writeTools: McpToolDefinition[] = [
           .optional()
           .describe("Replace every occurrence instead of requiring uniqueness."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: false }),
     },
     async (args, ctx) =>
       callApi(
@@ -256,6 +260,7 @@ export const writeTools: McpToolDefinition[] = [
       inputSchema: z.object({
         pageId: z.string().describe("The page id to delete."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, ctx) =>
       callApi(

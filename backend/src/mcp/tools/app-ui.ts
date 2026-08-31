@@ -30,7 +30,7 @@ import type {
   McpResourceDefinition,
   McpToolDefinition,
 } from "@framework/types";
-import { defineTool } from "./_define";
+import { defineTool, READ_ONLY } from "./_define";
 import { annotateEmbeddedImages, extractEmbeddedImageRefs } from "./_shapes";
 import { callApi, fail, ok, tenantPath, type ToolResult } from "../api";
 import { buildAppHtml, type AppName } from "../ui/build";
@@ -183,6 +183,7 @@ export const appUiTools: McpToolDefinition[] = [
           ),
       }),
       _meta: PAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, ctx) =>
       args.anchor
@@ -236,6 +237,7 @@ export const appUiTools: McpToolDefinition[] = [
           .describe("Optional caption shown under the image."),
       }),
       _meta: IMAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, ctx) => {
       const filename = parseImageRef(args.image);
@@ -270,6 +272,7 @@ export const appUiTools: McpToolDefinition[] = [
         pageId: z.string().describe("The page id."),
       }),
       _meta: IMAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, ctx) => {
       const page = await callApi(
@@ -312,6 +315,7 @@ export const appUiTools: McpToolDefinition[] = [
               "`/files/db/knowledge/<uuid>.<ext>` path or the bare filename.",
           ),
       }),
+      annotations: READ_ONLY,
     },
     async (args, ctx) => fetchPageImage(ctx, args.pageId, args.image),
   ),

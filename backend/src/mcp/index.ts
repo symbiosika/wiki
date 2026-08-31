@@ -11,6 +11,11 @@
  * reachable on its own domain). Everything a client sees — server name,
  * version, instructions, tool names and schemas, scopes — is kept identical,
  * so existing connectors keep working once the old domain redirects here.
+ *
+ * Every tool carries MCP tool annotations (readOnlyHint, destructiveHint,
+ * idempotentHint, openWorldHint) so clients can tell reading apart from
+ * writing before they call: `READ_ONLY` for everything that only reads,
+ * `writeAnnotations()` for the writing tools (see `tools/_define.ts`).
  */
 
 import type { McpServerDefinition } from "@framework/types";

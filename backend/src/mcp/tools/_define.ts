@@ -33,7 +33,48 @@ export type ToolDef = {
   inputSchema?: ZodType;
   /** Extra tool metadata (e.g. MCP Apps `ui` linkage). */
   _meta?: Record<string, unknown>;
+  /**
+   * MCP tool annotations — behaviour hints (`readOnlyHint`,
+   * `destructiveHint`, `idempotentHint`, `openWorldHint`) clients use to
+   * decide what to show, retry or confirm before they call. Use `READ_ONLY` /
+   * `writeAnnotations()` below instead of hand-written objects.
+   */
+  annotations?: Record<string, unknown>;
 };
+
+/**
+ * Behaviour hints for a tool that only reads: it never changes anything in
+ * the wiki, so hosts may run it without a confirmation prompt and re-run it
+ * freely.
+ *
+ * `openWorldHint: false` for every tool of this server: the wiki is a closed,
+ * bounded domain (the pages of one organisation), not an open-ended external
+ * world like a web search.
+ */
+export const READ_ONLY: Record<string, unknown> = {
+  readOnlyHint: true,
+  openWorldHint: false,
+};
+
+/**
+ * Behaviour hints for a writing tool.
+ *
+ * @param destructive whether the call may overwrite or remove existing
+ *   content/metadata (`false` = purely additive, nothing existing is lost).
+ * @param idempotent whether repeating the call with the same arguments leaves
+ *   the wiki in the same state (no duplicate pages/records, no doubled text).
+ */
+export function writeAnnotations(opts: {
+  destructive: boolean;
+  idempotent: boolean;
+}): Record<string, unknown> {
+  return {
+    readOnlyHint: false,
+    destructiveHint: opts.destructive,
+    idempotentHint: opts.idempotent,
+    openWorldHint: false,
+  };
+}
 
 /** The wire JSON Schema for a zod schema, exactly as the old SDK built it. */
 const wireSchema = (schema: ZodType): Record<string, unknown> => {
@@ -63,6 +104,7 @@ export function defineTool(def: ToolDef, handler: ToolHandler): McpToolDefinitio
     name: def.name,
     title: def.title,
     description: def.description,
+    ...(def.annotations ? { annotations: def.annotations } : {}),
     ...(def._meta ? { _meta: def._meta } : {}),
     ...(def.inputSchema ? { inputSchema: wireSchema(def.inputSchema) } : {}),
     handler: async (args, ctx) => {
