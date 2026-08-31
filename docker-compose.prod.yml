@@ -154,6 +154,9 @@ services:
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
       OAUTH_ISSUER: ${OAUTH_ISSUER}
       OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
+      # Host used for the page links (`url`) in tool results. Defaults to the
+      # app itself; set only if the wiki UI runs on another host than the API.
+      WIKI_APP_URL: ${WIKI_APP_URL:-}
       WIKI_TENANT_ID: ${WIKI_TENANT_ID}
 
 volumes:

@@ -5,11 +5,16 @@
  *
  * SDK detail: without `inputSchema` the server calls the callback with `(ctx)`,
  * WITH `inputSchema` it calls with `(args, ctx)`. We normalize that here.
+ *
+ * This is also the one place where EVERY tool result gets its page links: the
+ * result is passed through `withPageUrls()`, which adds the wiki URL next to
+ * every page identity in it (see `../page-url.ts`).
  */
 
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import type { ZodTypeAny } from "zod";
-import type { ToolResult } from "../app-api.ts";
+import { resolveTenantId, type ToolResult } from "../app-api.ts";
+import { withPageUrls } from "../page-url.ts";
 
 export type ToolHandler = (
   args: any,
@@ -26,6 +31,22 @@ export type ToolDef = {
   _meta?: Record<string, unknown>;
 };
 
+/** Run a tool handler and enrich its result with page URLs. */
+async function runTool(
+  handler: ToolHandler,
+  args: any,
+  authInfo: AuthInfo | undefined,
+): Promise<ToolResult> {
+  const result = await handler(args ?? {}, authInfo);
+  let tenantId: string | undefined;
+  try {
+    tenantId = resolveTenantId(authInfo);
+  } catch {
+    tenantId = undefined; // no organisation bound: nothing to link to
+  }
+  return withPageUrls(result, tenantId);
+}
+
 export function defineTool(
   mcp: any,
   def: ToolDef,
@@ -40,11 +61,11 @@ export function defineTool(
   if (def.inputSchema) {
     config.inputSchema = def.inputSchema;
     mcp.registerTool(def.name, config, async (args: any, ctx: any) =>
-      handler(args ?? {}, ctx?.http?.authInfo),
+      runTool(handler, args, ctx?.http?.authInfo),
     );
   } else {
     mcp.registerTool(def.name, config, async (ctx: any) =>
-      handler({}, ctx?.http?.authInfo),
+      runTool(handler, {}, ctx?.http?.authInfo),
     );
   }
 }

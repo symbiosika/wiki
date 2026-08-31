@@ -78,6 +78,35 @@ permission comes back as a `403` error text.
 
 ---
 
+## Page links (`url`)
+
+Page ids are opaque, so a chat client that only sees `pageId` cannot point the
+user at the source. Therefore **every** tool result carries the page's link
+next to its identity:
+
+```jsonc
+{
+  "id": "0f0c…",
+  "url": "https://wiki.example.com/tenant/8f5b…/wiki/0f0c…",
+  "title": "Urlaubsregelung",
+  "content": "# Urlaub…"
+}
+```
+
+This is generic, not per tool: results pass through `withPageUrls()`
+(`src/page-url.ts`, wired into `defineTool`), which walks the returned JSON and
+adds `url` wherever it finds a page identity — search hits, tree nodes, batch
+reads, link targets, freshly created pages, `view_*` results. Outline headings
+and sections link to their anchor (`…/wiki/<pageId>#<anchor>`). Rows that are
+not pages (teams, organisations, facet vocabularies) stay untouched, and a
+`url` the API already supplies is never overwritten.
+
+The host of those links is `WIKI_APP_URL`, defaulting to `OAUTH_ISSUER` (the
+backend serves the SPA on the same origin) — set it only when the wiki UI lives
+on a different host than the API.
+
+---
+
 ## Configuration
 
 See [`.env.default`](./.env.default). Key variables:
@@ -88,6 +117,7 @@ See [`.env.default`](./.env.default). Key variables:
 | `MCP_PUBLIC_URL`             | Canonical origin of this server = **token audience** (no `/mcp`) |
 | `OAUTH_ISSUER`               | Base URL of the wiki app (authorization server + API)           |
 | `OAUTH_INTROSPECTION_SECRET` | Shared secret — **must match** the backend                      |
+| `WIKI_APP_URL`               | Base URL of the wiki **web app** for page links (default: `OAUTH_ISSUER`) |
 | `WIKI_TENANT_ID`             | Single-org fallback (see note) — **leave empty on multi-tenant** |
 
 > **`WIKI_TENANT_ID` is only for single-organisation deployments** reached via

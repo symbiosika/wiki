@@ -20,6 +20,21 @@ export const ISSUER = (
   process.env.OAUTH_ISSUER || "http://localhost:3000"
 ).replace(/\/$/, "");
 
+/**
+ * Base URL of the wiki WEB app — the host a human opens a page on:
+ * `<APP_BASE_URL>/tenant/<tenantId>/wiki/<pageId>`. Every page-shaped tool
+ * result carries such a `url` (see `page-url.ts`), so a chat client can link
+ * straight to the source instead of only knowing an opaque page id.
+ *
+ * Defaults to the wiki app itself (the backend serves the SPA under the same
+ * origin it issues tokens on). Set WIKI_APP_URL only when the UI is reachable
+ * under a different host than the API.
+ */
+export const APP_BASE_URL = (process.env.WIKI_APP_URL || ISSUER).replace(
+  /\/$/,
+  "",
+);
+
 /** Shared secret for /oauth/introspect. Must match the backend's value. */
 export const INTROSPECTION_SECRET =
   process.env.OAUTH_INTROSPECTION_SECRET || "";

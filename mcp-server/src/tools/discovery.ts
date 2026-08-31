@@ -74,7 +74,9 @@ export function registerDiscoveryTools(mcp: any): void {
         "override that. Results are ranked trust-aware (verified boosted, " +
         "outdated demoted, superseded pages folded under their successor) and " +
         "carry id, title, snippet, summary, pageType, status and updatedAt so " +
-        "you can decide what to read without opening every hit. Each hit also " +
+        "you can decide what to read without opening every hit, plus `url` — " +
+        "the hit's direct link in the wiki, to cite as \"[title](url)\". " +
+        "Each hit also " +
         "carries `path`, its breadcrumb in the wiki tree (e.g. " +
         "\"Handbook/HR/Vacation Policy\", last segment is the page itself) — " +
         "cite it so the user sees where the answer lives. Narrow with " +

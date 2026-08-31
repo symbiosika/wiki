@@ -32,8 +32,9 @@ Entscheidungen, Personen, Policies, Zahlen, „wie machen wir das hier") gilt:
 
 1. **Erst das Wiki fragen, dann antworten.** Nicht aus dem Allgemeinwissen raten.
 2. **Nur belegen, was im Wiki steht.** Jede firmenspezifische Aussage mit der
-   Quellseite belegen (Titel + `pageId`, und den `path`/Breadcrumb, wenn
-   vorhanden), damit sie nachprüfbar ist.
+   Quellseite belegen — als **Link**: jedes Seiten-Objekt in einer Tool-Antwort
+   trägt ein `url`-Feld (`[Seitentitel](url)`), dazu `path`/Breadcrumb, wenn
+   vorhanden. So ist die Quelle nachprüfbar *und* mit einem Klick offen.
 3. **Ehrlich sein, wenn nichts gefunden wird.** Kein Erfinden. Stattdessen sagen,
    dass es (noch) nicht im Wiki steht, und **anbieten, es anzulegen**.
 4. **Allgemeinwissen auszeichnen.** Wenn du bewusst Wissen von außerhalb des Wikis
@@ -124,8 +125,11 @@ Bilder als `/files/db/knowledge/<uuid>.<ext>`-Pfade ein.
 
 ### 5. Antworten
 - Antwort **aus dem Wiki-Inhalt** formulieren, nicht paraphrasiertes Vorwissen.
-- **Belegen:** je Aussage die Quellseite nennen — Format `[[Seitentitel]]` (+
-  `pageId` bzw. `path`/Breadcrumb, damit der Nutzer sieht, wo die Antwort lebt).
+- **Belegen:** je Aussage die Quellseite nennen — als klickbaren Link
+  `[Seitentitel](url)` mit dem `url`-Feld aus der Tool-Antwort (Abschnitte haben
+  eine eigene `url` mit `#anchor`), dazu `path`/Breadcrumb, damit der Nutzer
+  sieht, wo die Antwort lebt. `url` **nie selbst zusammenbauen** — immer das
+  Feld aus der Antwort verwenden.
 - **Vertrauenssignale ernst nehmen:** `status: "verified"` bevorzugen; bei
   `"outdated"` oder überschrittenem `validUntil` den Vorbehalt nennen; verweist
   `supersedesId` auf einen Nachfolger, die neuere Seite nutzen.

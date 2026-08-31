@@ -25,7 +25,8 @@ export function registerWriteTools(mcp: any): void {
         "the body as markdown in `content`; link related pages with " +
         "[[wikilinks]]. Optionally classify it right away with `pageType` / " +
         "`status` (allowed values: `get_wiki_config`). Returns the created " +
-        "page reference (incl. id).",
+        "page reference (incl. id and `url`, its link in the wiki — hand that " +
+        "to the user so they can open the new page).",
       inputSchema: z.object({
         title: z.string().min(1).describe("The page title."),
         content: z
