@@ -151,7 +151,6 @@ const resolveWikiPath = async (
         parentId: parentId ?? undefined,
         title,
         text: "",
-        embeddingEnabled: false,
       });
       id = page.id;
     }

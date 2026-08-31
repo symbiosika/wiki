@@ -242,6 +242,83 @@
       </div>
     </section>
 
+    <!-- Semantic search / embeddings (admins & owners only) -->
+    <section
+      v-if="isAdmin"
+      class="mt-8 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h2 class="text-lg font-semibold">
+        {{ $t('UserTenants.embedding.title') }}
+      </h2>
+      <p class="mt-1 mb-4 text-sm text-surface-500">
+        {{ $t('UserTenants.embedding.description') }}
+      </p>
+
+      <!-- provider is not configured on the server → the switch cannot work -->
+      <Message
+        v-if="embeddingLoaded && !embedding.provider.configured"
+        severity="warn"
+        class="mb-4"
+      >
+        {{
+          $t('UserTenants.embedding.providerMissing', {
+            provider: embedding.provider.provider,
+            envVar: embedding.provider.requiredEnvVar ?? 'API_KEY',
+          })
+        }}
+      </Message>
+
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input
+          v-model="embedding.enabled"
+          type="checkbox"
+          class="accent-primary"
+          :disabled="savingEmbedding || !embeddingLoaded"
+          @change="saveEmbedding"
+        />
+        {{ $t('UserTenants.embedding.enable') }}
+      </label>
+      <p class="mt-2 pl-6 text-xs text-surface-400">
+        {{ $t('UserTenants.embedding.enableHint') }}
+      </p>
+      <p
+        v-if="embeddingLoaded && embedding.provider.configured"
+        class="mt-1 pl-6 text-xs text-surface-400"
+      >
+        {{
+          $t('UserTenants.embedding.providerInfo', {
+            provider: embedding.provider.provider,
+            model: embedding.provider.model ?? '—',
+          })
+        }}
+      </p>
+
+      <!-- pages that were created before the switch was turned on -->
+      <div
+        v-if="embeddingLoaded && embedding.enabled && embedding.pendingPages > 0"
+        class="mt-5 border-t border-surface-200 pt-4 dark:border-surface-700"
+      >
+        <p class="text-sm">
+          {{
+            $t('UserTenants.embedding.pending', {
+              count: embedding.pendingPages,
+            })
+          }}
+        </p>
+        <Button
+          class="mt-3"
+          size="small"
+          :label="$t('UserTenants.embedding.backfill')"
+          :loading="startingBackfill"
+          :disabled="!embedding.provider.configured"
+          @click="startBackfill"
+        />
+        <p class="mt-2 text-xs text-surface-400">
+          {{ $t('UserTenants.embedding.backfillHint') }}
+        </p>
+      </div>
+    </section>
+
     <!-- Invite dialog -->
     <Dialog
       v-model:visible="inviteDialog"
@@ -396,6 +473,7 @@ import type {
   TenantMember,
 } from '@/types/usermanagement'
 import { isValidHexColor } from '@/utils/brandColor'
+import type { EmbeddingSettings } from '@/stores/main'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -468,6 +546,7 @@ onMounted(async () => {
   await app.waitForInit()
   await loadTenantData()
   await loadBranding()
+  await loadEmbeddingSettings()
   app.loadTenantLogoInfo(tenantId.value)
 })
 
@@ -650,6 +729,102 @@ const resetBranding = async () => {
     })
   } finally {
     savingBranding.value = false
+  }
+}
+
+// ----- organisation-wide embedding -------------------------------------------
+
+const embedding = reactive<EmbeddingSettings>({
+  enabled: false,
+  pendingPages: 0,
+  provider: {
+    provider: '',
+    configured: false,
+    model: null,
+    requiredEnvVar: null,
+  },
+})
+/** false until the server state arrived — keeps the switch from flickering */
+const embeddingLoaded = ref(false)
+const savingEmbedding = ref(false)
+const startingBackfill = ref(false)
+
+const loadEmbeddingSettings = async () => {
+  try {
+    const settings = await app.getEmbeddingSettings(tenantId.value)
+    embedding.enabled = settings.enabled
+    embedding.provider = settings.provider
+    embedding.pendingPages = settings.pendingPages
+    embeddingLoaded.value = true
+  } catch {
+    // non-admins and read failures simply leave the section unconfigured
+    embeddingLoaded.value = false
+  }
+}
+
+/**
+ * Persist the organisation-wide switch. It applies to EVERY page: newly
+ * created and updated pages follow it immediately, existing pages are marked
+ * and get their vectors the next time they are saved.
+ */
+const saveEmbedding = async () => {
+  const desired = embedding.enabled
+  savingEmbedding.value = true
+  try {
+    const result = await app.saveEmbeddingSettings(tenantId.value, desired)
+    embedding.enabled = result.enabled
+    embedding.provider = result.provider
+    embedding.pendingPages = result.pendingPages
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: desired
+        ? t('UserTenants.embedding.enabled', { count: result.pagesUpdated })
+        : t('UserTenants.embedding.disabled', {
+            count: result.mirrorsRemoved,
+          }),
+      life: 4000,
+    })
+  } catch {
+    embedding.enabled = !desired // revert the optimistic switch
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.embeddingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingEmbedding.value = false
+  }
+}
+
+/**
+ * Queue the background embedding of every page that was created before the
+ * switch was turned on. The jobs drain one after another, so this returns as
+ * soon as they are queued — not when the wiki is fully indexed.
+ */
+const startBackfill = async () => {
+  startingBackfill.value = true
+  try {
+    const result = await app.startEmbeddingBackfill(tenantId.value)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.embedding.backfillStarted', {
+        count: result.enqueued,
+      }),
+      life: 5000,
+    })
+    await loadEmbeddingSettings()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.embeddingBackfillFailed'),
+      life: 3000,
+    })
+  } finally {
+    startingBackfill.value = false
   }
 }
 

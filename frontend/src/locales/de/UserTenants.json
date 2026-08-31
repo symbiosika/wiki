@@ -70,6 +70,7 @@
   "metadata": {
     "tabTitle": "Dokument-Tags",
     "title": "Dokument-Tags",
+    "attributesTitle": "Dokument-Tags",
     "description": "Lege die Schlüssel-Wert-Tags fest, die jedes Dokument dieser Organisation nutzen kann. Jeder Schlüssel erlaubt entweder Freitext oder eine feste Werteliste.",
     "key": "Schlüssel",
     "keyPlaceholder": "z. B. hersteller",
@@ -90,6 +91,33 @@
     "loadError": "Dokument-Tags konnten nicht geladen werden",
     "saveError": "Dokument-Tags konnten nicht gespeichert werden"
   },
+  "pageTypes": {
+    "title": "Seitentypen",
+    "description": "Verwalte die Seitentypen dieser Organisation und gib jedem ein Icon und eine Farbe. Beides erscheint im Wiki-Baum und über dem Seitentitel. Ein Typ, den Seiten noch verwenden, kann umgestylt, aber nicht umbenannt oder gelöscht werden — bestehende Seiten ließen sich sonst nicht mehr speichern.",
+    "empty": "Für diese Organisation sind keine Seitentypen konfiguriert.",
+    "pickIcon": "Icon wählen",
+    "icon": "Icon",
+    "iconSearch": "Icons durchsuchen …",
+    "iconNoMatch": "Kein Icon gefunden.",
+    "clearIcon": "Icon entfernen",
+    "emoji": "Emoji",
+    "emojiPlaceholder": "z. B. 📘",
+    "emojiInvalid": "Bitte nur ein Emoji eingeben.",
+    "noColor": "Keine Farbe",
+    "notPersisted": "Die Icons konnten nicht gespeichert werden: dieser Server unterstützt die Seitentyp-Darstellung noch nicht. Sobald das Framework-Update eingespielt ist, funktioniert das Speichern ohne weitere Änderung.",
+    "save": "Seitentypen speichern",
+    "saved": "Seitentypen gespeichert",
+    "key": "Schlüssel",
+    "keyPlaceholder": "z. B. handbuch",
+    "color": "Farbe",
+    "add": "Seitentyp hinzufügen",
+    "remove": "Seitentyp entfernen",
+    "inUseLocked": "Von {count} Seite(n) verwendet — Umbenennen und Löschen gesperrt.",
+    "unused": "Von keiner Seite verwendet.",
+    "emptyKey": "Jeder Seitentyp braucht einen Schlüssel.",
+    "duplicateKey": "Jeder Schlüssel muss eindeutig sein.",
+    "label": "Bezeichnung"
+  },
   "branding": {
     "title": "Farben",
     "description": "Passe die primäre Highlight-Farbe und die Sekundärfarbe für diese Organisation an. Änderungen gelten für alle Mitglieder der Organisation.",
@@ -103,6 +131,20 @@
     "saved": "Farben gespeichert",
     "resetDone": "Farben auf Standard zurückgesetzt",
     "invalidColor": "Bitte eine gültige Farbe eingeben."
+  },
+  "embedding": {
+    "title": "KI-Suche (Embeddings)",
+    "description": "Indexiert alle Seiten dieser Organisation zusätzlich semantisch, damit die bedeutungsbasierte Suche und KI-Antworten sie finden. Die Einstellung gilt organisationsweit — sie ist bewusst nicht pro Seite einstellbar.",
+    "enable": "Alle Seiten dieser Organisation semantisch indexieren",
+    "enableHint": "Neue und geänderte Seiten werden ab sofort automatisch indexiert. Bereits vorhandene Seiten werden markiert und erhalten ihre Vektoren beim nächsten Speichern.",
+    "providerInfo": "Embedding-Anbieter: {provider} ({model})",
+    "providerMissing": "Auf dem Server ist kein API-Key für den Embedding-Anbieter „{provider}“ hinterlegt. Solange {envVar} fehlt, werden keine Seiten indexiert — die Einstellung lässt sich zwar speichern, greift aber erst, wenn der Key gesetzt ist.",
+    "enabled": "KI-Suche aktiviert ({count} Seite(n) markiert)",
+    "disabled": "KI-Suche deaktiviert ({count} Index-Eintrag/Einträge entfernt)",
+    "pending": "{count} Seite(n) sind für die KI-Suche markiert, haben aber noch keine Vektoren — angelegt, bevor die Einstellung aktiviert wurde.",
+    "backfill": "Jetzt im Hintergrund indexieren",
+    "backfillHint": "Die Seiten werden nacheinander über die Jobs-Warteschlange indexiert. Das dauert je nach Anzahl einige Minuten und kann jederzeit erneut angestoßen werden — bereits eingeplante Seiten werden übersprungen.",
+    "backfillStarted": "Indexierung gestartet ({count} Seite(n) eingeplant)"
   },
   "logo": {
     "title": "Logo",
@@ -131,6 +173,8 @@
     "changeRoleFailed": "Rolle konnte nicht aktualisiert werden",
     "updateAccessFailed": "Zugriffsrecht konnte nicht aktualisiert werden",
     "brandingLoadFailed": "Farben konnten nicht geladen werden",
-    "brandingSaveFailed": "Farben konnten nicht gespeichert werden"
+    "brandingSaveFailed": "Farben konnten nicht gespeichert werden",
+    "embeddingSaveFailed": "KI-Suche konnte nicht gespeichert werden",
+    "embeddingBackfillFailed": "Indexierung konnte nicht gestartet werden"
   }
 }

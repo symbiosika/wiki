@@ -58,6 +58,43 @@ interface AppState {
 const SEARCH_MODE_SETTING_KEY = 'wiki.searchMode'
 /** key under which per-organisation branding colours live in `tenant_settings` */
 const BRANDING_SETTING_KEY = 'branding'
+
+/** Embedding provider status of the deployment, as the settings UI shows it. */
+export interface EmbeddingProviderStatus {
+  /** Provider selected via EMBEDDING_PROVIDER on the server. */
+  provider: string
+  /** False when the server has no API key for that provider. */
+  configured: boolean
+  /** Model new embeddings would use, or null when not configured. */
+  model: string | null
+  /** Env var the operator has to set, for the UI hint. */
+  requiredEnvVar: string | null
+}
+
+/** Organisation-wide embedding switch + provider status. */
+export interface EmbeddingSettings {
+  enabled: boolean
+  provider: EmbeddingProviderStatus
+  /** Pages marked for embedding that have no vectors yet. */
+  pendingPages: number
+}
+
+/** Result of triggering the backfill for the pages that still need vectors. */
+export interface EmbeddingBackfillResult {
+  /** Jobs created by this call. */
+  enqueued: number
+  /** Pages waiting when the call started. */
+  pendingPages: number
+  /** Skipped because a job was already queued or running. */
+  alreadyQueued: number
+}
+
+export interface EmbeddingSettingsUpdate extends EmbeddingSettings {
+  /** Pages whose derived flag was flipped by the change. */
+  pagesUpdated: number
+  /** RAG mirrors removed (only when switching off). */
+  mirrorsRemoved: number
+}
 const SEARCH_MODES: WikiSearchMode[] = ['hybrid', 'fulltext', 'semantic']
 /** smart hybrid search is the default when the user has no stored choice */
 const DEFAULT_SEARCH_MODE: WikiSearchMode = 'hybrid'
@@ -224,6 +261,47 @@ export const useApp = defineStore('app', () => {
     )
     applyBrandColors(colors)
   }
+
+  // ----- organisation-wide embedding (semantic search) ------------------------
+
+  /**
+   * Read the organisation's embedding switch together with the deployment's
+   * embedding provider status. `provider.configured` is false when the server
+   * has no API key for the configured provider — the settings UI shows that
+   * instead of silently offering a feature that cannot run.
+   */
+  const getEmbeddingSettings = async (
+    tenantId: string,
+  ): Promise<EmbeddingSettings> =>
+    fetcher.get<EmbeddingSettings>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-settings`,
+    )
+
+  /**
+   * Switch embedding on/off for EVERY page of the organisation (admins only).
+   * There is deliberately no per-page switch.
+   */
+  const saveEmbeddingSettings = async (
+    tenantId: string,
+    enabled: boolean,
+  ): Promise<EmbeddingSettingsUpdate> =>
+    fetcher.put<EmbeddingSettingsUpdate>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-settings`,
+      { enabled },
+    )
+
+  /**
+   * Queue one background embedding job per page that is marked but has no
+   * vectors yet (admins only). Idempotent — safe to press again after a
+   * partial run.
+   */
+  const startEmbeddingBackfill = async (
+    tenantId: string,
+  ): Promise<EmbeddingBackfillResult> =>
+    fetcher.post<EmbeddingBackfillResult>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-backfill`,
+      {},
+    )
 
   const getTenants = async () => {
     const tenants = await fetcher.get<{ tenantId: string; name: string }[]>(
@@ -609,6 +687,9 @@ export const useApp = defineStore('app', () => {
     getBranding,
     loadBranding,
     saveBranding,
+    getEmbeddingSettings,
+    saveEmbeddingSettings,
+    startEmbeddingBackfill,
     waitForInit,
     setSelectedTenant,
     getTenants,

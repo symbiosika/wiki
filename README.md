@@ -20,9 +20,27 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
   `/docs/` aus `backend/public/` (das Haupt-Frontend liegt dagegen hinter dem
   Login unter `/static/app/`). Siehe
   [`frontend-public/README.md`](./frontend-public/README.md).
-- **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
-  den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
-  Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
+- **MCP-Server** (`backend/src/mcp/`): in den Backend-Prozess eingebetteter
+  MCP-Server (erreichbar unter `/mcp`, OAuth2/API-Token-Auth über das
+  Framework), über den eine Chat-App das Wiki als "Brain" nutzen kann
+  (Identität, Discovery, Lesen, Schreiben).
+  - Jedes Tool trägt MCP-**Annotations** (`readOnlyHint`, `destructiveHint`,
+    `idempotentHint`, `openWorldHint`), damit Clients (Claude & Co.) Lesen und
+    Schreiben schon vor dem Aufruf unterscheiden können: alle lesenden Tools
+    sind `readOnlyHint: true`, die schreibenden markieren zusätzlich, ob sie
+    Bestehendes überschreiben (`destructiveHint`) und ob ein Wiederholen
+    denselben Zustand ergibt (`idempotentHint`). `openWorldHint` ist überall
+    `false` — das Wiki ist eine geschlossene Domäne. Gesetzt werden die Hints
+    zentral über `READ_ONLY` / `writeAnnotations()` in
+    [`backend/src/mcp/tools/_define.ts`](./backend/src/mcp/tools/_define.ts);
+    `annotations.test.ts` schlägt fehl, wenn ein neues Tool sie vergisst.
+  - Jede Seite in einer Tool-Antwort trägt neben ihrer `id` auch ihre **`url`**
+    (`${BASE_URL}/tenant/<tenantId>/wiki/<pageId>`, Abschnitte mit `#anchor`),
+    damit eine Chat-App die Quelle verlinken kann statt nur eine undurchsichtige
+    Seiten-ID zu kennen. Das passiert generisch für alle Tools in
+    [`backend/src/mcp/page-url.ts`](./backend/src/mcp/page-url.ts) — Zeilen, die
+    keine Seiten sind (Teams, Organisationen, Facetten-Vokabulare, Collection-
+    Datensätze), bleiben unangetastet.
 - **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
   aufnehmen → **Live-Transkription** (der Text erscheint schon während des
   Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →

@@ -87,7 +87,7 @@
   "info": {
     "button": "Info",
     "hint": "Dokumentdetails anzeigen",
-    "classification": "Klassifizierung",
+    "pageType": "Seitentyp",
     "status": "Status",
     "location": "Ablage",
     "scope": "Bereich",
@@ -150,8 +150,8 @@
     "organisation": "Organisation"
   },
   "pageType": {
-    "empty": "Klassifizieren",
-    "hint": "Klassifizierung der Seite wählen",
+    "empty": "Seitentyp wählen",
+    "hint": "Seitentyp der Seite wählen",
     "values": {
       "FAQ": "FAQ",
       "manual": "Handbuch",

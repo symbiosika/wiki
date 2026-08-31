@@ -94,6 +94,15 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-mistralai/mistral-large}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+
+      # --- MCP server (embedded, served at ${BASE_URL}/mcp) ---
+      # OAUTH_INTROSPECTION_SECRET keeps /oauth/introspect available for
+      # external resource servers; the embedded MCP server validates tokens
+      # in-process and does not need it. WIKI_TENANT_ID is an optional
+      # fallback organisation for credentials without a tenant binding
+      # (leave empty on multi-tenant deployments).
+      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET:-}
+      WIKI_TENANT_ID: ${WIKI_TENANT_ID:-}
     volumes:
       # >>> This is what persists the log files <<<
       # - app_logs:/usr/src/app/logs
@@ -138,26 +147,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Standalone MCP server (see mcp-server/README.md).
-  # Behind the "mcp" profile, so it only starts when explicitly requested:
-  #   docker compose -f docker-compose.prod.yml --profile mcp up -d
-  mcp:
-    image: ${REGISTRY:-symbiosika.azurecr.io}/wiki-mcp:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    profiles:
-      - mcp
-    ports:
-      - "${MCP_PORT:-8787}:8787"
-    environment:
-      MCP_PORT: ${MCP_PORT:-8787}
-      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
-      OAUTH_ISSUER: ${OAUTH_ISSUER}
-      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
-      # Host used for the page links (`url`) in tool results. Defaults to the
-      # app itself; set only if the wiki UI runs on another host than the API.
-      WIKI_APP_URL: ${WIKI_APP_URL:-}
-      WIKI_TENANT_ID: ${WIKI_TENANT_ID}
 
 volumes:
   app_logs:
