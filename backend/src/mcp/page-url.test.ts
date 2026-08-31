@@ -3,23 +3,20 @@
  * Run: bun test
  */
 import { describe, test, expect } from "bun:test";
-import { _GLOBAL_SERVER_CONFIG } from "@framework/store";
 import { pageUrl, annotatePageUrls, withPageUrls } from "./page-url";
+import { wikiPageUrl } from "../lib/wiki/page-url";
 
-const BASE = _GLOBAL_SERVER_CONFIG.baseUrl;
 const TENANT = "t-1";
 const link = (pageId: string, anchor?: string) =>
-  `${BASE}/tenant/${TENANT}/wiki/${pageId}${anchor ? `#${anchor}` : ""}`;
+  wikiPageUrl(TENANT, pageId, anchor);
 
 describe("pageUrl()", () => {
-  test("builds the wiki SPA route", () => {
-    expect(pageUrl(TENANT, "p1")).toBe(`${BASE}/tenant/t-1/wiki/p1`);
+  test("points into the app's hash route, not a bare path", () => {
+    expect(pageUrl(TENANT, "p1")).toContain("/static/app/#/tenant/t-1/wiki/p1");
   });
 
   test("appends a heading anchor", () => {
-    expect(pageUrl(TENANT, "p1", "urlaub")).toBe(
-      `${BASE}/tenant/t-1/wiki/p1#urlaub`,
-    );
+    expect(pageUrl(TENANT, "p1", "urlaub")).toBe(link("p1", "urlaub"));
   });
 });
 

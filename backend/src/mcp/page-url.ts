@@ -10,8 +10,8 @@
  * page identity it finds — search hits, tree nodes, batch reads, outline
  * sections, link targets, freshly created pages, view results.
  *
- * URL shape (the wiki SPA route, on the app's own origin):
- *   `<BASE_URL>/tenant/<tenantId>/wiki/<pageId>[#<anchor>]`
+ * URL shape (the SPA's hash route, see `lib/wiki/page-url.ts`):
+ *   `<BASE_URL>/static/app/#/tenant/<tenantId>/wiki/<pageId>[#<anchor>]`
  *
  * What counts as "a page" is deliberately conservative, so team rows,
  * organisations and the facet vocabularies never get a bogus page link:
@@ -27,25 +27,16 @@
  * `pageId` fields still get linked.
  */
 
-import { _GLOBAL_SERVER_CONFIG } from "@framework/store";
+import { wikiPageUrl } from "../lib/wiki/page-url";
 import type { ToolResult } from "./api";
 
 /**
- * Base URL of the wiki app — the framework's own `baseUrl` (BASE_URL). The MCP
- * server runs inside the app that also serves the SPA, so its origin is where
- * pages live. Read on every call so tests and late configuration see the
- * current value.
+ * Link to a page in the wiki web app (optionally to one heading anchor).
+ * Absolute, because MCP clients live outside this app; the exact shape —
+ * `<baseUrl>/static/app/#/tenant/…`, the SPA's hash route — comes from
+ * `lib/wiki/page-url.ts`.
  */
-const appBaseUrl = () => _GLOBAL_SERVER_CONFIG.baseUrl.replace(/\/$/, "");
-
-/** Link to a page in the wiki web app (optionally to one heading anchor). */
-export const pageUrl = (
-  tenantId: string,
-  pageId: string,
-  anchor?: string,
-): string =>
-  `${appBaseUrl()}/tenant/${tenantId}/wiki/${pageId}` +
-  (anchor ? `#${anchor}` : "");
+export const pageUrl = wikiPageUrl;
 
 /**
  * Fields that make an object with an `id` a wiki PAGE. Kept narrow on purpose:
