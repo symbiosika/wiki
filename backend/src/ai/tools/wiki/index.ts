@@ -37,6 +37,7 @@ import {
 } from "@framework/lib/knowledge/knowledge-text-edit";
 import { getRelatedKnowledgeTexts } from "@framework/lib/knowledge/knowledge-text-links";
 import { getPageChunkContext } from "@framework/lib/knowledge/knowledge-text-chunks";
+import { wikiPagePath } from "../../../lib/wiki/page-url";
 
 /** Two chat modes. "read" is the safe default; "edit" unlocks the write tools. */
 export type WikiChatMode = "read" | "edit";
@@ -59,6 +60,15 @@ function clip(text: string, max = MAX_CONTENT_CHARS): string {
   return `${text.slice(0, max)}\n…[truncated, ${text.length - max} more characters]`;
 }
 
+/**
+ * The link a user can click to open a page. Relative on purpose: the chat runs
+ * inside the app, so the browser stays in the same document and the router
+ * navigates without a reload. Without this the model has only an opaque
+ * pageId and invents link syntax that renders as a dead link.
+ */
+const pageLink = (ctx: WikiToolContext, pageId: string): string =>
+  wikiPagePath(ctx.tenantId, pageId);
+
 function toError(error: unknown): { success: false; error: string } {
   return {
     success: false,
@@ -75,8 +85,9 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
     description:
       "Search the wiki for pages relevant to a query. Uses hybrid semantic + " +
       "full-text search and returns the best matching pages with a short " +
-      "snippet, an AI-generated one-line `summary` (when available) and their " +
-      "pageId. Use the summary to judge which hits are worth reading in full. " +
+      "snippet, an AI-generated one-line `summary` (when available), their " +
+      "pageId and their `url` (the link to hand the user — cite hits as " +
+      "`[title](url)`). Use the summary to judge which hits are worth reading in full. " +
       "Each hit also carries `path`, the page's location in the wiki tree as a " +
       "breadcrumb (e.g. \"Handbook/HR/Vacation Policy\", the last segment is the " +
       "page itself) — cite it so the user sees WHERE the answer lives. " +
@@ -126,6 +137,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           count: results.length,
           results: results.map((r) => ({
             pageId: r.id,
+            url: pageLink(ctx, r.id),
             title: r.title,
             path: r.path,
             pathIds: r.pathIds,
@@ -173,6 +185,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           count: pages.length,
           pages: pages.map((p) => ({
             pageId: p.id,
+            url: pageLink(ctx, p.id),
             title: p.title,
             summary: p.summary,
             parentId: p.parentId,
@@ -190,7 +203,8 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
     description:
       "Read the full markdown content of a wiki page by its pageId. Returns " +
       "line-numbered content so you can quote it and (in edit mode) target " +
-      "edits precisely. Get pageIds from search_wiki or list_wiki_pages.",
+      "edits precisely, plus the page's `url` for citing it. Get pageIds from " +
+      "search_wiki or list_wiki_pages.",
     inputSchema: valibotSchema(
       v.object({
         pageId: v.pipe(
@@ -223,6 +237,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
         return {
           success: true,
           pageId: view.id,
+          url: pageLink(ctx, view.id),
           title: view.title,
           content: clip(view.content),
           fromLine: view.fromLine,
@@ -265,7 +280,11 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
         return {
           success: true,
           count: related.length,
-          related: related.map((r) => ({ pageId: r.id, title: r.title })),
+          related: related.map((r) => ({
+            pageId: r.id,
+            url: pageLink(ctx, r.id),
+            title: r.title,
+          })),
         };
       } catch (error) {
         return toError(error);
@@ -328,6 +347,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
         return {
           success: true,
           pageId: context.pageId,
+          url: pageLink(ctx, context.pageId),
           title: context.title,
           path: context.path,
           pathIds: context.pathIds,
@@ -366,7 +386,8 @@ function buildWriteTools(ctx: WikiToolContext): ToolMap {
       "Create a new wiki page. Body is markdown in `content`. By default the " +
       "page is organisation-wide (visible to all members); set organisation " +
       "to false for a personal page. Set parentId to nest it under an existing " +
-      "page. Returns the created pageId. Only create pages the user asked for.",
+      "page. Returns the created pageId and its `url` — give that link to the " +
+      "user. Only create pages the user asked for.",
     inputSchema: valibotSchema(
       v.object({
         title: v.pipe(
@@ -416,6 +437,7 @@ function buildWriteTools(ctx: WikiToolContext): ToolMap {
         return {
           success: true,
           pageId: page.id,
+          url: pageLink(ctx, page.id),
           title: page.title,
           tenantWide: page.tenantWide,
         };
@@ -461,6 +483,7 @@ function buildWriteTools(ctx: WikiToolContext): ToolMap {
         return {
           success: true,
           pageId: result.id,
+          url: pageLink(ctx, result.id),
           replacements: result.replacements,
           content: clip(result.content),
         };
@@ -504,7 +527,12 @@ function buildWriteTools(ctx: WikiToolContext): ToolMap {
           tenantId: ctx.tenantId,
           userId: ctx.userId,
         });
-        return { success: true, pageId: page.id, title: page.title };
+        return {
+          success: true,
+          pageId: page.id,
+          url: pageLink(ctx, page.id),
+          title: page.title,
+        };
       } catch (error) {
         return toError(error);
       }
@@ -578,7 +606,7 @@ How to work:
 - To find knowledge, start with search_wiki, then read the most relevant pages with read_wiki_page. Use list_wiki_pages for an overview and get_related_wiki_pages to broaden research.
 - When a search snippet is promising but too short, call get_wiki_chunk_context with the hit's pageId and chunkOrder to pull the surrounding chunks — cheaper than reading the whole page for long documents.
 - Base your answers on what the tools return — never invent facts. If the wiki has no answer, say so plainly.
-- Cite the pages you used by their title so the user can open them; when a hit carries a \`path\` (its breadcrumb in the wiki tree), mention it so the user sees where the answer lives. Answer in the user's language, concise and well structured.
+- Cite the pages you used as LINKS: every page in a tool result carries a \`url\`. Write it as an ordinary markdown link, \`[Page title](url)\`, copying the url value verbatim — never invent a link format, never put a pageId or JSON into the answer, and never build a link yourself from an id. When a hit carries a \`path\` (its breadcrumb in the wiki tree), mention it so the user sees where the answer lives. Answer in the user's language, concise and well structured.
 - All content comes only from this wiki; you have no other data sources.`;
 
   const modeSection =
@@ -586,7 +614,7 @@ How to work:
       ? `You are in EDIT-ALLOWED mode: the write tools (create_wiki_page, edit_wiki_page_content, update_wiki_page, delete_wiki_page) are enabled.
 - Only make changes the user explicitly asked for. Never edit or delete on your own initiative.
 - Before editing a page, read it first with read_wiki_page, then use edit_wiki_page_content with a unique oldString.
-- Briefly confirm every change you made (page title + what changed).`
+- Briefly confirm every change you made (the page as a \`[title](url)\` link + what changed).`
       : `You are in READ-ONLY mode: you can only look things up, not change anything. If the user asks you to create or edit a page, explain that they need to switch the chat to "edit allowed" mode (the toggle at the top right of the chat) first.`;
 
   let prompt = `${base}

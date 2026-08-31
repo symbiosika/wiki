@@ -7,11 +7,9 @@ import { describe, test, expect } from "bun:test";
 import { z } from "zod";
 import type { McpRequestContext } from "@framework/types";
 import type { McpTokenKind } from "@framework/lib/mcp/types";
-import { _GLOBAL_SERVER_CONFIG } from "@framework/store";
 import { defineTool, READ_ONLY } from "./_define";
 import { ok, type ToolResult } from "../api";
-
-const BASE = _GLOBAL_SERVER_CONFIG.baseUrl;
+import { wikiPageUrl } from "../../lib/wiki/page-url";
 
 const ctx = (
   tenantId?: string,
@@ -38,7 +36,7 @@ describe("defineTool()", () => {
     );
 
     const result = (await tool.handler!({ pageId: "p1" }, ctx("t-1"))) as ToolResult;
-    const expected = `${BASE}/tenant/t-1/wiki/p1`;
+    const expected = wikiPageUrl("t-1", "p1");
     expect((result.structuredContent as any).url).toBe(expected);
     expect(JSON.parse((result.content[0] as any).text).url).toBe(expected);
   });

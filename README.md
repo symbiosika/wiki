@@ -34,13 +34,21 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
     zentral über `READ_ONLY` / `writeAnnotations()` in
     [`backend/src/mcp/tools/_define.ts`](./backend/src/mcp/tools/_define.ts);
     `annotations.test.ts` schlägt fehl, wenn ein neues Tool sie vergisst.
-  - Jede Seite in einer Tool-Antwort trägt neben ihrer `id` auch ihre **`url`**
-    (`${BASE_URL}/tenant/<tenantId>/wiki/<pageId>`, Abschnitte mit `#anchor`),
+  - Jede Seite in einer Tool-Antwort trägt neben ihrer `id` auch ihre **`url`**,
     damit eine Chat-App die Quelle verlinken kann statt nur eine undurchsichtige
     Seiten-ID zu kennen. Das passiert generisch für alle Tools in
     [`backend/src/mcp/page-url.ts`](./backend/src/mcp/page-url.ts) — Zeilen, die
     keine Seiten sind (Teams, Organisationen, Facetten-Vokabulare, Collection-
     Datensätze), bleiben unangetastet.
+  - Die Adresse einer Seite kommt aus
+    [`backend/src/lib/wiki/page-url.ts`](./backend/src/lib/wiki/page-url.ts) —
+    eine Quelle für alle Erzeuger. Sie ist nicht aus der Routen-Tabelle
+    ableitbar: die App liegt unter `/static/app/` und routet per Hash, ein
+    Seiten-Link ist also
+    `${BASE_URL}/static/app/#/tenant/<tenantId>/wiki/<pageId>` (Abschnitte mit
+    `#anchor`). Der App-interne Chat (`backend/src/ai/tools/wiki/`) liefert
+    denselben Pfad relativ, damit ein Klick in der Antwort ohne Reload
+    navigiert.
 - **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
   aufnehmen → **Live-Transkription** (der Text erscheint schon während des
   Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →

@@ -53,11 +53,15 @@ const isSafeUrl = (value: string | null): boolean => {
  * - forbidden tags are removed entirely
  * - `on*` event handler attributes are dropped
  * - `href`/`src` with unsafe schemes are dropped
+ * - a link left without a target is unwrapped to plain text (never a dead
+ *   link that looks clickable)
  * - external links get `target="_blank"` + `rel="noopener noreferrer"`
  */
 const sanitizeFragment = (root: DocumentFragment): void => {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
   const toRemove: Element[] = []
+  /** Links without a usable target: keep the text, drop the <a>. */
+  const toUnwrap: Element[] = []
 
   let node = walker.nextNode() as Element | null
   while (node) {
@@ -80,8 +84,18 @@ const sanitizeFragment = (root: DocumentFragment): void => {
 
       if (node.tagName === 'A') {
         const href = node.getAttribute('href') ?? ''
-        // open real external links in a new tab, safely
-        if (/^https?:/i.test(href)) {
+        const isAnchorTarget =
+          node.hasAttribute('name') || node.hasAttribute('id')
+        if (href === '' && !isAnchorTarget) {
+          // No (surviving) target: an unsafe scheme was just stripped, or the
+          // author — often an AI answer inventing its own link syntax — wrote
+          // a link without one. Rendering it as a link anyway produces the
+          // worst outcome: it looks clickable and does nothing. Unwrap it so
+          // the text stays and the styling does not lie. `<a name>`/`<a id>`
+          // are jump targets, not links, and stay as they are.
+          toUnwrap.push(node)
+        } else if (/^https?:/i.test(href)) {
+          // open real external links in a new tab, safely
           node.setAttribute('target', '_blank')
           node.setAttribute('rel', 'noopener noreferrer')
         }
@@ -91,6 +105,7 @@ const sanitizeFragment = (root: DocumentFragment): void => {
   }
 
   for (const el of toRemove) el.remove()
+  for (const el of toUnwrap) el.replaceWith(...Array.from(el.childNodes))
 }
 
 const sanitizeHtml = (html: string): string => {

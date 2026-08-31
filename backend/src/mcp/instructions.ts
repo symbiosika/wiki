@@ -43,9 +43,10 @@ returns a real image block. To show images to the USER, prefer view_image
 a page).
 
 Page links: every object that identifies a page (search hits, tree nodes,
-pages you read or create, link targets, outline headings) carries \`url\` —
-\`<wiki>/tenant/<org>/wiki/<pageId>\`, with \`#anchor\` for a section. Use it
-verbatim when pointing the user at a page; do not build wiki links yourself.
+pages you read or create, link targets, outline headings) carries \`url\`, the
+address that opens it in the wiki (sections link to their \`#anchor\`). Hand
+that value to the user verbatim, e.g. "[Page title](url)" — never assemble a
+wiki link yourself from an id.
 
 Context economy: read only what you need. For long pages use get_page_outline
 + read_page_section instead of the whole page; bound get_page_subtree with
