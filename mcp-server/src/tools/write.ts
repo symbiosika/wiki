@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
+import { defineTool, writeAnnotations } from "./_helpers.ts";
 import { callApi, tenantPath, resolveTenantId } from "../app-api.ts";
 import { pageMetadata } from "./_shapes.ts";
 
@@ -56,6 +56,7 @@ export function registerWriteTools(mcp: any): void {
           .optional()
           .describe("Facet: trust status (controlled vocabulary)."),
       }),
+      annotations: writeAnnotations({ destructive: false, idempotent: false }),
     },
     async (args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts"), {
@@ -139,6 +140,7 @@ export function registerWriteTools(mcp: any): void {
               "summary mode.",
           ),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, authInfo) => {
       const body: Record<string, unknown> = { tenantId: resolveTenantId(authInfo) };
@@ -187,6 +189,7 @@ export function registerWriteTools(mcp: any): void {
           .optional()
           .describe('Separator before the appended text (default "\\n\\n").'),
       }),
+      annotations: writeAnnotations({ destructive: false, idempotent: false }),
     },
     async (args, authInfo) =>
       callApi(
@@ -232,6 +235,7 @@ export function registerWriteTools(mcp: any): void {
           .optional()
           .describe("Replace every occurrence instead of requiring uniqueness."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: false }),
     },
     async (args, authInfo) =>
       callApi(
@@ -260,6 +264,7 @@ export function registerWriteTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id to delete."),
       }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
     },
     async (args, authInfo) =>
       callApi(

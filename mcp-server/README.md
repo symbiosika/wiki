@@ -76,6 +76,26 @@ permission comes back as a `403` error text.
 | `edit_page_content`  | Surgical find-and-replace edit of the body                      |
 | `delete_page`        | Delete a page                                                   |
 
+### Tool annotations (behaviour hints)
+
+Every tool ships MCP [tool annotations](https://modelcontextprotocol.io/specification/server/tools#tool)
+so clients (Claude & co.) can tell reading apart from writing before they call
+anything — no confirmation prompt for a search, an explicit one for a delete:
+
+| Tool group                                                     | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
+| -------------------------------------------------------------- | -------------- | ----------------- | ---------------- |
+| identity, discovery, reading, `view_*` / `get_page_image`       | `true`         | –                 | –                |
+| `create_page`, `append_to_page`                                 | `false`        | `false` (additive) | `false` (repeats duplicate) |
+| `update_page`                                                   | `false`        | `true` (overwrites metadata) | `true`  |
+| `edit_page_content`                                             | `false`        | `true` (overwrites body) | `false`     |
+| `delete_page`                                                   | `false`        | `true`            | `true`           |
+
+`openWorldHint` is `false` everywhere: the wiki is a closed, bounded domain
+(the pages of one organisation), not an open-ended external world. The hints
+are set centrally via `READ_ONLY` / `writeAnnotations()` in
+[`src/tools/_helpers.ts`](./src/tools/_helpers.ts) and covered by
+`src/tools/annotations.test.ts`, which fails if a new tool forgets them.
+
 ---
 
 ## Configuration

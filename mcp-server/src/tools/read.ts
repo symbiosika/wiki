@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
+import { defineTool, READ_ONLY } from "./_helpers.ts";
 import { callApi, tenantPath } from "../app-api.ts";
 import {
   annotateEmbeddedImages,
@@ -34,6 +34,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -58,6 +59,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -88,6 +90,7 @@ export function registerReadTools(mcp: any): void {
           .optional()
           .describe("Include the full body text (default true)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/batch"), {
@@ -113,6 +116,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -137,6 +141,7 @@ export function registerReadTools(mcp: any): void {
           .string()
           .describe("The section's anchor slug from the outline."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -171,6 +176,7 @@ export function registerReadTools(mcp: any): void {
           .optional()
           .describe("Maximum number of lines to return."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -209,6 +215,7 @@ export function registerReadTools(mcp: any): void {
           .optional()
           .describe("Total character budget across all node contents."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -264,6 +271,7 @@ export function registerReadTools(mcp: any): void {
           .optional()
           .describe("How many chunks after the centre to include (default 2, max 20)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -292,6 +300,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -311,6 +320,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -331,6 +341,7 @@ export function registerReadTools(mcp: any): void {
       inputSchema: z.object({
         pageId: z.string().describe("The page id."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -358,6 +369,7 @@ export function registerReadTools(mcp: any): void {
           .optional()
           .describe("Maximum number of versions to return."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -382,6 +394,7 @@ export function registerReadTools(mcp: any): void {
           .string()
           .describe("The history entry id from `get_page_history`."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(

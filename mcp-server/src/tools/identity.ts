@@ -4,7 +4,7 @@
  * before reading or writing wiki pages.
  */
 
-import { defineTool } from "./_helpers.ts";
+import { defineTool, READ_ONLY } from "./_helpers.ts";
 import { callApi, resolveTenantId } from "../app-api.ts";
 
 export function registerIdentityTools(mcp: any): void {
@@ -18,6 +18,7 @@ export function registerIdentityTools(mcp: any): void {
         "OIDC userinfo endpoint, plus the active organisation (tenant) id the " +
         "wiki tools operate on. Call this first to confirm identity and " +
         "context before other actions.",
+      annotations: READ_ONLY,
     },
     async (_args, authInfo) => {
       const result = await callApi(authInfo, "/oauth/userinfo");
@@ -48,6 +49,7 @@ export function registerIdentityTools(mcp: any): void {
         "Lists the organisations (tenants) the signed-in user is a member of, " +
         "with id, name and role. The wiki tools operate on the organisation " +
         "bound to the current token; this is mainly informational.",
+      annotations: READ_ONLY,
     },
     async (_args, authInfo) => callApi(authInfo, "/api/v1/user/tenants"),
   );

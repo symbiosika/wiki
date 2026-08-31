@@ -17,6 +17,11 @@
  * exists, read exactly as much as it needs (context economy), and maintain
  * it — all with the signed-in user's own permissions (enforced server-side
  * by the app).
+ *
+ * Every tool carries MCP tool annotations (readOnlyHint, destructiveHint,
+ * idempotentHint, openWorldHint) so clients can tell reading apart from
+ * writing before they call: `READ_ONLY` for everything that only reads,
+ * `writeAnnotations()` for the five writing tools (see `_helpers.ts`).
  */
 
 import { registerIdentityTools } from "./identity.ts";

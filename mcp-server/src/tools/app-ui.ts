@@ -25,7 +25,7 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
+import { defineTool, READ_ONLY } from "./_helpers.ts";
 import {
   annotateEmbeddedImages,
   extractEmbeddedImageRefs,
@@ -196,6 +196,7 @@ export function registerAppUiTools(mcp: any): void {
           ),
       }),
       _meta: PAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       args.anchor
@@ -250,6 +251,7 @@ export function registerAppUiTools(mcp: any): void {
           .describe("Optional caption shown under the image."),
       }),
       _meta: IMAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, authInfo) => {
       const filename = parseImageRef(args.image);
@@ -285,6 +287,7 @@ export function registerAppUiTools(mcp: any): void {
         pageId: z.string().describe("The page id."),
       }),
       _meta: IMAGE_VIEW_TOOL_META,
+      annotations: READ_ONLY,
     },
     async (args, authInfo) => {
       const page = await callApi(
@@ -328,6 +331,7 @@ export function registerAppUiTools(mcp: any): void {
               "`/files/db/knowledge/<uuid>.<ext>` path or the bare filename.",
           ),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       fetchPageImage(authInfo, args.pageId, args.image),

@@ -12,7 +12,7 @@
  */
 
 import { z } from "zod";
-import { defineTool } from "./_helpers.ts";
+import { defineTool, READ_ONLY } from "./_helpers.ts";
 import { callApi, tenantPath } from "../app-api.ts";
 import { slimOverview, slimPageRow, slimPageRows } from "./_shapes.ts";
 
@@ -36,6 +36,7 @@ export function registerDiscoveryTools(mcp: any): void {
           .optional()
           .describe("How many recent changes to include (default 10)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -57,6 +58,7 @@ export function registerDiscoveryTools(mcp: any): void {
         "pages). Each node has id, title, parentId and nested children. Use " +
         "this for the full structure; `get_wiki_overview` is the cheaper " +
         "starting point.",
+      annotations: READ_ONLY,
     },
     async (_args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/wiki/tree")),
@@ -111,6 +113,7 @@ export function registerDiscoveryTools(mcp: any): void {
           .optional()
           .describe("Optional: restrict the search to a specific team."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/search"), {
@@ -139,6 +142,7 @@ export function registerDiscoveryTools(mcp: any): void {
       inputSchema: z.object({
         title: z.string().min(1).describe("The exact page title."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/resolve"), {
@@ -177,6 +181,7 @@ export function registerDiscoveryTools(mcp: any): void {
           .optional()
           .describe("Maximum number of items (default 50, cap 200)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(
@@ -224,6 +229,7 @@ export function registerDiscoveryTools(mcp: any): void {
           .optional()
           .describe("1-based page number (needs `limit`)."),
       }),
+      annotations: READ_ONLY,
     },
     async (args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts"), {
@@ -246,6 +252,7 @@ export function registerDiscoveryTools(mcp: any): void {
         "vocabularies for the `pageType` and `status` facets (writes outside " +
         "these lists are rejected) and whether AI auto-summaries are enabled. " +
         "Check this before setting facets on pages.",
+      annotations: READ_ONLY,
     },
     async (_args, authInfo) =>
       callApi(authInfo, tenantPath(authInfo, "/knowledge/texts/config")),
