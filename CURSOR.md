@@ -6,7 +6,7 @@ The startup update script already installs `bun`, checks out the `backend/framew
 Services (all use `bun`; see each `package.json` for scripts):
 - Backend API (`backend/`) → `http://localhost:3000`. The `dev` script wraps `infisical`, which is NOT installed here; run the server directly instead: `bun --hot run src/index.ts` (Bun auto-loads `backend/.env`). Lint/typecheck: `bun x tsc --noEmit`. Tests: `bun run test:local <files>` (self-contained: starts its own PGlite on port 5499, migrates, runs the tests — needs no running DB or .env). Bare `bun test <files>` also works against the live local DB.
 - Frontend SPA (`frontend/`) → `http://localhost:5173/static/app/`. `bun run dev`. It proxies `/api/v1` and the auth `*.html` pages to the backend, so run the backend first. Typecheck `bun run type-check`, tests `bun run test`.
-- MCP server (`mcp-server/`, optional) → needs `bun run init` once then `bun run dev`; requires the backend running.
+- MCP server → embedded in the backend (`backend/src/mcp/`), served at `http://localhost:3000/mcp`. No separate process.
 
 Local DB and migrations (required before the backend serves data):
 - Start embedded Postgres (PGlite, no Docker): `cd backend && bun run db:local` (listens on `localhost:5432`). Keep it running in its own terminal/tmux session.

@@ -57,6 +57,20 @@
       "when": 1786441552664,
       "tag": "0007_polite_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788079090979,
+      "tag": "0008_stale_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788084975852,
+      "tag": "0009_special_amazoness",
+      "breakpoints": true
     }
   ]
 }

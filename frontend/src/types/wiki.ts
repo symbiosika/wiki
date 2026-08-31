@@ -13,6 +13,11 @@ export interface WikiTreeNode {
   tenantWide: boolean
   updatedAt: string
   /**
+   * Controlled `pageType` facet. Drives the icon and colour shown in the tree
+   * (looked up in `WikiKnowledgeConfig.pageTypeStyles`). Null when untyped.
+   */
+  pageType: string | null
+  /**
    * Resolved public-visibility flag: true when this page is reachable in the
    * public documentation site. Derived server-side from `publicMode` along the
    * parent chain, so a page can be public without carrying an own intent.
@@ -143,7 +148,24 @@ export interface WikiKnowledgeConfig {
   autoSummaries: boolean
   pageTypes: string[]
   statuses: string[]
+  /**
+   * Presentation per page type, keyed by the page type as it appears in
+   * `pageTypes`. Optional and purely cosmetic — a page type without an entry
+   * simply renders without icon or colour.
+   */
+  pageTypeStyles: Record<string, WikiPageTypeStyle>
   attributes: KnowledgeAttributeDefinition[]
+}
+
+/**
+ * Icon, colour and display label for one page type. `icon` is either an emoji
+ * or a name from the bundled icon allowlist (see `utils/wikiIcons.ts`); an
+ * unknown value renders no icon rather than breaking the row.
+ */
+export interface WikiPageTypeStyle {
+  icon?: string
+  color?: string
+  label?: string
 }
 
 /**
