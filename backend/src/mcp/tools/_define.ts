@@ -18,7 +18,8 @@
 
 import type { ZodType } from "zod";
 import type { McpRequestContext, McpToolDefinition } from "@framework/types";
-import type { ToolResult } from "../api";
+import { resolveTenantId, type ToolResult } from "../api";
+import { withPageUrls } from "../page-url";
 
 export type ToolHandler = (
   args: any,
@@ -40,6 +41,13 @@ export type ToolDef = {
    * `writeAnnotations()` below instead of hand-written objects.
    */
   annotations?: Record<string, unknown>;
+  /**
+   * Set on tools whose rows are keyed by something that is NOT a page id
+   * (collection records, whose columns may even be called "title"). The page
+   * links added to every result then follow only explicit `pageId` fields —
+   * see `../page-url.ts`.
+   */
+  opaqueIds?: boolean;
 };
 
 /**
@@ -121,7 +129,17 @@ export function defineTool(def: ToolDef, handler: ToolHandler): McpToolDefinitio
         }
         parsedArgs = result.value;
       }
-      return handler(parsedArgs, ctx);
+      const toolResult = await handler(parsedArgs, ctx);
+      // Every page in the result also carries its link in the wiki.
+      let tenantId: string | undefined;
+      try {
+        tenantId = resolveTenantId(ctx);
+      } catch {
+        tenantId = undefined; // no organisation bound: nothing to link to
+      }
+      return withPageUrls(toolResult, tenantId, {
+        idsArePageIds: !def.opaqueIds,
+      });
     },
   };
 }

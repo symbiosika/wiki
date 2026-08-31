@@ -147,6 +147,8 @@ export const collectionTools: McpToolDefinition[] = [
         offset: z.number().optional().describe("Rows to skip (paging)."),
       }),
       annotations: READ_ONLY,
+      // a record id is not a page id — no page links from these rows
+      opaqueIds: true,
     },
     async (args, ctx) =>
       callApi(
@@ -180,6 +182,8 @@ export const collectionTools: McpToolDefinition[] = [
           .describe("Column key → value for the new row."),
       }),
       annotations: writeAnnotations({ destructive: false, idempotent: false }),
+      // a record id is not a page id — no page links from these rows
+      opaqueIds: true,
     },
     async (args, ctx) =>
       callApi(
@@ -211,6 +215,8 @@ export const collectionTools: McpToolDefinition[] = [
           .describe("Column key → new value; omitted columns are untouched."),
       }),
       annotations: writeAnnotations({ destructive: true, idempotent: true }),
+      // a record id is not a page id — no page links from these rows
+      opaqueIds: true,
     },
     async (args, ctx) =>
       callApi(
@@ -239,6 +245,8 @@ export const collectionTools: McpToolDefinition[] = [
         recordId: z.string().describe("The record id."),
       }),
       annotations: writeAnnotations({ destructive: true, idempotent: true }),
+      // a record id is not a page id — no page links from these rows
+      opaqueIds: true,
     },
     async (args, ctx) =>
       callApi(

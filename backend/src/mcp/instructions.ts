@@ -18,9 +18,11 @@ When to use this server:
 - For any COMPANY / INTERNAL question ("how do we do X", "where is the doc for…",
   onboarding, guidelines, specs, decisions), consult the wiki BEFORE answering
   from general knowledge or the web.
-- Ground company-specific claims in wiki content and cite the source page
-  (title + id). If nothing is found, say so plainly and offer to create a page —
-  do not invent facts.
+- Ground company-specific claims in wiki content and cite the source page as a
+  LINK: every page in a tool result carries \`url\`, its direct address in the
+  wiki — hand it to the user (e.g. "[Page title](url)"), never just the page id.
+  If nothing is found, say so plainly and offer to create a page — do not
+  invent facts.
 - Proactively help the wiki grow: when durable knowledge appears (a decision,
   process, or reusable answer), offer to capture it.
 
@@ -39,6 +41,11 @@ use get_page_image (pageId + that reference) to actually look at one — it
 returns a real image block. To show images to the USER, prefer view_image
 (one image, large + zoomable) or view_page_images (gallery of all images of
 a page).
+
+Page links: every object that identifies a page (search hits, tree nodes,
+pages you read or create, link targets, outline headings) carries \`url\` —
+\`<wiki>/tenant/<org>/wiki/<pageId>\`, with \`#anchor\` for a section. Use it
+verbatim when pointing the user at a page; do not build wiki links yourself.
 
 Context economy: read only what you need. For long pages use get_page_outline
 + read_page_section instead of the whole page; bound get_page_subtree with

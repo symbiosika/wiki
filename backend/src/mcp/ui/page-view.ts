@@ -16,12 +16,19 @@
 import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 import { marked } from "marked";
 
-type PageData = { id: string; title?: string; content?: string };
+type PageData = {
+  id: string;
+  title?: string;
+  content?: string;
+  /** link to this page in the wiki web app (added by the server) */
+  url?: string;
+};
 
 const statusEl = document.getElementById("status")!;
 const headerEl = document.getElementById("page-header")!;
 const titleEl = document.getElementById("page-title")!;
 const articleEl = document.getElementById("page")!;
+const linkEl = document.getElementById("page-crumbs")!;
 
 const app = new App(
   { name: "Symbiosika Wiki Page View", version: "1.0.0" },
@@ -106,10 +113,38 @@ async function hydrateImages(pageId: string) {
   );
 }
 
+/**
+ * "Open in wiki" in the header: the sandboxed iframe may not navigate itself,
+ * so the host is asked to open the URL (`ui/open-link`). If it declines, the
+ * plain URL is shown so it can still be copied.
+ */
+function renderPageLink(url: string | undefined) {
+  linkEl.textContent = "";
+  linkEl.hidden = !url;
+  if (!url) return;
+  const link = document.createElement("a");
+  link.className = "page-link";
+  link.href = url;
+  link.textContent = "Open in wiki ↗";
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    void app
+      .openLink({ url })
+      .then((result) => {
+        if (result.isError) linkEl.textContent = url;
+      })
+      .catch(() => {
+        linkEl.textContent = url;
+      });
+  });
+  linkEl.append(link);
+}
+
 async function renderPage(page: PageData) {
   currentPageId = page.id;
   titleEl.textContent = page.title ?? "";
-  headerEl.hidden = !page.title;
+  renderPageLink(page.url);
+  headerEl.hidden = !page.title && !page.url;
   statusEl.textContent = "";
   statusEl.hidden = true;
 

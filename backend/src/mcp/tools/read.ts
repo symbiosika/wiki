@@ -26,8 +26,9 @@ export const readTools: McpToolDefinition[] = [
       name: "get_page",
       title: "Get a page (content)",
       description:
-        "Returns a page as clean `{ id, title, content }` — the full body as " +
-        "markdown, no metadata noise. Use the page id from the overview, " +
+        "Returns a page as clean `{ id, url, title, content }` — the full body " +
+        "as markdown, no metadata noise; `url` is the page's link in the wiki, " +
+        "use it when you cite the page to the user. Use the page id from the overview, " +
         "tree, search results or `resolve_page`. For scope, facets, authorship " +
         "etc. call `get_page_metadata`; for very long pages prefer " +
         "`get_page_outline` + `read_page_section`.",
