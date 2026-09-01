@@ -3,37 +3,39 @@
 **Target repo:** `symbiosika/symbiosika-framework` (the `backend/framework`
 submodule). **Not** `symbiosika/wiki`.
 
-> ## STATUS: implemented + tested locally in this environment
+> ## STATUS: pushed to the framework repo — needs a PR + a submodule bump
 >
-> The change is **applied in the local `backend/framework` submodule working
-> tree** and verified:
+> Branch: **`claude/image-descriptions`**, commit
+> **`f4ea90df05dad2a09a037e4e1d6f53d0c66a356f`**
+> ([open a PR](https://github.com/symbiosika/symbiosika-framework/pull/new/claude/image-descriptions)
+> — or from the repo page). Verified before the push:
 > `bun test src/lib/knowledge/image-descriptions.test.ts
 > src/lib/knowledge/materialize-blocks.test.ts
 > src/lib/knowledge/parsing/pdf/generic.test.ts` → 15 + 17 + 19 pass, framework
 > `tsc --noEmit` clean.
 >
-> **Line-precise export:** `framework-image-descriptions.patch` at the wiki repo
-> root is a `git diff` of exactly these changes (7 modified files, 2 new files).
-> Apply it in a clean framework checkout:
-> ```bash
-> cd backend/framework
-> git checkout -b claude/image-descriptions
-> git apply ../../framework-image-descriptions.patch
-> bun test src/lib/knowledge/image-descriptions.test.ts \
->          src/lib/knowledge/materialize-blocks.test.ts \
->          src/lib/knowledge/parsing/pdf/generic.test.ts
-> git add -A && git commit -m "feat(knowledge): carry a description per image into the page text"
-> git push -u origin claude/image-descriptions
-> ```
+> **Two steps are left, both yours:**
 >
-> **⚠️ Submodule pointer:** I cannot push to the framework repo (session scope
-> is `symbiosika/wiki` only), so the wiki submodule pointer is **left
-> untouched** (still at the current upstream SHA). After you land the framework
-> commit upstream, bump the pointer:
+> 1. review + merge the framework PR
+> 2. bump the wiki's submodule pointer to the merged SHA:
+>    ```bash
+>    cd backend/framework && git fetch origin && git checkout <merged-sha>
+>    cd ../.. && git add backend/framework \
+>      && git commit -m "chore: bump framework to the image descriptions change"
+>    ```
+>
+> The pointer is deliberately **still at the pre-change SHA**: pinning it to an
+> un-merged branch commit would break every checkout the moment that branch is
+> deleted. Until the bump lands, the wiki app builds and runs fine (it imports
+> no new framework symbol) — a description entered in the editor is simply not
+> yet materialized into the page text.
+>
+> `framework-image-descriptions.patch` at the wiki repo root stays as the
+> byte-exact record of the same change (7 modified files, 2 new files), for the
+> case where the branch has to be rebuilt:
 > ```bash
-> cd backend/framework && git fetch origin && git checkout <new-sha>
-> cd ../.. && git add backend/framework \
->   && git commit -m "chore: bump framework to the image descriptions change"
+> cd backend/framework && git checkout -b claude/image-descriptions
+> git apply ../../framework-image-descriptions.patch
 > ```
 
 **Why:** an image is a dead end for everything that only reads text. An AI
@@ -145,7 +147,7 @@ SHA):
   as a caption
 - the public documentation site renders the marker as a folded caption
 
-**Until the framework commit lands**, a description entered in the editor is
+**Until the framework PR is merged and the pointer bumped**, a description entered in the editor is
 stored in the block html but does **not** reach the materialized `text` — so
 search, embeddings and the MCP annotation stay empty for it. Nothing breaks; the
 feature is simply inert on the text side. Descriptions written directly into the
