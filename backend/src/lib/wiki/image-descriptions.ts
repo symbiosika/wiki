@@ -5,9 +5,10 @@
  * The description itself lives in the page content as an
  * `<image-description src="…">…</image-description>` marker directly below the
  * image — written there by the block editor's materialization and by the
- * document import (framework `src/lib/knowledge/image-descriptions.ts` is the
- * source of truth for that format). This module is the READING half used by
- * the wiki app:
+ * document import. The FORMAT belongs to the framework
+ * (`@framework/lib/knowledge/image-descriptions`, whose module header describes
+ * it) and is imported from there rather than restated; this module is the
+ * READING half the wiki app needs on top of it:
  *
  *   - `extractPageImages` — what the MCP tools attach to a page result, so a
  *     model does not have to parse markdown to learn which images exist, what
@@ -15,19 +16,17 @@
  *   - `compactImagesForSnippet` — search snippets are cut to a few hundred
  *     characters; a 60-character image path would eat a quarter of that budget
  *     and say nothing, so an image collapses to `[image: <description>]`
- *   - `stripImageDescriptions` — for anything rendering the text for a HUMAN
- *     that shows the description its own way (a caption, an expander)
  *
- * The format constants are deliberately duplicated from the framework module
- * rather than imported: this package pins the framework as a submodule, and a
- * one-regex duplicate (like `IMAGE_REF_RE` in ../../mcp/tools/_shapes.ts) is
- * cheaper than coupling the app build to an unreleased framework symbol. Keep
- * the two in sync — the format is described in the framework module's header.
+ * What is genuinely app-local: the reference shape the wiki's own image
+ * endpoints speak, the alt-text handling, and the two half-markers a truncated
+ * snippet produces (the framework never sees a cut-open marker).
  */
 
-/** The marker as it appears in page content. Tolerant about attribute order. */
-const IMAGE_DESCRIPTION_RE =
-  /<image-description\b([^>]*)>([\s\S]*?)<\/image-description\s*>/gi;
+import {
+  extractImageDescriptions,
+  IMAGE_DESCRIPTION_PATTERN,
+  normalizeImageDescription,
+} from "@framework/lib/knowledge/image-descriptions";
 
 /** An opening marker whose closing tag was cut off (truncated snippet). */
 const DANGLING_DESCRIPTION_RE = /<image-description\b([^>]*)>([\s\S]*)$/i;
@@ -65,7 +64,9 @@ const decodeHtmlText = (value: string): string =>
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&");
 
-const oneLine = (value: string): string => value.replace(/\s+/g, " ").trim();
+/** The framework's normalization, as a plain string (it returns null for empty). */
+const oneLine = (value: string): string =>
+  normalizeImageDescription(value) ?? "";
 
 /**
  * The key two mentions of the same image agree on.
@@ -86,19 +87,20 @@ export const extractEmbeddedImageRefs = (content: string): string[] => [
   ...new Set(content.match(IMAGE_REF_RE) ?? []),
 ];
 
-/** The descriptions in a piece of content, keyed by {@link imageKey}. */
+/**
+ * The descriptions in a piece of content, keyed by {@link imageKey}.
+ *
+ * The framework keys them by the `src` written in the marker; re-keying is what
+ * lets a marker carrying the full API path find an image extracted as the
+ * `/files/db/…` tail.
+ */
 const descriptionsByImage = (content: string): Map<string, string> => {
   const found = new Map<string, string>();
-  if (!/<image-description\b/i.test(content)) return found;
-
-  for (const match of content.matchAll(IMAGE_DESCRIPTION_RE)) {
-    const src = SRC_ATTRIBUTE_RE.exec(match[1] ?? "");
-    const path = decodeHtmlText(src?.[1] ?? src?.[2] ?? "").trim();
-    if (!path) continue;
-    const key = imageKey(path);
-    if (found.has(key)) continue;
-    const description = oneLine(decodeHtmlText(match[2] ?? ""));
-    if (description) found.set(key, description);
+  for (const [src, description] of Object.entries(
+    extractImageDescriptions(content),
+  )) {
+    const key = imageKey(src);
+    if (!found.has(key)) found.set(key, description);
   }
   return found;
 };
@@ -168,17 +170,6 @@ export const extractPageImages = (content: string): PageImage[] => {
   });
 };
 
-/** Remove every description marker, taking a line that held only one with it. */
-export const stripImageDescriptions = (content: string): string => {
-  if (!/<image-description\b/i.test(content)) return content;
-  return content
-    .replace(
-      new RegExp(`^[^\\S\\n]*${IMAGE_DESCRIPTION_RE.source}[^\\S\\n]*\\n?`, "gim"),
-      "",
-    )
-    .replace(IMAGE_DESCRIPTION_RE, "");
-};
-
 /**
  * Collapse the images in a search snippet to `[image: …]`.
  *
@@ -203,7 +194,7 @@ export const compactImagesForSnippet = (snippet: string): string => {
 
   // 1. an image with its complete marker: one label carrying the description
   out = out.replace(
-    re(`${MARKDOWN_IMAGE_RE.source}\\s*${IMAGE_DESCRIPTION_RE.source}`, "gi"),
+    re(`${MARKDOWN_IMAGE_RE.source}\\s*${IMAGE_DESCRIPTION_PATTERN.source}`, "gi"),
     (_match, alt: string, _target: string, _attrs: string, text: string) =>
       label(decodeHtmlText(text ?? ""), alt ?? ""),
   );
@@ -221,7 +212,7 @@ export const compactImagesForSnippet = (snippet: string): string => {
   );
 
   // 3. a complete marker on its own (the image sat above the snippet's start)
-  out = out.replace(IMAGE_DESCRIPTION_RE, (_match, _attrs: string, text: string) =>
+  out = out.replace(IMAGE_DESCRIPTION_PATTERN, (_match, _attrs: string, text: string) =>
     label(decodeHtmlText(text ?? ""), ""),
   );
 

@@ -3,7 +3,6 @@ import {
   compactImagesForSnippet,
   extractEmbeddedImageRefs,
   extractPageImages,
-  stripImageDescriptions,
 } from "./image-descriptions";
 
 const REF = "/files/db/knowledge/11111111-1111-1111-1111-111111111111.png";
@@ -134,20 +133,5 @@ describe("compactImagesForSnippet", () => {
     expect(compactImagesForSnippet(before).length).toBeLessThan(
       before.length / 3
     );
-  });
-});
-
-describe("stripImageDescriptions", () => {
-  it("removes the marker line but keeps the image", () => {
-    expect(
-      stripImageDescriptions(
-        `![a](${REF})\n<image-description src="${REF}">Steuerplatine</image-description>\n\nWeiter.`
-      )
-    ).toBe(`![a](${REF})\n\nWeiter.`);
-  });
-
-  it("leaves content without markers untouched", () => {
-    const text = `![a](${REF})\n\nNur Text.`;
-    expect(stripImageDescriptions(text)).toBe(text);
   });
 });
