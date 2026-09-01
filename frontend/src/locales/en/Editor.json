@@ -48,7 +48,8 @@
     "description": "Description",
     "descriptionLabel": "Image description",
     "descriptionHint": "Describe what the image shows — folded away for readers, readable for search and AI",
-    "descriptionPlaceholder": "What does this image show?"
+    "descriptionPlaceholder": "What does this image show?",
+    "descriptionEditHint": "Enter saves · Esc cancels · stored as a single line"
   },
   "imageUploadError": "Image upload failed. Please try again.",
   "markdown": {
