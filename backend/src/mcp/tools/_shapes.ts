@@ -8,6 +8,11 @@
  * acts on, and drop null/empty fields entirely so quiet pages stay cheap.
  */
 
+import {
+  compactImagesForSnippet,
+  extractPageImages,
+} from "../../lib/wiki/image-descriptions";
+
 type Row = Record<string, unknown>;
 
 /** Remove null/undefined entries so unset fields cost no context. */
@@ -21,41 +26,90 @@ export const stripEmpty = (row: Row): Row => {
 };
 
 /**
- * Wiki image references as they appear in page content (markdown or html).
+ * If a piece of content embeds wiki images, list them explicitly — with the
+ * description of each image where one exists — and say how to load one.
  *
- * Two buckets carry page images: "knowledge" (uploaded in the block editor)
- * and "images" (extracted from an imported PDF / URL by a parsing service).
- * Matching only the first one hid every image of an imported page from the
- * model — the paths were in the content, but nothing said they were loadable.
- */
-const IMAGE_REF_RE =
-  /\/files\/db\/(?:knowledge|images)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}/gi;
-
-/** All unique wiki image references embedded in a page's content. */
-export const extractEmbeddedImageRefs = (content: string): string[] => [
-  ...new Set(content.match(IMAGE_REF_RE) ?? []),
-];
-
-/**
- * If a page's `content` embeds wiki images, list them explicitly and say how
- * to load one. This lands in the tool result at exactly the moment the model
- * sees the (otherwise dead) image paths — without it, models tend to assume
- * the images are unreachable instead of reaching for `get_page_image`.
+ * Two things make this worth its context. The reference list lands at exactly
+ * the moment the model sees the (otherwise dead) image paths; without it,
+ * models tend to assume the images are unreachable instead of reaching for
+ * `get_page_image`. And the description is the only thing that tells a
+ * text-only reader what is ON a picture — a page whose knowledge sits in a
+ * diagram is otherwise unanswerable, no matter how well it is written.
+ *
+ * Applied to every read path that returns page content: whole page, batch,
+ * section, line range, subtree (recursively, `children` included) and a
+ * historical version. Annotating only `get_page` — as this did — meant a model
+ * reading a long page section by section never learned that it contains
+ * pictures at all.
  */
 export const annotateEmbeddedImages = (data: unknown): unknown => {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
-  const page = data as Row;
-  if (typeof page.content !== "string") return data;
-  const refs = extractEmbeddedImageRefs(page.content);
-  if (refs.length === 0) return data;
+  if (!data || typeof data !== "object") return data;
+
+  // A payload that gains nothing is returned as-is (same object), so wrapping
+  // every read path in this costs nothing for the pages without pictures.
+  if (Array.isArray(data)) {
+    const rows = data.map(annotateEmbeddedImages);
+    return rows.some((row, index) => row !== data[index]) ? rows : data;
+  }
+
+  const row = data as Row;
+  const children = Array.isArray(row.children)
+    ? row.children.map(annotateEmbeddedImages)
+    : null;
+  const childrenChanged =
+    children !== null &&
+    children.some(
+      (child, index) => child !== (row.children as unknown[])[index],
+    );
+
+  const images =
+    typeof row.content === "string" ? extractPageImages(row.content) : [];
+  if (images.length === 0) {
+    return childrenChanged ? { ...row, children } : data;
+  }
+
+  const described = images.filter((image) => image.description).length;
   return {
-    ...page,
-    embeddedImages: refs,
+    ...row,
+    ...(childrenChanged ? { children } : {}),
+    embeddedImages: images,
     embeddedImagesHint:
       "This page embeds image(s). Call get_page_image with this pageId and " +
       "one of the references above to actually view/show an image; " +
-      "view_page renders them all automatically.",
+      "view_page renders them all automatically." +
+      (described > 0
+        ? " `description` is what the picture shows (written in the wiki, " +
+          "shown as a caption there) — treat it as page content."
+        : "") +
+      (described < images.length
+        ? " Image(s) without a `description` can only be judged by looking " +
+          "at them."
+        : ""),
   };
+};
+
+/**
+ * Shrink the images inside a search hit's `snippet`.
+ *
+ * A snippet is a couple of hundred characters wide; a uuid image path spends a
+ * quarter of that on nothing. `[image: <description>]` keeps what a model can
+ * act on — that there is a picture here, and what it shows — and costs a
+ * fraction of the budget. Also the only place the DESCRIPTION reaches search
+ * results at all, which is what makes a picture findable.
+ */
+export const compactSnippetImages = (data: unknown): unknown => {
+  if (!data || typeof data !== "object") return data;
+  if (Array.isArray(data)) return data.map(compactSnippetImages);
+
+  const row = { ...(data as Row) };
+  if (Array.isArray(row.items)) row.items = row.items.map(compactSnippetImages);
+  if (Array.isArray(row.results)) {
+    row.results = row.results.map(compactSnippetImages);
+  }
+  if (typeof row.snippet === "string") {
+    row.snippet = compactImagesForSnippet(row.snippet);
+  }
+  return row;
 };
 
 /**

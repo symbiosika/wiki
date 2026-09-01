@@ -36,7 +36,7 @@ import TaskItem from '@tiptap/extension-task-item'
 import { TableKit } from '@tiptap/extension-table'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
-import { WikiImage } from './wikiImage'
+import { WikiImage, embedImageDescriptions } from './wikiImage'
 import { WikiLink, embedWikiLinkMarkers, type WikiLinkAttrs } from './wikiLink'
 import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
@@ -243,7 +243,9 @@ onMounted(() => {
       // asked to load — losing the whole table (and its cell content) on the
       // next save. See utils/wikiBlocks.ts for the markdown → HTML conversion.
       TableKit.configure({ table: { resizable: true } }),
-      WikiImage,
+      WikiImage.configure({
+        descriptionLabel: t('Editor.image.descriptionLabel'),
+      }),
       WikiLink.configure({ onNavigate: openReference }),
       WikiLinkSuggestion.configure({ search: searchReferences }),
       UniqueID.configure({
@@ -338,10 +340,13 @@ const insertMarkdown = (markdown: string) => {
   if (!editor.value || !markdown.trim()) return
   const html = renderMarkdown(markdown)
   if (!html) return
-  // `[[Target]]` in the pasted markdown becomes a real page reference
+  // `[[Target]]` in the pasted markdown becomes a real page reference, and an
+  // `<image-description>` marker (pasted from a page read through the API/MCP
+  // tools) moves onto the image it describes
   const template = document.createElement('template')
   template.innerHTML = html
   embedWikiLinkMarkers(template.content)
+  embedImageDescriptions(template.content)
   editor.value.chain().focus().insertContent(template.innerHTML).run()
 }
 
@@ -494,6 +499,44 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 }
 .wiki-editor .wiki-prose img.ProseMirror-selectednode {
   @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* The image node view wraps the <img> so the description can sit under it. The
+   figure is a transparent block: every size/align rule below still applies to
+   the <img> itself and keeps working unchanged. */
+.wiki-editor .wiki-prose figure.wiki-image {
+  @apply my-0;
+}
+.wiki-editor .wiki-prose figure.wiki-image.ProseMirror-selectednode img {
+  @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* The description: there, but folded away — its audience is the search index
+   and AI clients, not the reader looking at the picture. */
+.wiki-editor .wiki-prose details.wiki-image-description {
+  @apply -mt-1 mb-2 text-xs text-surface-500 dark:text-surface-400;
+}
+.wiki-editor .wiki-prose details.wiki-image-description > summary {
+  @apply cursor-pointer list-none opacity-80 hover:opacity-100;
+}
+.wiki-editor .wiki-prose details.wiki-image-description > summary::marker,
+.wiki-editor
+  .wiki-prose
+  details.wiki-image-description
+  > summary::-webkit-details-marker {
+  display: none;
+}
+.wiki-editor .wiki-prose details.wiki-image-description > summary::before {
+  content: '▸ ';
+}
+.wiki-editor
+  .wiki-prose
+  details[open].wiki-image-description
+  > summary::before {
+  content: '▾ ';
+}
+.wiki-editor .wiki-prose details.wiki-image-description > p {
+  @apply my-1 border-l-2 border-surface-200 pl-2 dark:border-surface-700;
 }
 
 /* image size (XS … XXL) — width relative to the content column */

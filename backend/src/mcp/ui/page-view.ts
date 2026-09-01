@@ -75,6 +75,48 @@ function linkifyWikilinks(root: HTMLElement) {
 }
 
 /**
+ * Turn every `<image-description>` marker into a collapsed caption under the
+ * image it belongs to.
+ *
+ * The marker is how a description travels through the page text (so search and
+ * an AI reader see it). For a HUMAN it is markup: dropped into the DOM as-is it
+ * would show up as a stray line of text under the picture. Folded into a
+ * `<details>` it is there when someone wants it and out of the way otherwise —
+ * the same deal as in the wiki's own editor.
+ */
+function renderImageDescriptions(root: HTMLElement) {
+  const images = [...root.querySelectorAll("img")];
+
+  for (const marker of [...root.querySelectorAll("image-description")]) {
+    const text = (marker.textContent ?? "").replace(/\s+/g, " ").trim();
+    const src = marker.getAttribute("src") ?? "";
+    const target =
+      images.find((img) => {
+        const name = wikiImageFilename(img.getAttribute("src") ?? "");
+        return name !== null && name === wikiImageFilename(src);
+      }) ??
+      // no match by path: the marker's own position is the next best anchor
+      (marker.previousElementSibling?.tagName === "IMG"
+        ? (marker.previousElementSibling as HTMLElement)
+        : null);
+
+    marker.remove();
+    if (!text) continue;
+
+    const details = document.createElement("details");
+    details.className = "image-description";
+    const summary = document.createElement("summary");
+    summary.textContent = "Image description";
+    const body = document.createElement("p");
+    body.textContent = text;
+    details.append(summary, body);
+
+    if (target) target.after(details);
+    else root.append(details);
+  }
+}
+
+/**
  * Extract `<uuid>.<ext>` from a wiki file URL — from either bucket that holds
  * page images: `…/files/db/knowledge/…` (editor upload) and
  * `…/files/db/images/…` (extracted from an imported document).
@@ -154,6 +196,7 @@ async function renderPage(page: PageData) {
 
   const html = await marked.parse(page.content ?? "", { async: true });
   articleEl.innerHTML = html;
+  renderImageDescriptions(articleEl);
   linkifyWikilinks(articleEl);
   void hydrateImages(page.id);
 }

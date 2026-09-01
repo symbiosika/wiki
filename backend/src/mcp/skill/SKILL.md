@@ -123,6 +123,25 @@ Bilder als `/files/db/<bucket>/<uuid>.<ext>`-Pfade ein.
     `get_page_outline`) nur einen Abschnitt zeigen. Bevorzuge das gegenüber
     `get_page`, wann immer der Nutzer die Seite **sehen** will.
 
+**Bildbeschreibungen.** Jede gelesene Seite listet ihre Bilder unter
+`embeddedImages` — `ref` (damit lädst du es) und, wo vorhanden, `description`:
+was auf dem Bild zu sehen ist. Dieselbe Beschreibung steht im Seitentext als
+`<image-description src="…">…` unter dem Bild und ist damit auch über
+`search_wiki` findbar (in Snippets als `[image: …]`).
+
+- Die Beschreibung ist **Seiteninhalt**: zitiere sie, antworte daraus, belege
+  sie wie jede andere Textstelle mit `path` / `[[Seite]]`.
+- Sie ersetzt das Bild **nicht**. Hängt die Antwort an einem Detail (ein Wert im
+  Schaltplan, eine Beschriftung auf dem Foto), lade das Bild trotzdem mit
+  `get_page_image` und sieh es an.
+- Ein Bild **ohne** `description` ist ungelesenes Wissen: ansehen, oder sagen,
+  dass du es nicht beurteilen kannst.
+- Wenn du weißt, was ein unbeschriebenes Bild zeigt, biete an, es zu
+  dokumentieren: `edit_page_content` und den Marker in die Zeile unter das Bild
+  setzen —
+  `<image-description src="/files/db/…/<uuid>.png">Kurzbeschreibung</image-description>`.
+  Eine Zeile, keine Zeilenumbrüche, beschreibe nur Sichtbares.
+
 ### 5. Antworten
 - Antwort **aus dem Wiki-Inhalt** formulieren, nicht paraphrasiertes Vorwissen.
 - **Belegen:** je Aussage die Quellseite nennen — als klickbaren Link
@@ -213,6 +232,7 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
 | Änderungsverlauf (kompakt) | `get_page_history` |
 | Alte Version in voller Länge | `get_page_version` |
 | **Bild ansehen (für dich)** | `get_page_image` |
+| **Was ist auf dem Bild?** | `embeddedImages[].description` der gelesenen Seite |
 | **Ein Bild dem Nutzer zeigen (groß/zoombar)** | `view_image` |
 | **Alle Bilder einer Seite zeigen (Galerie)** | `view_page_images` |
 | **Ganze Seite formatiert zeigen** | `view_page` (`anchor` für Abschnitt) |

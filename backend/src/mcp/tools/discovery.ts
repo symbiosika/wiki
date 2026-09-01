@@ -15,7 +15,12 @@ import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
 import { defineTool, READ_ONLY } from "./_define";
 import { callApi, tenantPath } from "../api";
-import { slimOverview, slimPageRow, slimPageRows } from "./_shapes";
+import {
+  compactSnippetImages,
+  slimOverview,
+  slimPageRow,
+  slimPageRows,
+} from "./_shapes";
 
 export const discoveryTools: McpToolDefinition[] = [
   defineTool(
@@ -126,6 +131,9 @@ export const discoveryTools: McpToolDefinition[] = [
           status: args.status,
           teamId: args.teamId,
         },
+        // a snippet is a small budget: an image in it becomes
+        // `[image: <description>]` instead of a 60-character uuid path
+        transform: compactSnippetImages,
       }),
   ),
 
