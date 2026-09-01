@@ -68,8 +68,8 @@ framework is affected.
 - `backend/src/lib/wiki/images.ts` resolves the bucket from the page's own
   reference and reads `PARSED_IMAGES_BUCKET` from the framework rather than
   keeping its own copy of the name.
-- `backend/src/lib/wiki/image-bucket-migration.ts` moves the images existing
-  imports already put in the parser bucket.
+- `backend/drizzle-sql/0010_consolidate_page_image_bucket.sql` moves the images
+  existing imports already put in the parser bucket, at deploy time.
 - `backend/src/lib/url-import/runner.ts` passes
   `imageBucket: KNOWLEDGE_FILES_BUCKET` for scheduled URL imports, which call
   `urlToMarkdown` directly instead of going through the importer. Landed

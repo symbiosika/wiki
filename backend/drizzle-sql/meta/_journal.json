@@ -71,6 +71,13 @@
       "when": 1788084975852,
       "tag": "0009_special_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788257253073,
+      "tag": "0010_consolidate_page_image_bucket",
+      "breakpoints": true
     }
   ]
 }

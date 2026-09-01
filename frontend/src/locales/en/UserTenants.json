@@ -146,13 +146,6 @@
     "backfillHint": "The pages are indexed one after another through the job queue. Depending on the number this takes a few minutes, and it can be triggered again at any time — pages that are already queued are skipped.",
     "backfillStarted": "Indexing started ({count} page(s) queued)"
   },
-  "imageBucket": {
-    "title": "Consolidate page images",
-    "description": "Images created while importing a document (PDF/URL) used to be stored in a separate area, where neither the page's file bookkeeping nor image access for AI assistants reaches them. This maintenance moves them to where page images live and updates the references.",
-    "run": "Consolidate images",
-    "hint": "Needed once, for this organisation. Safe to run again — a second run does nothing.",
-    "done": "Moved {files} image(s), updated {pages} page(s)."
-  },
   "logo": {
     "title": "Logo",
     "hint": "Shown at the top of the sidebar in place of the organisation name.",
@@ -182,7 +175,6 @@
     "brandingLoadFailed": "Failed to load colors",
     "brandingSaveFailed": "Failed to save colors",
     "embeddingSaveFailed": "AI search setting could not be saved",
-    "embeddingBackfillFailed": "Indexing could not be started",
-    "imageBucketMigrationFailed": "Failed to consolidate the images"
+    "embeddingBackfillFailed": "Indexing could not be started"
   }
 }

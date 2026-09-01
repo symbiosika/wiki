@@ -319,28 +319,6 @@
       </div>
     </section>
 
-    <!-- One-time maintenance: consolidate page images into one bucket -->
-    <section
-      v-if="isAdmin"
-      class="mt-8 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
-    >
-      <h2 class="text-lg font-semibold">
-        {{ $t('UserTenants.imageBucket.title') }}
-      </h2>
-      <p class="mt-1 mb-4 text-sm text-surface-500">
-        {{ $t('UserTenants.imageBucket.description') }}
-      </p>
-      <Button
-        size="small"
-        :label="$t('UserTenants.imageBucket.run')"
-        :loading="migratingImages"
-        @click="migrateImageBuckets"
-      />
-      <p class="mt-2 text-xs text-surface-400">
-        {{ $t('UserTenants.imageBucket.hint') }}
-      </p>
-    </section>
-
     <!-- Invite dialog -->
     <Dialog
       v-model:visible="inviteDialog"
@@ -770,7 +748,6 @@ const embedding = reactive<EmbeddingSettings>({
 const embeddingLoaded = ref(false)
 const savingEmbedding = ref(false)
 const startingBackfill = ref(false)
-const migratingImages = ref(false)
 
 const loadEmbeddingSettings = async () => {
   try {
@@ -848,36 +825,6 @@ const startBackfill = async () => {
     })
   } finally {
     startingBackfill.value = false
-  }
-}
-
-/**
- * Move page images that a document import left in the parser's bucket into the
- * bucket page images belong in. One-time maintenance, idempotent — pressing it
- * again after everything is moved reports zero and changes nothing.
- */
-const migrateImageBuckets = async () => {
-  migratingImages.value = true
-  try {
-    const result = await app.migrateWikiImageBuckets(tenantId.value)
-    toast.add({
-      severity: 'success',
-      summary: t('Common.success'),
-      detail: t('UserTenants.imageBucket.done', {
-        files: result.movedFiles,
-        pages: result.rewrittenPages,
-      }),
-      life: 5000,
-    })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: t('Common.error'),
-      detail: t('UserTenants.errors.imageBucketMigrationFailed'),
-      life: 3000,
-    })
-  } finally {
-    migratingImages.value = false
   }
 }
 

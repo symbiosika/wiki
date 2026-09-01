@@ -20,7 +20,6 @@ import { buildWikiTree } from "../../../../lib/wiki/tree";
 import { getPageTypeUsage } from "../../../../lib/wiki/page-type-usage";
 import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
-import { migrateParsedImagesIntoPageBucket } from "../../../../lib/wiki/image-bucket-migration";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -113,57 +112,6 @@ export default function defineWikiRoutes(
         console.error("Failed to count page type usage", error);
         return c.json(
           { success: false, error: "Failed to count page type usage" },
-          500
-        );
-      }
-    }
-  );
-
-  /**
-   * POST /tenant/:tenantId/wiki/images/migrate-bucket
-   *
-   * One-time maintenance: move page images that a document import left in the
-   * parser's own bucket into the bucket a page's images belong in, rewriting
-   * the references that point at them. Idempotent, and `{ dryRun: true }`
-   * reports what a real run would change without writing.
-   */
-  app.post(
-    `${baseRoute}/images/migrate-bucket`,
-    authAndSetUsersInfo,
-    checkUserPermission,
-    describeRoute({
-      tags: ["wiki"],
-      summary: "Consolidate page images into a single storage bucket",
-      responses: {
-        200: {
-          description: "What was moved and rewritten",
-          content: {
-            "application/json": {
-              schema: resolver(v.any()),
-            },
-          },
-        },
-      },
-    }),
-    validateScope("knowledge:write"),
-    validator("param", v.object({ tenantId: v.pipe(v.string(), v.uuid()) })),
-    validator(
-      "json",
-      v.optional(v.object({ dryRun: v.optional(v.boolean()) }), {})
-    ),
-    isTenantAdmin,
-    async (c) => {
-      const { tenantId } = c.req.valid("param");
-      const { dryRun } = c.req.valid("json");
-      try {
-        return c.json({
-          success: true,
-          data: await migrateParsedImagesIntoPageBucket(tenantId, { dryRun }),
-        });
-      } catch (error) {
-        console.error("Failed to migrate wiki image buckets", error);
-        return c.json(
-          { success: false, error: "Failed to migrate wiki image buckets" },
           500
         );
       }

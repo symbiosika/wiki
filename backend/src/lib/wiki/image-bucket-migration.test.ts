@@ -1,5 +1,14 @@
+/**
+ * The data migration that consolidates page images into one bucket
+ * (`drizzle-sql/0010_consolidate_page_image_bucket.sql`).
+ *
+ * The migration itself has already run against the empty test database by the
+ * time this file starts, so the SQL is loaded and executed again here, on
+ * fixtures. That doubles as the idempotency check the real deployment relies
+ * on: a second run must not duplicate reference rows or touch anything else.
+ */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   initTests,
   TEST_ORGANISATION_1,
@@ -17,7 +26,9 @@ import { saveFileToDb } from "@framework/lib/storage/db";
 import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { syncKnowledgeTextBlocks } from "@framework/lib/knowledge/knowledge-text-blocks";
 import { getWikiPageImage } from "./images";
-import { migrateParsedImagesIntoPageBucket } from "./image-bucket-migration";
+
+const MIGRATION_FILE =
+  `${import.meta.dir}/../../../drizzle-sql/0010_consolidate_page_image_bucket.sql`;
 
 const TENANT = TEST_ORGANISATION_1.id;
 const OWNER = TEST_ORG1_USER_1.id;
@@ -30,6 +41,19 @@ const PNG_BYTES = Uint8Array.from(
   ),
   (c) => c.charCodeAt(0)
 );
+
+/** Run the migration exactly as `drizzle-kit migrate` would. */
+const runMigration = async () => {
+  const file = await Bun.file(MIGRATION_FILE).text();
+  const statements = file
+    .split("--> statement-breakpoint")
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.replace(/--[^\n]*/g, "").trim().length > 0);
+  expect(statements.length).toBeGreaterThan(0);
+  for (const statement of statements) {
+    await getDb().execute(sql.raw(statement));
+  }
+};
 
 const createdPages: string[] = [];
 const createdFiles: string[] = [];
@@ -76,7 +100,18 @@ const textOf = async (pageId: string) => {
   return rows[0]!.text;
 };
 
-describe("wiki image bucket migration", () => {
+const referencesOf = async (pageId: string, fileId: string) =>
+  await getDb()
+    .select({ id: knowledgeTextFile.id })
+    .from(knowledgeTextFile)
+    .where(
+      and(
+        eq(knowledgeTextFile.knowledgeTextId, pageId),
+        eq(knowledgeTextFile.fileId, fileId)
+      )
+    );
+
+describe("page image bucket consolidation (data migration)", () => {
   beforeAll(async () => {
     await initTests();
   });
@@ -98,9 +133,8 @@ describe("wiki image bucket migration", () => {
     const image = await storeImage("images", "img-0.jpeg");
     const page = await createPage(`# Datenblatt\n\n![img-0.jpeg](${image.path})`);
 
-    const result = await migrateParsedImagesIntoPageBucket(TENANT);
+    await runMigration();
 
-    expect(result.movedFiles).toBeGreaterThanOrEqual(1);
     expect(await bucketOf(image.id)).toBe("knowledge");
     expect(await textOf(page.id)).toContain(
       `/files/db/knowledge/${image.filename}`
@@ -131,7 +165,7 @@ describe("wiki image bucket migration", () => {
       { historyCoalesceMinutes: 0 }
     );
 
-    await migrateParsedImagesIntoPageBucket(TENANT);
+    await runMigration();
 
     const blocks = await getDb()
       .select({ content: knowledgeTextBlock.content })
@@ -155,69 +189,56 @@ describe("wiki image bucket migration", () => {
     expect(JSON.stringify(history)).not.toContain("/files/db/images/");
 
     // the moved file is now tracked as a page reference (expiry, cleanup)
-    const refs = await getDb()
-      .select({ fileId: knowledgeTextFile.fileId })
-      .from(knowledgeTextFile)
-      .where(
-        and(
-          eq(knowledgeTextFile.knowledgeTextId, page.id),
-          eq(knowledgeTextFile.fileId, image.id)
-        )
-      );
-    expect(refs.length).toBe(1);
+    expect((await referencesOf(page.id, image.id)).length).toBe(1);
   });
 
-  test("is idempotent — a second run has nothing left to do", async () => {
+  test("is idempotent — running it again changes nothing", async () => {
     const image = await storeImage("images", "img-2.jpeg");
-    await createPage(`![img-2.jpeg](${image.path})`);
+    const page = await createPage(`![img-2.jpeg](${image.path})`);
 
-    const first = await migrateParsedImagesIntoPageBucket(TENANT);
-    expect(first.movedFiles).toBeGreaterThanOrEqual(1);
+    await runMigration();
+    const afterFirst = await textOf(page.id);
 
-    // Everything but `danglingReferences`: a dead reference stays reported on
-    // every run by design, and other suites share this test organisation.
-    const second = await migrateParsedImagesIntoPageBucket(TENANT);
-    expect(second.movedFiles).toBe(0);
-    expect(second.rewrittenPages).toBe(0);
-    expect(second.rewrittenBlocks).toBe(0);
-    expect(second.rewrittenVersions).toBe(0);
-    expect(second.addedReferences).toBe(0);
+    await runMigration();
+
+    expect(await textOf(page.id)).toBe(afterFirst);
+    expect(await bucketOf(image.id)).toBe("knowledge");
+    // no duplicate reference row from the second run
+    expect((await referencesOf(page.id, image.id)).length).toBe(1);
   });
 
-  test("dry run reports the work without writing anything", async () => {
-    const image = await storeImage("images", "img-3.jpeg");
-    const page = await createPage(`![img-3.jpeg](${image.path})`);
-
-    const result = await migrateParsedImagesIntoPageBucket(TENANT, {
-      dryRun: true,
-    });
-
-    expect(result.dryRun).toBe(true);
-    expect(result.movedFiles).toBeGreaterThanOrEqual(1);
-    expect(result.rewrittenPages).toBeGreaterThanOrEqual(1);
-    expect(await bucketOf(image.id)).toBe("images");
-    expect(await textOf(page.id)).toContain("/files/db/images/");
-  });
-
-  test("leaves a reference whose file is gone alone, and reports it", async () => {
+  test("does not invent a reference for a file that no longer exists", async () => {
     const missing = crypto.randomUUID();
     const page = await createPage(
       `![gone](/api/v1/tenant/${TENANT}/files/db/images/${missing}.jpeg)`
     );
 
-    const result = await migrateParsedImagesIntoPageBucket(TENANT);
+    await runMigration();
 
-    expect(result.danglingReferences).toBeGreaterThanOrEqual(1);
-    expect(await textOf(page.id)).toContain(`/files/db/images/${missing}`);
+    // the path is rewritten with everything else, but no reference row is
+    // created for a file that is not in the bucket
+    const refs = await getDb()
+      .select({ id: knowledgeTextFile.id })
+      .from(knowledgeTextFile)
+      .where(eq(knowledgeTextFile.knowledgeTextId, page.id));
+    expect(refs.length).toBe(0);
   });
 
-  test("does not touch images of another organisation", async () => {
-    const image = await storeImage("images", "img-4.jpeg");
-    await createPage(`![img-4.jpeg](${image.path})`);
+  test("clears the expiry of a file a page references", async () => {
+    const image = await storeImage("images", "img-3.jpeg");
+    await getDb()
+      .update(files)
+      .set({ expiresAt: new Date(Date.now() + 3_600_000).toISOString() })
+      .where(eq(files.id, image.id));
+    const page = await createPage(`![img-3.jpeg](${image.path})`);
 
-    const result = await migrateParsedImagesIntoPageBucket(crypto.randomUUID());
+    await runMigration();
 
-    expect(result.movedFiles).toBe(0);
-    expect(await bucketOf(image.id)).toBe("images");
+    const rows = await getDb()
+      .select({ expiresAt: files.expiresAt })
+      .from(files)
+      .where(eq(files.id, image.id));
+    expect(rows[0]!.expiresAt).toBeNull();
+    expect((await referencesOf(page.id, image.id)).length).toBe(1);
   });
 });
