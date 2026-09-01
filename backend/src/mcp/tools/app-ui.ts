@@ -82,7 +82,7 @@ async function fetchPageImage(
   if (!filename) {
     return fail(
       "Invalid image reference: pass the image filename (`<uuid>.<ext>`) or " +
-        "the full `/files/db/knowledge/…` path from the page content.",
+        "the full `/files/db/…` path from the page content.",
     );
   }
 
@@ -220,7 +220,7 @@ export const appUiTools: McpToolDefinition[] = [
         "Shows a single image embedded in a page to the user as a large, " +
         "zoomable view (click = fullscreen where the host supports it). " +
         "Pass the image reference exactly as it appears in the page content " +
-        "(`/files/db/knowledge/<uuid>.<ext>` or the bare filename), plus an " +
+        "(`/files/db/<bucket>/<uuid>.<ext>` or the bare filename), plus an " +
         "optional caption. Use `get_page_image` instead when YOU need to " +
         "look at the image; use this when the USER should see it nicely.",
       inputSchema: z.object({
@@ -229,7 +229,7 @@ export const appUiTools: McpToolDefinition[] = [
           .string()
           .describe(
             "The image reference from the page content: the " +
-              "`/files/db/knowledge/<uuid>.<ext>` path or the bare filename.",
+              "`/files/db/<bucket>/<uuid>.<ext>` path or the bare filename.",
           ),
         caption: z
           .string()
@@ -244,7 +244,7 @@ export const appUiTools: McpToolDefinition[] = [
       if (!filename) {
         return fail(
           "Invalid image reference: pass the image filename " +
-            "(`<uuid>.<ext>`) or the full `/files/db/knowledge/…` path from " +
+            "(`<uuid>.<ext>`) or the full `/files/db/…` path from " +
             "the page content.",
         );
       }
@@ -303,7 +303,7 @@ export const appUiTools: McpToolDefinition[] = [
         "Returns one image that is embedded in a page's content as an image " +
         "content block — so it can actually be looked at. Pass the page id " +
         "plus the image reference exactly as it appears in the content " +
-        "(the `/files/db/knowledge/<uuid>.<ext>` path or just the " +
+        "(the `/files/db/<bucket>/<uuid>.<ext>` path or just the " +
         "`<uuid>.<ext>` filename). Access requires read permission on the " +
         "page, and the page must reference the file.",
       inputSchema: z.object({
@@ -312,7 +312,7 @@ export const appUiTools: McpToolDefinition[] = [
           .string()
           .describe(
             "The image reference from the page content: the " +
-              "`/files/db/knowledge/<uuid>.<ext>` path or the bare filename.",
+              "`/files/db/<bucket>/<uuid>.<ext>` path or the bare filename.",
           ),
       }),
       annotations: READ_ONLY,

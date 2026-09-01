@@ -14,6 +14,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@framework/lib/db/db-connection";
 import { urlToMarkdown } from "@framework/lib/knowledge/parsing/url";
+import { KNOWLEDGE_FILES_BUCKET } from "@framework/lib/knowledge/knowledge-text-files";
 import { upsertKnowledgeTextFromSource } from "@framework/lib/knowledge/knowledge-text-sync";
 import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
@@ -225,12 +226,17 @@ export const executeJobRun = async (runId: string): Promise<void> => {
 
         // Pass the tenant context so non-HTML downloads (PDFs) can be routed
         // through the tenant-scoped PDF parser instead of being rejected.
+        // The images such a PDF yields belong to the page this import creates,
+        // so they go into the page image bucket rather than the parser's own —
+        // that is where the page's file bookkeeping and the page-scoped image
+        // endpoints (MCP clients without `files:read`) can reach them.
         const parsed = await urlToMarkdown(entry.url, {
           parseContext: {
             tenantId: job.tenantId,
             userId: job.createdBy ?? undefined,
             teamId: job.teamId ?? undefined,
           },
+          imageBucket: KNOWLEDGE_FILES_BUCKET,
         });
         const upsert = await upsertKnowledgeTextFromSource({
           tenantId: job.tenantId,

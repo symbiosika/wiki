@@ -183,6 +183,19 @@ describe("annotateEmbeddedImages", () => {
     expect(String(out.embeddedImagesHint)).toContain("get_page_image");
   });
 
+  test("lists images extracted from an imported document (images bucket)", () => {
+    const imported =
+      "/api/v1/tenant/t1/files/db/images/3885f189-5b63-4daf-8ea4-d981078039eb.jpeg";
+    const out = annotateEmbeddedImages({
+      id: "p1",
+      title: "Systemkatalog",
+      content: `## Zimmer-Funkruf über Funkbox\n\n![img-0.jpeg](${imported})`,
+    }) as Record<string, unknown>;
+    expect(out.embeddedImages).toEqual([
+      "/files/db/images/3885f189-5b63-4daf-8ea4-d981078039eb.jpeg",
+    ]);
+  });
+
   test("leaves pages without images untouched", () => {
     const page = { id: "p1", content: "plain text" };
     expect(annotateEmbeddedImages(page)).toBe(page);

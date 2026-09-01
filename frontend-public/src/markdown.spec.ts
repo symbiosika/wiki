@@ -52,6 +52,23 @@ describe('renderMarkdown — image rewriting', () => {
     expect(html).not.toContain('/files/db/knowledge/')
   })
 
+  it('points imported images (images bucket) at the same endpoint', () => {
+    const file = '3885f189-5b63-4daf-8ea4-d981078039eb.jpeg'
+    const html = renderMarkdown(`![img-0.jpeg](/files/db/images/${file})`, opts)
+    expect(html).toContain(
+      `/api/v1/public/wiki/${TENANT}/pages/${PAGE}/images/${file}`,
+    )
+    expect(html).not.toContain('/files/db/images/')
+  })
+
+  it('leaves images from other buckets alone', () => {
+    const html = renderMarkdown(
+      '![alt](/files/db/chat/44444444-4444-4444-4444-444444444444.png)',
+      opts,
+    )
+    expect(html).toContain('/files/db/chat/')
+  })
+
   it('leaves external images untouched', () => {
     const html = renderMarkdown('![alt](https://example.com/x.png)', opts)
     expect(html).toContain('https://example.com/x.png')

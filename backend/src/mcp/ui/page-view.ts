@@ -74,10 +74,14 @@ function linkifyWikilinks(root: HTMLElement) {
   }
 }
 
-/** Extract `<uuid>.<ext>` from a wiki file URL (`…/files/db/knowledge/…`). */
+/**
+ * Extract `<uuid>.<ext>` from a wiki file URL — from either bucket that holds
+ * page images: `…/files/db/knowledge/…` (editor upload) and
+ * `…/files/db/images/…` (extracted from an imported document).
+ */
 function wikiImageFilename(src: string): string | null {
   const m =
-    /\/files\/db\/knowledge\/([0-9a-f-]{36}\.[a-z0-9]{1,8})(?:[?#]|$)/i.exec(
+    /\/files\/db\/(?:knowledge|images)\/([0-9a-f-]{36}\.[a-z0-9]{1,8})(?:[?#]|$)/i.exec(
       src,
     );
   return m ? m[1]! : null;

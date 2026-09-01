@@ -6,7 +6,7 @@
  *   1. Sanitizing. The output goes into the DOM via `v-html`, and page content
  *      is authored by people, so scripts, event handlers and dangerous URL
  *      schemes are stripped first.
- *   2. Image rewriting. Pages embed images as `/files/db/knowledge/<uuid>.<ext>`,
+ *   2. Image rewriting. Pages embed images as `/files/db/<bucket>/<uuid>.<ext>`,
  *      a path that needs `files:read`. Public readers have no scopes at all, so
  *      those are rewritten to the per-page public image endpoint, which
  *      authorizes by "page is published AND references this file".
@@ -55,8 +55,13 @@ const isSafeUrl = (value: string | null): boolean => {
   return SAFE_URL.test(cleaned)
 }
 
-/** `/files/db/knowledge/<uuid>.<ext>` as embedded by the editor. */
-const KNOWLEDGE_IMAGE = /\/files\/db\/knowledge\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/i
+/**
+ * `/files/db/<bucket>/<uuid>.<ext>` as embedded in page content: "knowledge"
+ * for an editor upload, "images" for a picture a parsing service extracted
+ * from an imported PDF / URL. Both are served by the public image endpoint,
+ * which resolves the bucket from the page's own reference.
+ */
+const PAGE_IMAGE = /\/files\/db\/(?:knowledge|images)\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/i
 
 /** `[[Target]]` or `[[Target|alias]]`. */
 const WIKI_LINK = /^\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]$/
@@ -127,7 +132,7 @@ const sanitizeFragment = (root: DocumentFragment, options: RenderOptions): void 
 
       if (node.tagName === 'IMG') {
         const src = node.getAttribute('src') ?? ''
-        const image = KNOWLEDGE_IMAGE.exec(src)
+        const image = PAGE_IMAGE.exec(src)
         if (image) {
           node.setAttribute(
             'src',
