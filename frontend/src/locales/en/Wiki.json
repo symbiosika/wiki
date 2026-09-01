@@ -18,6 +18,15 @@
     "createFirst": "Create your first page"
   },
   "noPagesYet": "No pages yet",
+  "dashboard": {
+    "greeting": "Welcome back",
+    "greetingNamed": "Welcome back, {name}",
+    "subtitle": "Your recently edited pages and areas at a glance.",
+    "areas": "Areas you belong to",
+    "recent": "Recently updated",
+    "noRecent": "No pages edited yet.",
+    "pageCount": "{count} page | {count} pages"
+  },
   "import": {
     "button": "Import page",
     "title": "Import page",
@@ -78,17 +87,37 @@
   "info": {
     "button": "Info",
     "hint": "Show document details",
+    "pageType": "Page type",
+    "status": "Status",
+    "location": "Location",
     "scope": "Scope",
     "created": "Created",
     "updated": "Last edited",
     "verified": "Verified",
     "by": "by {name}"
   },
+  "public": {
+    "title": "Public",
+    "inherit": "Inherit from parent page",
+    "public": "Publish publicly",
+    "excluded": "Exclude from publishing",
+    "hintPublic": "This page and all its sub-pages are readable without a login.",
+    "hintExcluded": "This page and its sub-pages stay internal, even when a parent page is published.",
+    "hintInheritedPublic": "Readable without a login because a parent page is published.",
+    "hintInheritedInternal": "Visible internally only.",
+    "chipHint": "Publicly readable"
+  },
   "summary": {
     "button": "Summary",
     "hint": "Show the AI-generated page summary",
     "title": "Summary",
     "updated": "Generated {date}"
+  },
+  "toc": {
+    "button": "Contents",
+    "hint": "Show the table of contents",
+    "title": "Table of contents",
+    "empty": "Add headings (H1, H2, H3) to build a table of contents."
   },
   "references": {
     "backlinks": "Linked from",
@@ -121,8 +150,8 @@
     "organisation": "Organisation"
   },
   "pageType": {
-    "empty": "Classify",
-    "hint": "Choose the page classification",
+    "empty": "Choose page type",
+    "hint": "Choose the page type",
     "values": {
       "FAQ": "FAQ",
       "manual": "Manual",
@@ -161,6 +190,7 @@
   "switchTenant": "Switch organisation",
   "collapseSidebar": "Hide sidebar",
   "expandSidebar": "Show sidebar",
+  "resizeSidebar": "Resize sidebar",
   "expandActions": "Show more actions",
   "collapseActions": "Hide more actions"
 }

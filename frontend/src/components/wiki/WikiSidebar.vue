@@ -10,16 +10,25 @@
         class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-100 active:bg-surface-100 dark:hover:bg-surface-800 dark:active:bg-surface-800"
         @click="goHome"
       >
-        <span
-          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
-        >
-          {{ tenantInitial }}
-        </span>
-        <span
-          class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
-        >
-          {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
-        </span>
+        <!-- a cropped organisation logo replaces the initial + name lockup -->
+        <img
+          v-if="logoSrc"
+          :src="logoSrc"
+          :alt="app.currentTenant?.name ?? $t('Wiki.appName')"
+          class="max-h-11 max-w-full shrink object-contain"
+        />
+        <template v-else>
+          <span
+            class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
+          >
+            {{ tenantInitial }}
+          </span>
+          <span
+            class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
+          >
+            {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
+          </span>
+        </template>
       </button>
 
       <!--
@@ -100,6 +109,27 @@
         </a>
       </template>
     </Menu>
+
+    <!--
+      "Fragen": the plain-language chat view. Sits above the search box because
+      asking a question is the other half of finding something — and it is the
+      entry point people who do not know the wiki structure reach for first.
+    -->
+    <div class="px-3 pt-1 pb-1">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors lg:py-1.5"
+        :class="
+          isAskRoute
+            ? 'bg-primary/10 text-primary'
+            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+        "
+        @click="gotoAsk"
+      >
+        <IconChat class="h-4 w-4 shrink-0" />
+        <span class="truncate text-sm font-medium">{{ $t('Ask.menu') }}</span>
+      </button>
+    </div>
 
     <!-- search -->
     <div class="relative px-3 py-2 pt-1">
@@ -256,8 +286,8 @@
           "
         >
           <img
-            v-if="app.state.user?.profileImageName"
-            :src="profileImageUrl"
+            v-if="app.state.user?.profileImageName && profileImageSrc"
+            :src="profileImageSrc"
             alt=""
             class="h-full w-full object-cover"
           />
@@ -323,8 +353,11 @@
         </span>
       </button>
 
-      <!-- log out, pinned to the right edge -->
+      <!-- log out, pinned to the right edge. Hidden where signing out has no
+           meaning: in a Teams tab the identity comes from the host, so a sign-out
+           would be followed by an immediate silent sign-in. -->
       <button
+        v-if="auth.canLogout"
         type="button"
         :title="$t('Wiki.logout')"
         class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 active:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
@@ -338,9 +371,10 @@
 
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
-import IconChat from '~icons/mdi/robot-happy-outline'
+import IconChat from '~icons/mdi/message-text-outline'
 import IconMicrophone from '~icons/mdi/microphone'
 import IconInbox from '~icons/mdi/inbox-arrow-down-outline'
 import IconLogout from '~icons/mdi/logout'
@@ -378,10 +412,23 @@ const tenantId = computed(() => String(route.params.tenantId ?? ''))
 watch(
   tenantId,
   (id) => {
-    if (id) wiki.loadTree(id)
+    if (id) {
+      wiki.loadTree(id)
+      // The tree rows show the icon configured for a page's type, so the
+      // knowledge config is needed here too — not only once a page is open.
+      // `loadConfig` is a no-op when it is already cached.
+      void wiki.loadConfig(id)
+      app.loadTenantLogoInfo(id)
+    }
   },
   { immediate: true },
 )
+
+/** cropped organisation logo for the current tenant (null when none set) */
+const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
+// Resolved through the fetcher so the logo also loads with a bearer session
+// (Teams tab); outside Teams this is the plain URL.
+const logoSrc = useAuthenticatedImage(() => logoUrl.value)
 
 // ----- header: organisation ------------------------------------------------
 
@@ -578,11 +625,20 @@ const gotoProfile = () => {
   router.push({ name: 'Profile', params: { tenantId: tenantId.value } })
 }
 
-const profileImageUrl = '/api/v1/user/profile-image'
+const profileImageSrc = useAuthenticatedImage(() =>
+  app.state.user?.profileImageName ? '/api/v1/user/profile-image' : null,
+)
 
 const isNotificationsActive = computed(
   () => String(route.name ?? '') === 'Notifications',
 )
+
+const isAskRoute = computed(() => String(route.name ?? '') === 'Ask')
+
+const gotoAsk = () => {
+  layout.closeSidebar()
+  router.push({ name: 'Ask', params: { tenantId: tenantId.value } })
+}
 
 const gotoNotifications = () => {
   router.push({ name: 'Notifications', params: { tenantId: tenantId.value } })

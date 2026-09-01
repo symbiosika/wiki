@@ -10,6 +10,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import {
@@ -17,9 +18,47 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-valibot";
+import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { PREFIX } from "./index";
 
 export const pgBaseTable = pgTableCreator((name: string) => `${PREFIX}${name}`);
+
+/** Raw binary column (Postgres `bytea`), used to store small uploaded blobs. */
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Organisation logos
+//
+// One optional logo per organisation (tenant), shown in the app header. The
+// framework owns the `tenants` table (in the submodule) and can't be extended
+// from the app, so the logo lives here as an app-side table keyed 1:1 by the
+// organisation id. The image is cropped client-side to the header aspect ratio
+// before upload and stored as-is (PNG, so transparent corners survive).
+// ---------------------------------------------------------------------------
+
+export const organisationLogos = pgBaseTable("organisation_logos", {
+  /** the tenant this logo belongs to — one logo per organisation */
+  tenantId: uuid("tenant_id").primaryKey(),
+  image: bytea("image").notNull(),
+  contentType: text("content_type").notNull(),
+  fileName: text("file_name").notNull(),
+  createdAt: timestamp("created_at", { mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const organisationLogoSelectSchema =
+  createSelectSchema(organisationLogos);
+
+export type OrganisationLogoSelect = typeof organisationLogos.$inferSelect;
+export type OrganisationLogoInsert = typeof organisationLogos.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // URL batch-import jobs
@@ -49,7 +88,7 @@ export const urlImportJobs = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     name: text("name").notNull(),
     /** standard 5-field Linux cron expression */
     cron: text("cron").notNull(),
@@ -71,7 +110,7 @@ export const urlImportJobs = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("url_import_jobs_org_idx").on(table.organisationId),
+    index("url_import_jobs_tenant_idx").on(table.tenantId),
     index("url_import_jobs_enabled_idx").on(table.enabled),
   ],
 );
@@ -85,7 +124,7 @@ export const urlImportJobUrls = pgBaseTable(
     jobId: uuid("job_id")
       .notNull()
       .references(() => urlImportJobs.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     url: text("url").notNull(),
     /** optional title override (otherwise the parsed page title is used) */
     title: text("title"),
@@ -124,7 +163,7 @@ export const urlImportJobRuns = pgBaseTable(
     jobId: uuid("job_id")
       .notNull()
       .references(() => urlImportJobs.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /** "manual" | "scheduled" */
     trigger: text("trigger").notNull(),
     status: text("status").notNull().default("running"),
@@ -218,7 +257,7 @@ export const postProcessingAgents = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /** display name, unique per organisation */
     name: text("name").notNull(),
     /** shown in pickers */
@@ -239,9 +278,9 @@ export const postProcessingAgents = pgBaseTable(
       .defaultNow(),
   },
   (table) => [
-    index("post_processing_agents_org_idx").on(table.organisationId),
-    uniqueIndex("post_processing_agents_org_name_idx").on(
-      table.organisationId,
+    index("post_processing_agents_tenant_idx").on(table.tenantId),
+    uniqueIndex("post_processing_agents_tenant_name_idx").on(
+      table.tenantId,
       table.name,
     ),
   ],
@@ -270,7 +309,7 @@ export type PostProcessingAgentInsert =
 // trajectories/judge reports are large, the UI drills down per question, and
 // per-question time series need `WHERE question_id = …`.
 //
-// Everything is scoped by organisationId (== tenantId). A run executes with
+// Everything is scoped by tenantId (== tenantId). A run executes with
 // the permissions of the user who started it, so it only ever sees the wiki
 // pages that user can see.
 // ---------------------------------------------------------------------------
@@ -308,7 +347,7 @@ export const aiTestSuites = pgBaseTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     name: text("name").notNull(),
     description: text("description"),
     /** optional OpenRouter model override for the *judge* (never the chat agent) */
@@ -326,7 +365,7 @@ export const aiTestSuites = pgBaseTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("ai_test_suites_org_idx").on(table.organisationId)],
+  (table) => [index("ai_test_suites_tenant_idx").on(table.tenantId)],
 );
 
 export const aiTestQuestions = pgBaseTable(
@@ -338,7 +377,7 @@ export const aiTestQuestions = pgBaseTable(
     suiteId: uuid("suite_id")
       .notNull()
       .references(() => aiTestSuites.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     question: text("question").notNull(),
     /** one of AI_TEST_QUESTION_TYPES */
     type: text("type").notNull().default("answerable"),
@@ -373,7 +412,7 @@ export const aiTestRuns = pgBaseTable(
     suiteId: uuid("suite_id")
       .notNull()
       .references(() => aiTestSuites.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     status: text("status").notNull().default("running"),
     /** the user whose permissions the run executes with (required) */
     startedBy: uuid("started_by").notNull(),
@@ -412,7 +451,7 @@ export const aiTestResults = pgBaseTable(
     runId: uuid("run_id")
       .notNull()
       .references(() => aiTestRuns.id, { onDelete: "cascade" }),
-    organisationId: uuid("organisation_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
     /**
      * The question this result came from. `set null` + a text snapshot below
      * so a per-question time series survives the question being edited or
@@ -591,3 +630,342 @@ export type AiTestQuestionSelect = typeof aiTestQuestions.$inferSelect;
 export type AiTestQuestionInsert = typeof aiTestQuestions.$inferInsert;
 export type AiTestRunSelect = typeof aiTestRuns.$inferSelect;
 export type AiTestResultSelect = typeof aiTestResults.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Chat sessions ("Fragen" view)
+//
+// The wiki-assistant slide-over is stateless: closing it drops the
+// conversation. The dedicated chat view instead keeps named sessions per user,
+// the way a consumer chat app does — pick one up later, rename it, delete it.
+//
+// A session belongs to exactly one user inside one organisation; there is no
+// sharing. Messages are stored as AI-SDK UIMessage `parts` (text + tool calls)
+// so a reopened session renders exactly like the live stream did, and can be
+// handed back to the model unchanged.
+// ---------------------------------------------------------------------------
+
+export const chatSessions = pgBaseTable(
+  "chat_sessions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    /** owner — sessions are private to the user who created them */
+    userId: uuid("user_id").notNull(),
+    /** derived from the first question; NULL until that message arrives */
+    title: text("title"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+    /** bumped on every stored message — the list is ordered by this */
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_sessions_tenant_user_idx").on(
+      table.tenantId,
+      table.userId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const chatMessages = pgBaseTable(
+  "chat_messages",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => chatSessions.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * The AI-SDK message id as generated on the client. Stable across the
+     * request that streams the answer and the follow-up requests that resend
+     * the history, which is what makes saving a conversation an upsert instead
+     * of an append (and keeps a retried request from duplicating rows).
+     */
+    messageId: text("message_id").notNull(),
+    /** "user" | "assistant" | "system" */
+    role: text("role").notNull(),
+    /** UIMessage.parts — text, tool calls and their results */
+    parts: jsonb("parts").notNull(),
+    /** position in the conversation; ordering key (createdAt can tie) */
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_messages_session_idx").on(table.sessionId, table.position),
+    uniqueIndex("chat_messages_session_message_idx").on(
+      table.sessionId,
+      table.messageId,
+    ),
+  ],
+);
+
+export const chatSessionsRelations = relations(chatSessions, ({ many }) => ({
+  messages: many(chatMessages),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  session: one(chatSessions, {
+    fields: [chatMessages.sessionId],
+    references: [chatSessions.id],
+  }),
+}));
+
+export const chatSessionSelectSchema = createSelectSchema(chatSessions);
+export const chatMessageSelectSchema = createSelectSchema(chatMessages);
+
+export type ChatSessionSelect = typeof chatSessions.$inferSelect;
+export type ChatSessionInsert = typeof chatSessions.$inferInsert;
+export type ChatMessageSelect = typeof chatMessages.$inferSelect;
+export type ChatMessageInsert = typeof chatMessages.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Collections — typed tables as wiki pages
+//
+// A collection is a wiki page whose body is a table instead of prose: the user
+// defines a handful of typed columns (Airtable-lite) and adds records. Think
+// "Vereinsmitglieder", "aktuelle Angebote", "Hauptprodukte".
+//
+// The design rule is that a collection IS a page, not a sibling concept:
+// `knowledgeTextId` is a 1:1 FK to the knowledge_text row, and the page's title
+// is the collection's name (one source of truth, renamed in the normal page UI).
+// Everything the wiki already does then applies without a second
+// implementation — personal/team/organisation visibility, the page tree,
+// public publishing, backlinks, search. Read access is enforced by calling the
+// framework's getKnowledgeTextById() on the anchor page, write access by
+// checkKnowledgeTextWritePermission(); see lib/collections/store.ts.
+//
+// Records are jsonb, not real columns. Adding, retyping or dropping a column is
+// then an UPDATE instead of runtime DDL — which in a multi-tenant deployment
+// with a migration pipeline is the difference between a feature and an
+// incident. Up to ~10k records per collection this costs nothing: the row set
+// is bounded per collection and reached through an indexed collection_id.
+// ---------------------------------------------------------------------------
+
+/**
+ * Column types. Deliberately small — every entry here is a UI editor, a
+ * validator, a filter and a markdown renderer that has to exist and be tested.
+ * Relation types (link to a wiki page / a user) are the intended next step.
+ */
+export const COLLECTION_FIELD_TYPES = [
+  "text",
+  "longText",
+  "number",
+  "checkbox",
+  "date",
+  "select",
+  "multiSelect",
+  "url",
+  "email",
+] as const;
+
+export type CollectionFieldType = (typeof COLLECTION_FIELD_TYPES)[number];
+
+/** One choice of a select / multiSelect field. */
+export interface CollectionFieldChoice {
+  value: string;
+  /** optional colour token for the chip, e.g. "emerald" */
+  color?: string;
+}
+
+/** Per-field configuration; only some keys apply to some types. */
+export interface CollectionFieldOptions {
+  /** select / multiSelect */
+  choices?: CollectionFieldChoice[];
+  /** number: decimal places (0 = integer) */
+  precision?: number;
+  /** number: rendered suffix, e.g. "€" or "kg" */
+  suffix?: string;
+}
+
+/** Collection-level settings. */
+export interface CollectionSettings {
+  /**
+   * Field key used as the record's label (in dialogs, delete confirmations and
+   * the materialized markdown). Falls back to the first field.
+   */
+  titleFieldKey?: string;
+  /** Default sort applied when no user sort is active. */
+  defaultSort?: { key: string; direction: "asc" | "desc" };
+  /**
+   * Mirror the table into the page body as a markdown table so search, the RAG
+   * index, the MCP read tools and the public view see the data.
+   *
+   * Off by default: a collection may hold personal data (members, contacts),
+   * and materializing pushes it into the embedding pipeline and — below a
+   * published page — the public site. Opting in is a deliberate act.
+   */
+  materialize?: boolean;
+}
+
+export const collections = pgBaseTable(
+  "collections",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * The wiki page this collection lives on. Unique (1:1) and cascading: the
+     * page owns the collection, so deleting the page takes the schema and all
+     * records with it and never leaves orphans behind.
+     */
+    knowledgeTextId: uuid("knowledge_text_id")
+      .notNull()
+      .unique()
+      .references(() => knowledgeText.id, { onDelete: "cascade" }),
+    /**
+     * The table's own name. Optional: when unset the anchor page's title is
+     * used, which is right for a page that *is* the table ("Vereinsmitglieder").
+     * It exists because the two are not always the same thing — a page called
+     * "Mitglieder" can hold a table named "Aktive 2026" — and because the API
+     * and the MCP tools need something meaningful to address a table by. A
+     * page still titled "Ohne Titel" would otherwise show up nameless to an
+     * agent. Resolved for callers as `displayName` (see lib/collections/store).
+     */
+    name: text("name"),
+    /** shown under the name as the table's caption */
+    description: text("description"),
+    settings: jsonb("settings")
+      .$type<CollectionSettings>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("collections_tenant_idx").on(table.tenantId)],
+);
+
+export const collectionFields = pgBaseTable(
+  "collection_fields",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /**
+     * Stable identifier used as the jsonb key in collection_records.data.
+     * Generated from the label on creation and never changed afterwards, so
+     * renaming a column does not have to rewrite every record.
+     */
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    /** one of COLLECTION_FIELD_TYPES */
+    type: text("type").$type<CollectionFieldType>().notNull().default("text"),
+    options: jsonb("options")
+      .$type<CollectionFieldOptions>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    required: boolean("required").notNull().default(false),
+    /**
+     * Column order. A plain integer, renumbered on reorder — a fractional index
+     * (as the page tree uses) buys nothing for the ~5-20 columns a collection
+     * realistically has.
+     */
+    position: integer("position").notNull().default(0),
+    /** hidden columns stay in the data, they are just not rendered */
+    hidden: boolean("hidden").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("collection_fields_collection_idx").on(
+      table.collectionId,
+      table.position,
+    ),
+    uniqueIndex("collection_fields_collection_key_idx").on(
+      table.collectionId,
+      table.key,
+    ),
+  ],
+);
+
+export const collectionRecords = pgBaseTable(
+  "collection_records",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionId: uuid("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /** field key → value, validated against collection_fields on every write */
+    data: jsonb("data")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    /** manual row order; new records are appended */
+    position: integer("position").notNull().default(0),
+    createdBy: uuid("created_by"),
+    updatedBy: uuid("updated_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("collection_records_collection_idx").on(
+      table.collectionId,
+      table.position,
+    ),
+    index("collection_records_data_idx").using("gin", table.data),
+  ],
+);
+
+// ---- relations --------------------------------------------------------------
+
+export const collectionsRelations = relations(collections, ({ many }) => ({
+  fields: many(collectionFields),
+  records: many(collectionRecords),
+}));
+
+export const collectionFieldsRelations = relations(
+  collectionFields,
+  ({ one }) => ({
+    collection: one(collections, {
+      fields: [collectionFields.collectionId],
+      references: [collections.id],
+    }),
+  }),
+);
+
+export const collectionRecordsRelations = relations(
+  collectionRecords,
+  ({ one }) => ({
+    collection: one(collections, {
+      fields: [collectionRecords.collectionId],
+      references: [collections.id],
+    }),
+  }),
+);
+
+// ---- valibot schemas + types ------------------------------------------------
+
+export const collectionSelectSchema = createSelectSchema(collections);
+export const collectionFieldSelectSchema = createSelectSchema(collectionFields);
+export const collectionRecordSelectSchema =
+  createSelectSchema(collectionRecords);
+
+export type CollectionSelect = typeof collections.$inferSelect;
+export type CollectionInsert = typeof collections.$inferInsert;
+export type CollectionFieldSelect = typeof collectionFields.$inferSelect;
+export type CollectionFieldInsert = typeof collectionFields.$inferInsert;
+export type CollectionRecordSelect = typeof collectionRecords.$inferSelect;
+export type CollectionRecordInsert = typeof collectionRecords.$inferInsert;

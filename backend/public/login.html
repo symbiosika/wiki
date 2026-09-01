@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Anmeldung - Symbiosika Wiki</title>
+    <!-- The app name is appended by /app-info.js (public /api/v1/app-info) -->
+    <title>Anmeldung</title>
     <link rel="icon" href="/favicon.png" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app-info.js" defer></script>
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
@@ -13,7 +15,10 @@
         <!-- Login card -->
         <div id="email-form" class="card p-8">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -45,6 +50,25 @@
                 Weiter
               </button>
             </form>
+
+            <!--
+              Microsoft 365 sign-in. Hidden until GET /api/v1/user/oauth-providers
+              reports the provider as active, so instances without an Entra app
+              show the plain e-mail login and nothing else. Additional to the
+              magic link, never a replacement.
+            -->
+            <div id="oauth-microsoft" class="hidden">
+              <div class="divider"><span>oder</span></div>
+              <button type="button" id="microsoft-login-btn" class="btn btn-oauth">
+                <svg class="btn-icon" viewBox="0 0 23 23" aria-hidden="true">
+                  <path fill="#f25022" d="M1 1h10v10H1z" />
+                  <path fill="#7fba00" d="M12 1h10v10H12z" />
+                  <path fill="#00a4ef" d="M1 12h10v10H1z" />
+                  <path fill="#ffb900" d="M12 12h10v10H12z" />
+                </svg>
+                Mit Microsoft 365 anmelden
+              </button>
+            </div>
           </div>
 
           <!-- Step 2: Anmeldeart wählen -->
@@ -55,8 +79,7 @@
               <button
                 type="button"
                 id="change-email-btn"
-                class="ml-1 underline cursor-pointer"
-                style="color: var(--p-primary-500); background: none; border: none; padding: 0; font-size: inherit;"
+                class="link ml-1"
               >
                 ändern
               </button>
@@ -71,6 +94,49 @@
             </button>
 
             <p id="method-hint" class="text-muted text-xs text-center"></p>
+          </div>
+
+          <!--
+            Step 3 (only after a social login): the provider verified the
+            identity, but this instance gates sign-ups behind an invitation
+            code and this address has none yet. The verified profile waits in a
+            short-lived HttpOnly cookie set by the callback, so only the code is
+            missing – see GET/POST /api/v1/user/oauth/…-registration.
+          -->
+          <div id="step-invitation" class="space-y-6 hidden">
+            <p class="text-muted text-sm text-center">
+              Die Anmeldung mit
+              <strong id="invitation-email" class="text-primary"></strong>
+              hat funktioniert. Für dieses Konto liegt noch keine Einladung vor –
+              bitte geben Sie Ihren Einladungscode ein, um die Registrierung
+              abzuschließen.
+            </p>
+
+            <form id="invitation-form" class="space-y-6">
+              <div>
+                <label for="invitation-code" class="block text-sm font-medium text-primary mb-2">
+                  Einladungscode
+                </label>
+                <input
+                  type="text"
+                  id="invitation-code"
+                  name="invitation-code"
+                  required
+                  class="input"
+                  placeholder="Ihr Einladungscode"
+                  autocomplete="one-time-code"
+                />
+              </div>
+
+              <button type="submit" id="invitation-submit-btn" class="btn btn-primary">
+                Registrierung abschließen
+              </button>
+            </form>
+
+            <p class="text-muted text-xs text-center">
+              Kein Code? Bitten Sie eine Administratorin oder einen Administrator
+              Ihrer Organisation um eine Einladung.
+            </p>
           </div>
         </div>
 
@@ -97,7 +163,10 @@
         <!-- Token Verification (Loading) -->
         <div id="verification" class="card p-8 hidden">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">
               Anmeldung
             </h1>
@@ -219,6 +288,128 @@
       const changeEmailBtn = document.getElementById('change-email-btn');
       const methodEmailLabel = document.getElementById('method-email-label');
       const methodHint = document.getElementById('method-hint');
+      const oauthMicrosoft = document.getElementById('oauth-microsoft');
+      const microsoftLoginBtn = document.getElementById('microsoft-login-btn');
+      const stepInvitation = document.getElementById('step-invitation');
+      const invitationForm = document.getElementById('invitation-form');
+      const invitationCodeInput = document.getElementById('invitation-code');
+      const invitationSubmitBtn = document.getElementById('invitation-submit-btn');
+      const invitationEmailLabel = document.getElementById('invitation-email');
+
+      // German wording for the error codes the framework's social login
+      // appends to this page's URL (see routes/user/public.ts)
+      const OAUTH_ERRORS = {
+        oauth_unavailable: 'Die Anmeldung mit Microsoft 365 ist auf diesem Server nicht aktiv.',
+        oauth_cancelled: 'Die Anmeldung mit Microsoft 365 wurde abgebrochen.',
+        oauth_failed: 'Die Anmeldung mit Microsoft 365 ist fehlgeschlagen. Bitte erneut versuchen oder den Anmeldelink per E-Mail nutzen.',
+      };
+
+      // Show the Microsoft button only where the server has the provider
+      // configured. Failing silently is intended: without the button the
+      // e-mail login remains fully usable.
+      async function initOAuthProviders() {
+        try {
+          const response = await fetch('/api/v1/user/oauth-providers', {
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) return;
+
+          const providers = await response.json();
+          if (providers && providers.microsoft) {
+            oauthMicrosoft.classList.remove('hidden');
+          }
+        } catch (error) {
+          /* provider probe failed – keep the e-mail login only */
+        }
+      }
+
+      microsoftLoginBtn.addEventListener('click', () => {
+        const { redirect } = parseQueryString();
+        microsoftLoginBtn.disabled = true;
+        window.location.href =
+          '/api/v1/user/auth/microsoft?redirectUrl=' + encodeURIComponent(redirect);
+      });
+
+      // A social login that needs an invitation code sends the browser back
+      // here with `?provider=…`. Whether a sign-up is really waiting is decided
+      // by the server: the verified profile lives in an HttpOnly cookie this
+      // page cannot read, so we simply ask for it. 401 means nothing is pending
+      // (expired, or somebody just opened the URL) – then the normal login
+      // stays on screen.
+      async function showInvitationStepIfPending() {
+        try {
+          const response = await fetch('/api/v1/user/oauth/pending-registration', {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) return false;
+
+          const pending = await response.json();
+          invitationEmailLabel.textContent = pending.email;
+          hideElement('step-email');
+          hideElement('step-method');
+          showElement('step-invitation');
+          invitationCodeInput.focus();
+          return true;
+        } catch (error) {
+          /* server unreachable – leave the normal login in place */
+          return false;
+        }
+      }
+
+      // Second attempt of that sign-up, now with a code: the account is created
+      // and the auth cookies are set by the server.
+      invitationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = invitationCodeInput.value.trim();
+
+        if (!code) {
+          showToast('Bitte geben Sie Ihren Einladungscode ein', 'error');
+          return;
+        }
+
+        invitationSubmitBtn.disabled = true;
+        invitationSubmitBtn.textContent = 'Wird geprüft...';
+
+        try {
+          const response = await fetch('/api/v1/user/oauth/complete-registration', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invitationCode: code }),
+          });
+
+          if (response.status === 401) {
+            // The pending sign-up expired – the whole round-trip has to be redone.
+            hideElement('step-invitation');
+            showElement('step-email');
+            showToast(
+              'Die Anmeldung ist abgelaufen. Bitte melden Sie sich erneut an.',
+              'error'
+            );
+            return;
+          }
+
+          if (!response.ok) {
+            // A wrong code stays retryable: the pending sign-up is kept.
+            showToast('Der Einladungscode ist ungültig.', 'error');
+            invitationSubmitBtn.disabled = false;
+            invitationSubmitBtn.textContent = 'Registrierung abschließen';
+            return;
+          }
+
+          const result = await response.json();
+          showToast('Registrierung erfolgreich', 'success');
+          setTimeout(() => {
+            const { redirect } = parseQueryString();
+            window.location.href = result.redirect || redirect || '/static/app/';
+          }, 1500);
+        } catch (error) {
+          showToast('Der Server ist nicht erreichbar.', 'error');
+          invitationSubmitBtn.disabled = false;
+          invitationSubmitBtn.textContent = 'Registrierung abschließen';
+        }
+      });
 
       // The e-mail address the user is currently signing in with
       let currentEmail = '';
@@ -450,14 +641,32 @@
       (async () => {
         const { token, redirect, email } = parseQueryString();
 
+        // Report a failed Microsoft round-trip before anything else
+        const oauthError = new URLSearchParams(window.location.search).get('error');
+        if (oauthError && OAUTH_ERRORS[oauthError]) {
+          showToast(OAUTH_ERRORS[oauthError], 'error');
+        }
+
+        initOAuthProviders();
+
+        // Coming back from a social login that requires an invitation code
+        // (`oauthInvitationCodeUrl` in defineServer points here).
+        const oauthProvider = new URLSearchParams(window.location.search).get('provider');
+        if (oauthProvider && !token) {
+          showElement('email-form');
+          if (await showInvitationStepIfPending()) {
+            return;
+          }
+        }
+
         // Prefill email from URL (invitation links) and lock the field
         if (email) {
           if (emailInput) {
             emailInput.value = email;
             emailInput.readOnly = true;
             emailInput.setAttribute('aria-readonly', 'true');
-            emailInput.style.background = 'var(--p-surface-100)';
-            emailInput.style.cursor = 'not-allowed';
+            // Styling comes from `.input[readonly]` in styles.css – inline
+            // colours here would break in dark mode.
           }
           // The address is fixed by the invitation link – hide "ändern"
           if (changeEmailBtn) {

@@ -6,6 +6,7 @@
     <title>Anmeldung</title>
     <link rel="icon" href="/favicon.png" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app-info.js" defer></script>
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
@@ -14,7 +15,10 @@
         <!-- Loading -->
         <div id="loading" class="card p-8">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">Anmeldung wird abgeschlossen…</h1>
             <p class="text-muted">Bitte warten Sie einen Moment.</p>
           </div>
@@ -26,7 +30,10 @@
         <!-- Success -->
         <div id="success" class="card p-8 hidden">
           <div class="text-center">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <div class="icon-circle success">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -40,7 +47,10 @@
         <!-- Error -->
         <div id="error" class="card p-8 hidden">
           <div class="text-center">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <div class="icon-circle error">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -75,40 +85,31 @@
         }, type === 'success' ? 2500 : 4000);
       }
 
-      (async () => {
+      (() => {
         const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
         const redirect = params.get('redirectUrl') || '/static/app/';
 
-        if (!token) {
+        // Nothing to exchange here any more: the callback route
+        // (/api/v1/user/auth/<provider>/callback) has already set the HttpOnly
+        // `jwt` cookie plus the non-HttpOnly `jwt_present` marker, so the
+        // session token never travels through a URL. This page only confirms
+        // the login and forwards.
+        const signedIn = document.cookie
+          .split(';')
+          .some((entry) => entry.trim().startsWith('jwt_present='));
+
+        if (!signedIn) {
           hideEl('loading');
           showEl('error');
-          document.getElementById('error-text').textContent = 'Kein Token gefunden. Bitte versuchen Sie die Anmeldung erneut.';
+          document.getElementById('error-text').textContent =
+            'Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.';
           return;
         }
 
-        try {
-          const res = await fetch('/api/v1/user/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: '', password: '', magicLinkToken: token }),
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || 'Anmeldung fehlgeschlagen');
-          }
-
-          hideEl('loading');
-          showEl('success');
-          showToast('Anmeldung erfolgreich', 'success');
-          setTimeout(() => { window.location.href = redirect; }, 2000);
-        } catch (err) {
-          hideEl('loading');
-          showEl('error');
-          document.getElementById('error-text').textContent = err.message || 'Anmeldung fehlgeschlagen';
-          showToast('Anmeldung fehlgeschlagen', 'error');
-        }
+        hideEl('loading');
+        showEl('success');
+        showToast('Anmeldung erfolgreich', 'success');
+        setTimeout(() => { window.location.href = redirect; }, 1200);
       })();
     </script>
   </body>

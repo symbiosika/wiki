@@ -12,7 +12,7 @@
  *   POST   /url-import/jobs/:jobId/run         start a run now (async)
  *
  * All routes are authenticated and tenant-scoped (isTenantMember). Every job
- * operation is additionally scoped by organisationId in the lib layer, so a
+ * operation is additionally scoped by tenantId in the lib layer, so a
  * member of tenant A can never touch tenant B's jobs.
  */
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
@@ -101,7 +101,7 @@ export default function defineUrlImportRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId } = c.req.valid("param");
-      const jobs = await listImportJobs({ organisationId: tenantId });
+      const jobs = await listImportJobs({ tenantId: tenantId });
       return c.json(jobs);
     },
   );
@@ -124,7 +124,7 @@ export default function defineUrlImportRoutes(
       const body = c.req.valid("json");
       try {
         const job = await createImportJob(
-          { organisationId: tenantId, userId: c.get("usersId") },
+          { tenantId: tenantId, userId: c.get("usersId") },
           body,
         );
         return c.json(job);
@@ -148,12 +148,16 @@ export default function defineUrlImportRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, jobId } = c.req.valid("param");
-      const job = await getImportJob({ organisationId: tenantId }, jobId);
+      const job = await getImportJob({ tenantId: tenantId }, jobId);
       if (!job) throw new HTTPException(404, { message: "Job not found" });
-      const [urls, runs] = await Promise.all([
-        listJobUrls(jobId),
-        listJobRuns(jobId),
-      ]);
+      // Sequential on purpose. Both reads are single indexed lookups, so the
+      // parallelism bought nothing — but running them concurrently breaks
+      // against the PGlite test database: it serves every pooled connection
+      // from one session, so two in-flight queries overwrite each other's
+      // unnamed prepared statement ("bind message supplies N parameters, but
+      // prepared statement requires M").
+      const urls = await listJobUrls(jobId);
+      const runs = await listJobRuns(jobId);
       return c.json({ job, urls, runs });
     },
   );
@@ -176,7 +180,7 @@ export default function defineUrlImportRoutes(
       const body = c.req.valid("json");
       try {
         const job = await updateImportJob(
-          { organisationId: tenantId },
+          { tenantId: tenantId },
           jobId,
           body,
         );
@@ -204,7 +208,7 @@ export default function defineUrlImportRoutes(
     async (c) => {
       const { tenantId, jobId } = c.req.valid("param");
       const deleted = await deleteImportJob(
-        { organisationId: tenantId },
+        { tenantId: tenantId },
         jobId,
       );
       if (!deleted) throw new HTTPException(404, { message: "Job not found" });
@@ -228,9 +232,9 @@ export default function defineUrlImportRoutes(
     async (c) => {
       const { tenantId, jobId } = c.req.valid("param");
       const { urls } = c.req.valid("json");
-      const job = await getImportJob({ organisationId: tenantId }, jobId);
+      const job = await getImportJob({ tenantId: tenantId }, jobId);
       if (!job) throw new HTTPException(404, { message: "Job not found" });
-      const saved = await setJobUrls({ organisationId: tenantId }, jobId, urls);
+      const saved = await setJobUrls({ tenantId: tenantId }, jobId, urls);
       return c.json(saved);
     },
   );
@@ -249,7 +253,7 @@ export default function defineUrlImportRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, jobId } = c.req.valid("param");
-      const job = await getImportJob({ organisationId: tenantId }, jobId);
+      const job = await getImportJob({ tenantId: tenantId }, jobId);
       if (!job) throw new HTTPException(404, { message: "Job not found" });
       const runs = await listJobRuns(jobId);
       return c.json(runs);
@@ -270,7 +274,7 @@ export default function defineUrlImportRoutes(
     isTenantMember,
     async (c) => {
       const { tenantId, jobId, runId } = c.req.valid("param");
-      const job = await getImportJob({ organisationId: tenantId }, jobId);
+      const job = await getImportJob({ tenantId: tenantId }, jobId);
       if (!job) throw new HTTPException(404, { message: "Job not found" });
       const run = await getJobRun(jobId, runId);
       if (!run) throw new HTTPException(404, { message: "Run not found" });
@@ -293,7 +297,7 @@ export default function defineUrlImportRoutes(
     async (c) => {
       const { tenantId, jobId } = c.req.valid("param");
       const run = await enqueueRun(
-        { organisationId: tenantId, userId: c.get("usersId") },
+        { tenantId: tenantId, userId: c.get("usersId") },
         jobId,
         "manual",
       );

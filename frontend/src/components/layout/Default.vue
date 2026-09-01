@@ -27,7 +27,36 @@
             ? 'lg:hidden'
             : 'lg:static lg:z-auto lg:translate-x-0 lg:shadow-none',
         ]"
+        :style="sidebarStyle"
       />
+
+      <!--
+        desktop: drag the sidebar wider than its minimum width. The 4px strip
+        sits on top of the sidebar border and carries a wider invisible hit
+        area; double-click snaps back to the default width.
+      -->
+      <div
+        v-if="!layout.sidebarCollapsed"
+        class="relative -ml-px hidden w-1 shrink-0 cursor-col-resize lg:block"
+        :class="
+          resizing
+            ? 'bg-primary'
+            : 'bg-transparent transition-colors hover:bg-primary/50'
+        "
+        role="separator"
+        aria-orientation="vertical"
+        :aria-label="$t('Wiki.resizeSidebar')"
+        :aria-valuenow="layout.sidebarWidth"
+        :aria-valuemin="SIDEBAR_MIN_WIDTH"
+        :aria-valuemax="SIDEBAR_MAX_WIDTH"
+        tabindex="0"
+        @pointerdown="startResize"
+        @dblclick="layout.resetSidebarWidth()"
+        @keydown.left.prevent="nudgeWidth(-16)"
+        @keydown.right.prevent="nudgeWidth(16)"
+      >
+        <span class="absolute inset-y-0 -left-1 -right-1" />
+      </div>
     </template>
 
     <div class="relative flex min-w-0 flex-1 flex-col">
@@ -74,6 +103,7 @@ import IconPanelLeft from '~icons/mdi/dock-left'
 import ProtocolDialog from '@/components/protocol/ProtocolDialog.vue'
 import WikiImportDialog from '@/components/wiki/WikiImportDialog.vue'
 import WikiAiChat from '@/components/wiki/WikiAiChat.vue'
+import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '@/stores/layout'
 
 const route = useRoute()
 const protocol = useProtocol()
@@ -85,6 +115,55 @@ const notifications = useNotificationsStore()
 const showSidebar = computed(() => Boolean(route.params.tenantId))
 const tenantId = computed(() => String(route.params.tenantId ?? ''))
 
+// the sidebar keeps its drawer width on mobile; only the static desktop column
+// takes the dragged width
+const isDesktop = ref(false)
+let media: MediaQueryList | undefined
+const syncDesktop = (e: MediaQueryListEvent | MediaQueryList) => {
+  isDesktop.value = e.matches
+}
+
+const sidebarStyle = computed(() =>
+  isDesktop.value && !layout.sidebarCollapsed
+    ? { width: `${layout.sidebarWidth}px` }
+    : undefined,
+)
+
+const resizing = ref(false)
+let startX = 0
+let startWidth = 0
+
+const onResizeMove = (e: PointerEvent) =>
+  layout.setSidebarWidth(startWidth + e.clientX - startX, false)
+
+const stopResize = () => {
+  if (!resizing.value) return
+  resizing.value = false
+  layout.persistSidebarWidth()
+  window.removeEventListener('pointermove', onResizeMove)
+  window.removeEventListener('pointerup', stopResize)
+  window.removeEventListener('pointercancel', stopResize)
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+}
+
+const startResize = (e: PointerEvent) => {
+  if (e.button !== 0) return
+  e.preventDefault()
+  startX = e.clientX
+  startWidth = layout.sidebarWidth
+  resizing.value = true
+  // keep the resize cursor and stop the tree from selecting text while dragging
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+  window.addEventListener('pointermove', onResizeMove)
+  window.addEventListener('pointerup', stopResize)
+  window.addEventListener('pointercancel', stopResize)
+}
+
+const nudgeWidth = (delta: number) =>
+  layout.setSidebarWidth(layout.sidebarWidth + delta)
+
 // navigating (tapping a page in the tree, opening a search result, …)
 // closes the mobile drawer
 watch(
@@ -94,6 +173,16 @@ watch(
 
 // Poll the user notification queue while the app is open, so job completions
 // (e.g. finished imports) surface in the inbox and the sidebar chip.
-onMounted(() => notifications.startPolling())
-onUnmounted(() => notifications.stopPolling())
+onMounted(() => {
+  notifications.startPolling()
+  media = window.matchMedia('(min-width: 1024px)')
+  syncDesktop(media)
+  media.addEventListener('change', syncDesktop)
+})
+
+onUnmounted(() => {
+  notifications.stopPolling()
+  media?.removeEventListener('change', syncDesktop)
+  stopResize()
+})
 </script>

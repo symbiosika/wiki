@@ -11,12 +11,13 @@ import {
   authAndSetUsersInfo,
   checkUserPermission,
 } from "@framework/lib/utils/hono-middlewares";
-import { isTenantMember } from "@framework/routes/tenant";
+import { isTenantAdmin, isTenantMember } from "@framework/routes/tenant";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { validateScope } from "@framework/lib/utils/validate-scope";
 import { buildWikiTree } from "../../../../lib/wiki/tree";
+import { getPageTypeUsage } from "../../../../lib/wiki/page-type-usage";
 import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
@@ -69,6 +70,50 @@ export default function defineWikiRoutes(
           (error as { cause?: unknown })?.cause
         );
         return c.json({ success: false, error: "Failed to build wiki tree" }, 500);
+      }
+    }
+  );
+
+  /**
+   * GET /tenant/:tenantId/wiki/page-type-usage
+   * How many pages carry each page type, organisation-wide.
+   *
+   * Feeds the page-type editor in the administration area: removing or
+   * renaming a page type that pages still use would leave those pages with a
+   * value the facet validation rejects on the next save, so the editor needs
+   * the count to guard the edit. Admin-only, like the config it guards.
+   */
+  app.get(
+    `${baseRoute}/page-type-usage`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Count pages per page type (organisation-wide)",
+      responses: {
+        200: {
+          description: 'Page type to page count, e.g. { "FAQ": 12 }',
+          content: {
+            "application/json": {
+              schema: resolver(v.any()),
+            },
+          },
+        },
+      },
+    }),
+    validateScope("knowledge:read"),
+    validator("param", v.object({ tenantId: v.pipe(v.string(), v.uuid()) })),
+    isTenantAdmin,
+    async (c) => {
+      const { tenantId } = c.req.valid("param");
+      try {
+        return c.json({ success: true, data: await getPageTypeUsage(tenantId) });
+      } catch (error) {
+        console.error("Failed to count page type usage", error);
+        return c.json(
+          { success: false, error: "Failed to count page type usage" },
+          500
+        );
       }
     }
   );

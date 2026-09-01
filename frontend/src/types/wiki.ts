@@ -12,6 +12,18 @@ export interface WikiTreeNode {
   userId: string | null
   tenantWide: boolean
   updatedAt: string
+  /**
+   * Controlled `pageType` facet. Drives the icon and colour shown in the tree
+   * (looked up in `WikiKnowledgeConfig.pageTypeStyles`). Null when untyped.
+   */
+  pageType: string | null
+  /**
+   * Resolved public-visibility flag: true when this page is reachable in the
+   * public documentation site. Derived server-side from `publicMode` along the
+   * parent chain, so a page can be public without carrying an own intent.
+   * Drives the globe marker in the tree.
+   */
+  publicEffective: boolean
   children: WikiTreeNode[]
 }
 
@@ -67,6 +79,20 @@ export interface WikiPage {
   pageType: string | null
   /** Trust signal, e.g. "draft" | "verified" | "outdated". */
   status: string | null
+  // --- public publishing (see framework knowledge-text-public.ts) ---
+  /**
+   * Explicit publishing intent set by a person:
+   *   "public"    publish this page and everything below it
+   *   "excluded"  keep it internal even below a published parent
+   *   null        inherit from the parent (the default)
+   */
+  publicMode: 'public' | 'excluded' | null
+  /**
+   * Resolved result of that intent along the parent chain — the value the
+   * public API actually filters on. Read-only here; the server derives it and
+   * ignores any client-supplied value.
+   */
+  publicEffective: boolean
   /** Set when `status` transitions to "verified": when and by whom. */
   verifiedAt: string | null
   verifiedBy: string | null
@@ -101,6 +127,11 @@ export interface KnowledgeAttributeDefinition {
   /** Optional display label; falls back to the key when omitted. */
   label?: string
   /**
+   * Optional instruction handed to the PDF parser's extractor ("what exactly
+   * to extract"). Falls back to the label/key when omitted.
+   */
+  description?: string
+  /**
    * Optional closed list of allowed values. When present the value must be one
    * of these (rendered as a select); when omitted the value is free text.
    */
@@ -117,7 +148,37 @@ export interface WikiKnowledgeConfig {
   autoSummaries: boolean
   pageTypes: string[]
   statuses: string[]
+  /**
+   * Presentation per page type, keyed by the page type as it appears in
+   * `pageTypes`. Optional and purely cosmetic — a page type without an entry
+   * simply renders without icon or colour.
+   */
+  pageTypeStyles: Record<string, WikiPageTypeStyle>
   attributes: KnowledgeAttributeDefinition[]
+}
+
+/**
+ * Icon, colour and display label for one page type. `icon` is either an emoji
+ * or a name from the bundled icon allowlist (see `utils/wikiIcons.ts`); an
+ * unknown value renders no icon rather than breaking the row.
+ */
+export interface WikiPageTypeStyle {
+  icon?: string
+  color?: string
+  label?: string
+}
+
+/**
+ * The organisation's agent instructions, as returned by
+ * GET/PUT /knowledge/texts/agent-instructions.
+ *
+ * Per-organisation configuration (one row, not a wiki page) handed to every
+ * MCP client as part of the wiki overview.
+ */
+export interface AgentInstructions {
+  content: string
+  updatedAt: string
+  updatedBy: string | null
 }
 
 /**
@@ -150,6 +211,18 @@ export interface WikiParserModality {
 export interface WikiParserCapabilities {
   service: string
   modalities: WikiParserModality[]
+}
+
+/**
+ * One heading entry for the page table of contents, derived live from the
+ * editor document. `id` is the top-level block id (data-block-id) the heading
+ * carries, so the ToC can scroll straight to it.
+ */
+export interface WikiTocEntry {
+  id: string
+  /** heading level 1-3 (H1/H2/H3) */
+  level: number
+  text: string
 }
 
 /** A content block as stored by the backend */

@@ -42,14 +42,36 @@
           />
         </button>
 
-        <!-- title -->
+        <!--
+          type icon + title. The icon sits inside the title button so the whole
+          label stays one click target, and it renders only when the page's type
+          has an icon configured — untyped rows keep their previous layout.
+        -->
         <button
           type="button"
-          class="min-w-0 flex-1 cursor-pointer truncate text-left"
+          class="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
           @click="openPage"
         >
-          {{ node.title || $t('Wiki.untitled') }}
+          <PageTypeIcon :page-type="node.pageType" />
+          <span class="min-w-0 truncate">{{
+            node.title || $t('Wiki.untitled')
+          }}</span>
         </button>
+
+        <!--
+          published marker — icon only, so the tree stays scannable. Shown on
+          every page reachable without a login, including those that are public
+          only through an ancestor, which is exactly the case a reader cannot
+          infer from the tree itself.
+        -->
+        <span
+          v-if="node.publicEffective"
+          class="flex shrink-0 items-center rounded-full bg-blue-50 px-1 py-0.5 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+          :title="$t('Wiki.public.chipHint')"
+          :aria-label="$t('Wiki.public.chipHint')"
+        >
+          <IconGlobe class="h-3 w-3" />
+        </span>
 
         <!-- actions: always visible on touch, hover-revealed on desktop -->
         <span
@@ -105,11 +127,8 @@
 import IconChevronRight from '~icons/mdi/chevron-right'
 import IconPlus from '~icons/mdi/plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
-import type {
-  WikiDragState,
-  WikiMovePayload,
-  WikiTreeNode,
-} from '@/types/wiki'
+import IconGlobe from '~icons/mdi/earth'
+import type { WikiDragState, WikiMovePayload, WikiTreeNode } from '@/types/wiki'
 
 const props = withDefaults(
   defineProps<{
@@ -138,10 +157,7 @@ const expandedIds = inject<Ref<Set<string>>>(
 )
 
 /** shared drag state, provided by WikiSidebar */
-const dragState = inject<Ref<WikiDragState | null>>(
-  'wikiDragState',
-  ref(null),
-)
+const dragState = inject<Ref<WikiDragState | null>>('wikiDragState', ref(null))
 
 const expanded = computed(() => expandedIds.value.has(props.node.id))
 const isActive = computed(() => route.params.pageId === props.node.id)

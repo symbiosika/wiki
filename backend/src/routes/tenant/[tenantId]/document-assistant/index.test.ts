@@ -1,7 +1,8 @@
 /**
  * Document-assistant route tests. The agent runs through the dev stub
- * (PROTOCOL_DEV_STUB), so run this suite with that env set:
- *   PROTOCOL_DEV_STUB=true bun test src/routes/tenant/[tenantId]/document-assistant/index.test.ts
+ * (PROTOCOL_DEV_STUB), which the suite sets itself — so a plain
+ *   bun test src/routes/tenant/[tenantId]/document-assistant/index.test.ts
+ * works as well as `bun run test:local`, and neither needs an AI provider key.
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Hono } from "hono";
@@ -22,7 +23,12 @@ import {
   getKnowledgeTextBlocks,
 } from "@framework/lib/knowledge/knowledge-text-blocks";
 import { readKnowledgeTextContent } from "@framework/lib/knowledge/knowledge-text-edit";
-import defineDocumentAssistantRoutes from "./index";
+
+// The route module and the agent behind it read PROTOCOL_DEV_STUB at import
+// time (static imports are hoisted, so this has to happen before the dynamic
+// import below).
+process.env.PROTOCOL_DEV_STUB = "true";
+const { default: defineDocumentAssistantRoutes } = await import("./index");
 
 let app: SymbiosikaFrameworkHonoApp;
 let token: string;
@@ -60,8 +66,12 @@ describe("Document Assistant Routes", () => {
     await cleanup();
   });
 
+  // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+  // `.catch` rather than `.then`: a rejection after the file is done would
+  // otherwise land as an unhandled rejection between test files, which Bun
+  // counts as an error and turns into exit code 1.
   afterAll(() => {
-    cleanup().then(() => {});
+    cleanup().catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("unauthenticated request is rejected", async () => {

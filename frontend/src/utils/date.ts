@@ -93,3 +93,49 @@ export const formatRelativeTime = (
     return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`
   }
 }
+
+/**
+ * Localised "vor 2 Tagen" / "2 days ago" label via `Intl.RelativeTimeFormat`.
+ *
+ * Unlike {@link formatRelativeTime}, which is English-only, this follows the
+ * active UI locale and falls back to an exact date once the distance grows
+ * beyond a year's worth of units. Used by the dashboard lists.
+ */
+export const formatRelativeIntl = (
+  value: string | number | Date | null | undefined,
+  locale: string,
+): string => {
+  const date = parseServerDate(value)
+  if (!date) return '—'
+
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const divisions: [number, Intl.RelativeTimeFormatUnit][] = [
+    [60, 'second'],
+    [60, 'minute'],
+    [24, 'hour'],
+    [7, 'day'],
+    [4.34524, 'week'],
+    [12, 'month'],
+    [Number.POSITIVE_INFINITY, 'year'],
+  ]
+
+  let duration = (date.getTime() - Date.now()) / 1000
+  for (const [amount, unit] of divisions) {
+    if (Math.abs(duration) < amount) {
+      return rtf.format(Math.round(duration), unit)
+    }
+    duration /= amount
+  }
+
+  return formatExactDateTime(value, locale)
+}
+
+/** Full date and time in the active UI locale, or an em dash for no value. */
+export const formatExactDateTime = (
+  value: string | number | Date | null | undefined,
+  locale: string,
+): string =>
+  parseServerDate(value)?.toLocaleString(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }) ?? '—'

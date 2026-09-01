@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "1f4c6834-53a2-4b36-b441-64d660a401f0",
+  "developer": {
+    "name": "Symbiosika GmbH",
+    "websiteUrl": "https://www.symbiosika.de",
+    "privacyUrl": "https://symbiosika.de/datenschutz",
+    "termsOfUseUrl": "https://symbiosika.de/datenschutz"
+  },
+  "name": {
+    "short": "Symbiosika Wiki",
+    "full": "Symbiosika Wiki"
+  },
+  "description": {
+    "short": "Firmenwissen und Dokumentation direkt in Teams",
+    "full": "Zugriff auf das Symbiosika Wiki direkt in Microsoft Teams. Prozesse, Richtlinien, Produktdokumentation und Handbuecher ohne Wechsel in den Browser."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0F6E56",
+  "staticTabs": [
+    {
+      "entityId": "symbiosika-wiki",
+      "name": "Wiki",
+      "contentUrl": "https://wiki.symbiosika.de/static/app/?host=teams",
+      "websiteUrl": "https://wiki.symbiosika.de",
+      "scopes": ["personal"]
+    }
+  ],
+  "validDomains": ["wiki.symbiosika.de"],
+  "webApplicationInfo": {
+    "id": "5fc494c1-8811-43f5-8625-6f67e2d0a3de",
+    "resource": "api://wiki.symbiosika.de/5fc494c1-8811-43f5-8625-6f67e2d0a3de"
+  }
+}

@@ -37,10 +37,10 @@ describe("agent post-processor bridge", () => {
     await initTests();
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org));
+      .where(eq(postProcessingAgents.tenantId, org));
 
     const agent = await createAgent(
-      { organisationId: org },
+      { tenantId: org },
       { name: "Bridge test", prompt: "clean it up" },
     );
     agentId = agent.id;
@@ -48,10 +48,15 @@ describe("agent post-processor bridge", () => {
   });
 
   afterAll(() => {
+    // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+    // `.catch` rather than `.then`: an unawaited cleanup that rejects after the
+    // file is done becomes an unhandled rejection between test files, which Bun
+    // counts as an error and turns into exit code 1 — blamed on whichever file
+    // happened to be running.
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org))
-      .then(() => {});
+      .where(eq(postProcessingAgents.tenantId, org))
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("runs the agent and records postProcessing meta", async () => {
@@ -108,7 +113,7 @@ describe("agent post-processor bridge", () => {
 
   test("a disabled agent fails cleanly (throws)", async () => {
     const disabled = await createAgent(
-      { organisationId: org },
+      { tenantId: org },
       { name: "Disabled one", prompt: "x", enabled: false },
     );
     let threw = false;

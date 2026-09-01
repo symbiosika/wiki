@@ -86,6 +86,239 @@
       </Column>
     </DataTable>
 
+    <!-- organisation logo -->
+    <section class="mt-8">
+      <h2
+        class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
+      >
+        {{ $t('UserTenants.logo.title') }}
+      </h2>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('UserTenants.logo.hint') }}
+      </p>
+
+      <div class="flex items-center gap-4">
+        <span
+          class="flex h-16 w-32 shrink-0 items-center justify-center border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-800"
+        >
+          <img
+            v-if="logoSrc"
+            :src="logoSrc"
+            :alt="$t('UserTenants.logo.title')"
+            class="max-h-full max-w-full object-contain"
+          />
+          <IconImage v-else class="h-6 w-6 text-surface-300" />
+        </span>
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <SecondaryButton
+              :label="$t('UserTenants.logo.change')"
+              size="small"
+              :loading="uploadingLogo"
+              @click="logoInput?.click()"
+            >
+              <template #icon><IconImage /></template>
+            </SecondaryButton>
+            <SecondaryButton
+              v-if="logoUrl"
+              :label="$t('Common.delete')"
+              size="small"
+              severity="danger"
+              :disabled="uploadingLogo"
+              @click="removeLogo"
+            >
+              <template #icon><IconTrash /></template>
+            </SecondaryButton>
+          </div>
+          <p class="text-xs text-surface-500 dark:text-surface-400">
+            {{ $t('UserTenants.logo.uploadHint') }}
+          </p>
+        </div>
+        <input
+          ref="logoInput"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="onLogoSelected"
+        />
+      </div>
+
+      <ImageCropperDialog
+        v-model:visible="logoCropperVisible"
+        :file="pendingLogo"
+        :aspect-ratio="2"
+        :max-output="600"
+        fit="contain"
+        :title="$t('UserTenants.logo.cropTitle')"
+        @cropped="onLogoCropped"
+      />
+    </section>
+
+    <!-- Branding / colors (admins & owners only) -->
+    <section
+      v-if="isAdmin"
+      class="mt-8 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h2 class="text-lg font-semibold">
+        {{ $t('UserTenants.branding.title') }}
+      </h2>
+      <p class="mt-1 mb-4 text-sm text-surface-500">
+        {{ $t('UserTenants.branding.description') }}
+      </p>
+
+      <div class="flex flex-col gap-5">
+        <!-- primary -->
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium">
+            <input
+              v-model="branding.primaryEnabled"
+              type="checkbox"
+              class="accent-primary"
+            />
+            {{ $t('UserTenants.branding.primary') }}
+          </label>
+          <div class="flex items-center gap-3 pl-6">
+            <input
+              v-model="branding.primary"
+              type="color"
+              :disabled="!branding.primaryEnabled"
+              class="h-9 w-12 cursor-pointer rounded border border-surface-300 disabled:opacity-40 dark:border-surface-600"
+            />
+            <InputText
+              v-model="branding.primary"
+              :disabled="!branding.primaryEnabled"
+              class="w-32 font-mono"
+              placeholder="#204393"
+            />
+          </div>
+          <p class="pl-6 text-xs text-surface-400">
+            {{ $t('UserTenants.branding.primaryHint') }}
+          </p>
+        </div>
+
+        <!-- secondary -->
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium">
+            <input
+              v-model="branding.secondaryEnabled"
+              type="checkbox"
+              class="accent-primary"
+            />
+            {{ $t('UserTenants.branding.secondary') }}
+          </label>
+          <div class="flex items-center gap-3 pl-6">
+            <input
+              v-model="branding.secondary"
+              type="color"
+              :disabled="!branding.secondaryEnabled"
+              class="h-9 w-12 cursor-pointer rounded border border-surface-300 disabled:opacity-40 dark:border-surface-600"
+            />
+            <InputText
+              v-model="branding.secondary"
+              :disabled="!branding.secondaryEnabled"
+              class="w-32 font-mono"
+              placeholder="#71717a"
+            />
+          </div>
+          <p class="pl-6 text-xs text-surface-400">
+            {{ $t('UserTenants.branding.secondaryHint') }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center gap-2">
+        <Button
+          :label="$t('UserTenants.branding.save')"
+          size="small"
+          :loading="savingBranding"
+          @click="saveBranding"
+        />
+        <SecondaryButton
+          :label="$t('UserTenants.branding.reset')"
+          size="small"
+          :disabled="savingBranding"
+          @click="resetBranding"
+        />
+      </div>
+    </section>
+
+    <!-- Semantic search / embeddings (admins & owners only) -->
+    <section
+      v-if="isAdmin"
+      class="mt-8 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+    >
+      <h2 class="text-lg font-semibold">
+        {{ $t('UserTenants.embedding.title') }}
+      </h2>
+      <p class="mt-1 mb-4 text-sm text-surface-500">
+        {{ $t('UserTenants.embedding.description') }}
+      </p>
+
+      <!-- provider is not configured on the server → the switch cannot work -->
+      <Message
+        v-if="embeddingLoaded && !embedding.provider.configured"
+        severity="warn"
+        class="mb-4"
+      >
+        {{
+          $t('UserTenants.embedding.providerMissing', {
+            provider: embedding.provider.provider,
+            envVar: embedding.provider.requiredEnvVar ?? 'API_KEY',
+          })
+        }}
+      </Message>
+
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input
+          v-model="embedding.enabled"
+          type="checkbox"
+          class="accent-primary"
+          :disabled="savingEmbedding || !embeddingLoaded"
+          @change="saveEmbedding"
+        />
+        {{ $t('UserTenants.embedding.enable') }}
+      </label>
+      <p class="mt-2 pl-6 text-xs text-surface-400">
+        {{ $t('UserTenants.embedding.enableHint') }}
+      </p>
+      <p
+        v-if="embeddingLoaded && embedding.provider.configured"
+        class="mt-1 pl-6 text-xs text-surface-400"
+      >
+        {{
+          $t('UserTenants.embedding.providerInfo', {
+            provider: embedding.provider.provider,
+            model: embedding.provider.model ?? '—',
+          })
+        }}
+      </p>
+
+      <!-- pages that were created before the switch was turned on -->
+      <div
+        v-if="embeddingLoaded && embedding.enabled && embedding.pendingPages > 0"
+        class="mt-5 border-t border-surface-200 pt-4 dark:border-surface-700"
+      >
+        <p class="text-sm">
+          {{
+            $t('UserTenants.embedding.pending', {
+              count: embedding.pendingPages,
+            })
+          }}
+        </p>
+        <Button
+          class="mt-3"
+          size="small"
+          :label="$t('UserTenants.embedding.backfill')"
+          :loading="startingBackfill"
+          :disabled="!embedding.provider.configured"
+          @click="startBackfill"
+        />
+        <p class="mt-2 text-xs text-surface-400">
+          {{ $t('UserTenants.embedding.backfillHint') }}
+        </p>
+      </div>
+    </section>
+
     <!-- Invite dialog -->
     <Dialog
       v-model:visible="inviteDialog"
@@ -227,16 +460,20 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import IconPencil from '~icons/mdi/pencil'
 import IconAccountPlus from '~icons/mdi/account-plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
+import IconImage from '~icons/mdi/image-outline'
 import type {
   FoundUser,
   KnowledgeAccessLevel,
   TenantMember,
 } from '@/types/usermanagement'
+import { isValidHexColor } from '@/utils/brandColor'
+import type { EmbeddingSettings } from '@/stores/main'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -248,6 +485,17 @@ const app = useApp()
 const tenantId = computed(() => String(route.params.id))
 const tenantName = ref('')
 const members = ref<TenantMember[]>([])
+
+// ----- logo ------------------------------------------------------------------
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024
+const logoInput = ref<HTMLInputElement | null>(null)
+const pendingLogo = ref<File | null>(null)
+const logoCropperVisible = ref(false)
+const uploadingLogo = ref(false)
+const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
+// see useAuthenticatedImage: a bearer session cannot authenticate an <img src>
+const logoSrc = useAuthenticatedImage(() => logoUrl.value)
 
 const inviteDialog = ref(false)
 const inviteEmail = ref('')
@@ -275,10 +523,102 @@ const knowledgeAccessOptions = [
 // user id of the member whose access is currently being saved (disables its switch)
 const savingAccessFor = ref<string | null>(null)
 
+// ----- branding colours ------------------------------------------------------
+
+const DEFAULT_PRIMARY = '#204393'
+const DEFAULT_SECONDARY = '#71717a'
+
+const branding = reactive({
+  primaryEnabled: false,
+  primary: DEFAULT_PRIMARY,
+  secondaryEnabled: false,
+  secondary: DEFAULT_SECONDARY,
+})
+const savingBranding = ref(false)
+
+/** Only tenant admins/owners may edit branding (backend enforces this too). */
+const isAdmin = computed(() => {
+  const me = members.value.find((m) => m.id === app.state.user?.id)
+  return me?.role === 'admin' || me?.role === 'owner'
+})
+
 onMounted(async () => {
   await app.waitForInit()
   await loadTenantData()
+  await loadBranding()
+  await loadEmbeddingSettings()
+  app.loadTenantLogoInfo(tenantId.value)
 })
+
+// ----- logo ------------------------------------------------------------------
+
+const onLogoSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // let the same file re-trigger change
+  if (!file) return
+  if (file.size > MAX_LOGO_BYTES) {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.logo.errors.tooLarge'),
+      life: 3000,
+    })
+    return
+  }
+  pendingLogo.value = file
+  logoCropperVisible.value = true
+}
+
+const onLogoCropped = async (file: File) => {
+  uploadingLogo.value = true
+  try {
+    await app.uploadTenantLogo(tenantId.value, file)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.logo.success'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.logo.errors.uploadFailed'),
+      life: 3000,
+    })
+  } finally {
+    uploadingLogo.value = false
+    pendingLogo.value = null
+  }
+}
+
+const removeLogo = () => {
+  confirm.require({
+    header: t('UserTenants.logo.deleteTitle'),
+    message: t('UserTenants.logo.deleteConfirm'),
+    rejectProps: { label: t('Common.cancel') },
+    acceptProps: { label: t('Common.delete'), severity: 'danger' },
+    accept: async () => {
+      try {
+        await app.deleteTenantLogo(tenantId.value)
+        toast.add({
+          severity: 'success',
+          summary: t('Common.success'),
+          detail: t('UserTenants.logo.deleteSuccess'),
+          life: 3000,
+        })
+      } catch {
+        toast.add({
+          severity: 'error',
+          summary: t('Common.error'),
+          detail: t('UserTenants.logo.errors.deleteFailed'),
+          life: 3000,
+        })
+      }
+    },
+  })
+}
 
 const loadTenantData = async () => {
   try {
@@ -299,6 +639,192 @@ const loadTenantData = async () => {
       detail: t('UserTenants.errors.loadFailed'),
       life: 3000,
     })
+  }
+}
+
+const loadBranding = async () => {
+  try {
+    const colors = await app.getBranding(tenantId.value)
+    if (colors.primary) {
+      branding.primaryEnabled = true
+      branding.primary = colors.primary
+    }
+    if (colors.secondary) {
+      branding.secondaryEnabled = true
+      branding.secondary = colors.secondary
+    }
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingLoadFailed'),
+      life: 3000,
+    })
+  }
+}
+
+const saveBranding = async () => {
+  if (branding.primaryEnabled && !isValidHexColor(branding.primary)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('UserTenants.branding.invalidColor'),
+      life: 3000,
+    })
+    return
+  }
+  if (branding.secondaryEnabled && !isValidHexColor(branding.secondary)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('UserTenants.branding.invalidColor'),
+      life: 3000,
+    })
+    return
+  }
+  savingBranding.value = true
+  try {
+    await app.saveBranding(tenantId.value, {
+      primary: branding.primaryEnabled ? branding.primary : null,
+      secondary: branding.secondaryEnabled ? branding.secondary : null,
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.branding.saved'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingBranding.value = false
+  }
+}
+
+const resetBranding = async () => {
+  savingBranding.value = true
+  try {
+    await app.saveBranding(tenantId.value, { primary: null, secondary: null })
+    branding.primaryEnabled = false
+    branding.secondaryEnabled = false
+    branding.primary = DEFAULT_PRIMARY
+    branding.secondary = DEFAULT_SECONDARY
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.branding.resetDone'),
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.brandingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingBranding.value = false
+  }
+}
+
+// ----- organisation-wide embedding -------------------------------------------
+
+const embedding = reactive<EmbeddingSettings>({
+  enabled: false,
+  pendingPages: 0,
+  provider: {
+    provider: '',
+    configured: false,
+    model: null,
+    requiredEnvVar: null,
+  },
+})
+/** false until the server state arrived — keeps the switch from flickering */
+const embeddingLoaded = ref(false)
+const savingEmbedding = ref(false)
+const startingBackfill = ref(false)
+
+const loadEmbeddingSettings = async () => {
+  try {
+    const settings = await app.getEmbeddingSettings(tenantId.value)
+    embedding.enabled = settings.enabled
+    embedding.provider = settings.provider
+    embedding.pendingPages = settings.pendingPages
+    embeddingLoaded.value = true
+  } catch {
+    // non-admins and read failures simply leave the section unconfigured
+    embeddingLoaded.value = false
+  }
+}
+
+/**
+ * Persist the organisation-wide switch. It applies to EVERY page: newly
+ * created and updated pages follow it immediately, existing pages are marked
+ * and get their vectors the next time they are saved.
+ */
+const saveEmbedding = async () => {
+  const desired = embedding.enabled
+  savingEmbedding.value = true
+  try {
+    const result = await app.saveEmbeddingSettings(tenantId.value, desired)
+    embedding.enabled = result.enabled
+    embedding.provider = result.provider
+    embedding.pendingPages = result.pendingPages
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: desired
+        ? t('UserTenants.embedding.enabled', { count: result.pagesUpdated })
+        : t('UserTenants.embedding.disabled', {
+            count: result.mirrorsRemoved,
+          }),
+      life: 4000,
+    })
+  } catch {
+    embedding.enabled = !desired // revert the optimistic switch
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.embeddingSaveFailed'),
+      life: 3000,
+    })
+  } finally {
+    savingEmbedding.value = false
+  }
+}
+
+/**
+ * Queue the background embedding of every page that was created before the
+ * switch was turned on. The jobs drain one after another, so this returns as
+ * soon as they are queued — not when the wiki is fully indexed.
+ */
+const startBackfill = async () => {
+  startingBackfill.value = true
+  try {
+    const result = await app.startEmbeddingBackfill(tenantId.value)
+    toast.add({
+      severity: 'success',
+      summary: t('Common.success'),
+      detail: t('UserTenants.embedding.backfillStarted', {
+        count: result.enqueued,
+      }),
+      life: 5000,
+    })
+    await loadEmbeddingSettings()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.errors.embeddingBackfillFailed'),
+      life: 3000,
+    })
+  } finally {
+    startingBackfill.value = false
   }
 }
 

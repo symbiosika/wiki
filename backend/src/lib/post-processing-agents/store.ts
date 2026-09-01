@@ -4,7 +4,7 @@
  * A post-processing agent is a tenant-managed config (name + prompt, plus
  * optional model/step overrides) that the reusable runner in ./runner.ts turns
  * into an actual document-reworking agent. Every read and write filters by
- * `organisationId`: the row id is never trusted on its own, so one tenant can
+ * `tenantId`: the row id is never trusted on its own, so one tenant can
  * never read, mutate, run, or even probe another tenant's agents.
  */
 import { and, desc, eq } from "drizzle-orm";
@@ -15,7 +15,7 @@ import {
 } from "../../db/schema";
 
 export interface AgentContext {
-  organisationId: string;
+  tenantId: string;
   userId?: string;
 }
 
@@ -52,7 +52,7 @@ export const listAgents = async (
   getDb()
     .select()
     .from(postProcessingAgents)
-    .where(eq(postProcessingAgents.organisationId, ctx.organisationId))
+    .where(eq(postProcessingAgents.tenantId, ctx.tenantId))
     .orderBy(desc(postProcessingAgents.updatedAt));
 
 /** Only the enabled agents — used to populate the import dialog picker. */
@@ -64,7 +64,7 @@ export const listEnabledAgents = async (
     .from(postProcessingAgents)
     .where(
       and(
-        eq(postProcessingAgents.organisationId, ctx.organisationId),
+        eq(postProcessingAgents.tenantId, ctx.tenantId),
         eq(postProcessingAgents.enabled, true),
       ),
     )
@@ -76,10 +76,10 @@ export const listEnabledAgents = async (
  * context — so a foreign tenant can never run or probe another tenant's agent.
  */
 export const getAgentForTenant = async (
-  organisationId: string,
+  tenantId: string,
   id: string,
 ): Promise<PostProcessingAgentSelect | null> =>
-  getAgentById({ organisationId }, id);
+  getAgentById({ tenantId }, id);
 
 export const getAgentById = async (
   ctx: AgentContext,
@@ -91,7 +91,7 @@ export const getAgentById = async (
     .where(
       and(
         eq(postProcessingAgents.id, id),
-        eq(postProcessingAgents.organisationId, ctx.organisationId),
+        eq(postProcessingAgents.tenantId, ctx.tenantId),
       ),
     )
     .limit(1);
@@ -115,7 +115,7 @@ export const createAgent = async (
   const rows = await getDb()
     .insert(postProcessingAgents)
     .values({
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       name: input.name.trim(),
       description: input.description ?? null,
       prompt: input.prompt,
@@ -161,7 +161,7 @@ export const updateAgent = async (
     .where(
       and(
         eq(postProcessingAgents.id, id),
-        eq(postProcessingAgents.organisationId, ctx.organisationId),
+        eq(postProcessingAgents.tenantId, ctx.tenantId),
       ),
     )
     .returning();
@@ -179,7 +179,7 @@ export const deleteAgent = async (
     .where(
       and(
         eq(postProcessingAgents.id, id),
-        eq(postProcessingAgents.organisationId, ctx.organisationId),
+        eq(postProcessingAgents.tenantId, ctx.tenantId),
       ),
     );
   return true;

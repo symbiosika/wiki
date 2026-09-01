@@ -44,8 +44,8 @@
           "
         >
           <img
-            v-if="hasImage"
-            :src="imageUrl"
+            v-if="hasImage && imageSrc"
+            :src="imageSrc"
             :alt="$t('Profile.picture')"
             class="h-full w-full object-cover"
           />
@@ -72,6 +72,17 @@
           @change="onFileSelected"
         />
       </div>
+
+      <!-- crop the picture (square) before it is uploaded -->
+      <ImageCropperDialog
+        v-model:visible="cropperVisible"
+        :file="pendingImage"
+        :aspect-ratio="1"
+        :max-output="512"
+        round
+        :title="$t('Profile.cropTitle')"
+        @cropped="onImageCropped"
+      />
 
       <!-- name fields -->
       <div class="flex flex-col gap-4">
@@ -648,6 +659,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { WebAuthnError } from '@simplewebauthn/browser'
@@ -707,6 +719,9 @@ const surname = ref('')
 const saving = ref(false)
 const uploadingImage = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+// picture picked but not yet cropped/uploaded
+const pendingImage = ref<File | null>(null)
+const cropperVisible = ref(false)
 // bumped after an upload so the browser refetches the (same-URL) image
 const imageVersion = ref(0)
 
@@ -1126,6 +1141,10 @@ const hasImage = computed(() => Boolean(app.state.user?.profileImageName))
 const imageUrl = computed(
   () => `/api/v1/user/profile-image?v=${imageVersion.value}`,
 )
+// see useAuthenticatedImage: a bearer session cannot authenticate an <img src>
+const imageSrc = useAuthenticatedImage(() =>
+  hasImage.value ? imageUrl.value : null,
+)
 
 const isDirty = computed(
   () =>
@@ -1176,6 +1195,12 @@ const onFileSelected = async (event: Event) => {
     return
   }
 
+  // hand the picked file to the cropper; upload happens once it emits `cropped`
+  pendingImage.value = file
+  cropperVisible.value = true
+}
+
+const onImageCropped = async (file: File) => {
   uploadingImage.value = true
   try {
     await app.uploadProfileImage(file)
@@ -1195,6 +1220,7 @@ const onFileSelected = async (event: Event) => {
     })
   } finally {
     uploadingImage.value = false
+    pendingImage.value = null
   }
 }
 </script>

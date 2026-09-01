@@ -1,7 +1,7 @@
 /** A tenant-managed post-processing agent (LLM document reworker). */
 export interface PostProcessingAgent {
   id: string
-  organisationId: string
+  tenantId: string
   name: string
   description: string | null
   prompt: string

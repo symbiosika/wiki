@@ -8,7 +8,7 @@
       <div
         class="flex items-center gap-2 border-b border-surface-200 px-4 py-3 dark:border-surface-700"
       >
-        <IconRobot class="h-5 w-5 text-primary" />
+        <IconChat class="h-5 w-5 text-primary" />
         <span class="flex-1 font-semibold text-surface-900 dark:text-surface-0">
           {{ $t('Assistant.title') }}
         </span>
@@ -110,7 +110,7 @@
 import { ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import IconRobot from '~icons/mdi/robot-outline'
+import IconChat from '~icons/mdi/message-text-outline'
 import IconClose from '~icons/mdi/close'
 import IconMic from '~icons/mdi/microphone'
 import IconStop from '~icons/mdi/stop'

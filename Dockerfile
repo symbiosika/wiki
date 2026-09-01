@@ -35,6 +35,15 @@ COPY dist ./
 COPY .docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint.sh
 RUN chmod +x /usr/local/bin/prod-entrypoint.sh
 
-# Run migrations and start the app
+# Run migrations and start the app.
+#
+# The final `exec` matters: without it the shell stays PID 1 and `bun` runs as
+# its child. A POSIX shell does not forward signals, so `docker stop` (and every
+# redeploy, and every `docker restart`) would deliver SIGTERM to the shell only
+# — the app would never see it, never log its shutdown, and would be SIGKILLed
+# when the grace period ran out, dropping every in-flight request as a reset
+# connection. To a reverse proxy that reset is a 502. With `exec`, bun *is*
+# PID 1, receives the signal, and records why it stopped
+# (see backend/src/lib/diagnostics and docs/bad-gateway-debugging.md).
 ENTRYPOINT ["/usr/local/bin/prod-entrypoint.sh"]
-CMD ["sh", "-c", "bun run framework:migrate && bun run app:migrate && bun ./dist/index.js"]
+CMD ["sh", "-c", "bun run framework:migrate && bun run app:migrate && exec bun ./dist/index.js"]

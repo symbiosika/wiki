@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
+import { teamsAuthHeaders } from '@/utils/teamsSession'
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import IconSend from '~icons/mdi/send'
@@ -84,7 +85,12 @@ const isStreaming = computed(() => chat.value?.state?.statusRef === 'streaming')
 const initializeChat = () => {
   if (tenantId.value) {
     chat.value = new Chat({
-      transport: new DefaultChatTransport({ api: chatApiUrl.value }),
+      transport: new DefaultChatTransport({
+        api: chatApiUrl.value,
+        // see WikiAiChat: the transport fetches itself, so the bearer session
+        // of a Teams tab must be attached explicitly
+        headers: teamsAuthHeaders,
+      }),
     }) as any
   }
 }

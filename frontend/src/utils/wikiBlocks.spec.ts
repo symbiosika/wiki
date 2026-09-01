@@ -100,6 +100,73 @@ describe('editorHtmlToBlocks', () => {
   })
 })
 
+describe('page references in loaded blocks', () => {
+  test('a markdown block written by an agent becomes a real reference', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: 'Siehe [[03.03 Errichter]].' },
+    ])
+    expect(html).toContain('data-wiki-link="03.03 Errichter"')
+  })
+
+  test('saving it back stores the canonical form (no bare marker text)', () => {
+    const blocks = editorHtmlToBlocks(
+      blocksToEditorHtml([
+        { id: 'b1', type: 'html', content: '<p>Siehe [[Onboarding]].</p>' },
+      ]),
+    )
+    expect(blocks[0]!.content).toContain('data-wiki-link="Onboarding"')
+  })
+})
+
+describe('image descriptions in loaded blocks', () => {
+  const REF =
+    '/api/v1/tenant/t-1/files/db/knowledge/11111111-1111-1111-1111-111111111111.png'
+
+  test('a marker written by an agent lands on the image', () => {
+    const blocks: WikiBlock[] = [
+      {
+        id: 'b1',
+        type: 'markdown',
+        content:
+          `![Schaltplan](${REF})\n` +
+          `<image-description src="${REF}">Steuerplatine mit Netzteil links</image-description>`,
+      },
+    ]
+    const html = blocksToEditorHtml(blocks)
+    expect(html).toContain(
+      'data-description="Steuerplatine mit Netzteil links"',
+    )
+    // the marker itself is gone: the editor schema would drop it on save
+    expect(html).not.toContain('image-description>')
+  })
+
+  test('saving it back keeps the description on the image', () => {
+    const html = blocksToEditorHtml([
+      {
+        id: 'b1',
+        type: 'markdown',
+        content: `![a](${REF})\n<image-description src="${REF}">Nahaufnahme</image-description>`,
+      },
+    ])
+    const saved = editorHtmlToBlocks(html)
+    expect(saved).toHaveLength(1)
+    expect(saved[0]!.content).toContain('data-description="Nahaufnahme"')
+  })
+
+  test('an html block keeps a description it already has', () => {
+    const html = blocksToEditorHtml([
+      {
+        id: 'b1',
+        type: 'html',
+        content: `<img src="${REF}" data-description="Vom Editor">`,
+      },
+    ])
+    expect(editorHtmlToBlocks(html)[0]!.content).toContain(
+      'data-description="Vom Editor"',
+    )
+  })
+})
+
 describe('blocksAreEqual', () => {
   const a: WikiBlock[] = [{ id: '1', type: 'html', content: '<p>x</p>' }]
 
@@ -117,5 +184,52 @@ describe('blocksAreEqual', () => {
 
   test('different length', () => {
     expect(blocksAreEqual(a, [])).toBe(false)
+  })
+})
+
+describe('blocksToEditorHtml — markdown task lists', () => {
+  test('a markdown task list becomes a real checklist for the editor', () => {
+    // Without the rewrite the editor schema has no node for a bare checkbox,
+    // drops it, and the checklist degrades to a plain bullet list on the next
+    // save — losing which items were done.
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] offen\n- [x] erledigt' },
+    ])
+
+    expect(html).toContain('data-type="taskList"')
+    expect(html).toContain('data-type="taskItem"')
+    expect(html).toContain('data-checked="false"')
+    expect(html).toContain('data-checked="true"')
+    // no bare checkbox is left for the editor to drop
+    expect(html).not.toContain('<input')
+    // TaskItem's content is `paragraph+`
+    expect(html).toContain('<p>')
+  })
+
+  test('a plain bullet list is left alone', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- eins\n- zwei' },
+    ])
+
+    expect(html).not.toContain('data-type="taskList"')
+    expect(html).toContain('<li>eins</li>')
+  })
+
+  test('a list with only some checkboxes is not a task list', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] offen\n- kein Kästchen' },
+    ])
+
+    expect(html).not.toContain('data-type="taskList"')
+  })
+
+  test('nested task items keep their own state', () => {
+    const html = blocksToEditorHtml([
+      { id: 'b1', type: 'markdown', content: '- [ ] oben\n    - [x] unten' },
+    ])
+
+    expect(html).toContain('data-checked="false"')
+    expect(html).toContain('data-checked="true"')
+    expect(html).not.toContain('<input')
   })
 })

@@ -6,6 +6,7 @@
     <title>Magic Login Verifizierung</title>
     <link rel="icon" href="/favicon.png" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app-info.js" defer></script>
   </head>
   <body>
     <div class="min-h-screen flex items-center justify-center px-6 py-12">
@@ -13,7 +14,10 @@
         <!-- Token Verification (Loading) -->
         <div id="verification" class="card p-8">
           <div class="text-center mb-8">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">Anmeldung</h1>
             <p class="text-muted">Bitte warten Sie, während wir Sie anmelden...</p>
           </div>
@@ -25,7 +29,10 @@
         <!-- Error Message -->
         <div id="error-message" class="card p-8 hidden">
           <div class="error-message">
-            <img class="mx-auto w-48 mb-6" src="/favicon.png" alt="Logo" />
+            <div class="brand mb-6">
+              <img class="brand-logo" src="/favicon.png" alt="" />
+              <span class="brand-name" data-app-name></span>
+            </div>
             <h1 class="text-2xl font-bold text-primary mb-2">Fehler bei der Anmeldung</h1>
             <p class="text-muted mb-4" id="error-text">Ein Fehler ist aufgetreten</p>
             <button onclick="window.location.href='/login.html'" class="btn btn-inline btn-secondary">

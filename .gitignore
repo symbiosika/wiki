@@ -7,3 +7,6 @@ scratchpad/
 backend/dev-db/
 backend/.env.default
 backend/jwt-keys.generated.env
+
+# generated Teams app package (docs/teams-app/pack.sh)
+docs/teams-app/*.zip

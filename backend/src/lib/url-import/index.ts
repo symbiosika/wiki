@@ -6,7 +6,7 @@
  * by the URL (see runner.ts). This module is the CRUD layer; runner.ts is the
  * execution layer.
  *
- * Everything is scoped by `organisationId` (== tenantId) so one tenant can
+ * Everything is scoped by `tenantId` (== tenantId) so one tenant can
  * never read or mutate another tenant's jobs.
  */
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -22,7 +22,7 @@ import {
 import { assertValidCron } from "./cron";
 
 export interface JobContext {
-  organisationId: string;
+  tenantId: string;
   userId?: string;
 }
 
@@ -47,7 +47,7 @@ export const createImportJob = async (
   const rows = await getDb()
     .insert(urlImportJobs)
     .values({
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       name: input.name,
       cron: input.cron,
       enabled: input.enabled ?? true,
@@ -66,7 +66,7 @@ export const listImportJobs = async (
   getDb()
     .select()
     .from(urlImportJobs)
-    .where(eq(urlImportJobs.organisationId, ctx.organisationId))
+    .where(eq(urlImportJobs.tenantId, ctx.tenantId))
     .orderBy(desc(urlImportJobs.createdAt));
 
 export const getImportJob = async (
@@ -79,7 +79,7 @@ export const getImportJob = async (
     .where(
       and(
         eq(urlImportJobs.id, jobId),
-        eq(urlImportJobs.organisationId, ctx.organisationId),
+        eq(urlImportJobs.tenantId, ctx.tenantId),
       ),
     )
     .limit(1);
@@ -203,7 +203,7 @@ export const setJobUrls = async (
     } else {
       await db.insert(urlImportJobUrls).values({
         jobId,
-        organisationId: ctx.organisationId,
+        tenantId: ctx.tenantId,
         url: entry.url,
         title: entry.title ?? null,
         subPath: entry.subPath,

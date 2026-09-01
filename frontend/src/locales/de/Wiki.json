@@ -18,6 +18,15 @@
     "createFirst": "Erste Seite anlegen"
   },
   "noPagesYet": "Noch keine Seiten",
+  "dashboard": {
+    "greeting": "Willkommen zurück",
+    "greetingNamed": "Willkommen zurück, {name}",
+    "subtitle": "Deine zuletzt bearbeiteten Seiten und Bereiche auf einen Blick.",
+    "areas": "Bereiche, denen du angehörst",
+    "recent": "Kürzlich aktualisiert",
+    "noRecent": "Noch keine Seiten bearbeitet.",
+    "pageCount": "{count} Seite | {count} Seiten"
+  },
   "import": {
     "button": "Seite importieren",
     "title": "Seite importieren",
@@ -78,17 +87,37 @@
   "info": {
     "button": "Info",
     "hint": "Dokumentdetails anzeigen",
+    "pageType": "Seitentyp",
+    "status": "Status",
+    "location": "Ablage",
     "scope": "Bereich",
     "created": "Erstellt",
     "updated": "Zuletzt bearbeitet",
     "verified": "Geprüft",
     "by": "von {name}"
   },
+  "public": {
+    "title": "Öffentlich",
+    "inherit": "Von übergeordneter Seite erben",
+    "public": "Öffentlich freigeben",
+    "excluded": "Von Freigabe ausnehmen",
+    "hintPublic": "Diese Seite und alle Unterseiten sind ohne Login abrufbar.",
+    "hintExcluded": "Diese Seite und ihre Unterseiten bleiben intern, auch wenn eine übergeordnete Seite freigegeben ist.",
+    "hintInheritedPublic": "Ohne Login abrufbar, weil eine übergeordnete Seite freigegeben ist.",
+    "hintInheritedInternal": "Nur intern sichtbar.",
+    "chipHint": "Öffentlich abrufbar"
+  },
   "summary": {
     "button": "Zusammenfassung",
     "hint": "KI-generierte Seitenzusammenfassung anzeigen",
     "title": "Zusammenfassung",
     "updated": "Erstellt {date}"
+  },
+  "toc": {
+    "button": "Inhalt",
+    "hint": "Inhaltsverzeichnis anzeigen",
+    "title": "Inhaltsverzeichnis",
+    "empty": "Fügen Sie Überschriften (H1, H2, H3) hinzu, um ein Inhaltsverzeichnis zu erstellen."
   },
   "references": {
     "backlinks": "Verlinkt von",
@@ -121,8 +150,8 @@
     "organisation": "Organisation"
   },
   "pageType": {
-    "empty": "Klassifizieren",
-    "hint": "Klassifizierung der Seite wählen",
+    "empty": "Seitentyp wählen",
+    "hint": "Seitentyp der Seite wählen",
     "values": {
       "FAQ": "FAQ",
       "manual": "Handbuch",
@@ -161,6 +190,7 @@
   "switchTenant": "Organisation wechseln",
   "collapseSidebar": "Seitenleiste ausblenden",
   "expandSidebar": "Seitenleiste einblenden",
+  "resizeSidebar": "Breite der Seitenleiste anpassen",
   "expandActions": "Weitere Aktionen einblenden",
   "collapseActions": "Weitere Aktionen ausblenden"
 }

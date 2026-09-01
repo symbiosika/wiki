@@ -28,10 +28,20 @@ export const useTheme = defineStore('theme', () => {
     if (preference.value === 'system') apply()
   }
 
-  /** Change and persist the user's preference. */
-  const setPreference = (pref: ThemePreference) => {
+  /**
+   * Change the user's preference, persisting it by default.
+   *
+   * `persist: false` is for a preference that is not the user's choice but the
+   * host application's — a Microsoft Teams tab reports its own light/dark
+   * setting, and writing that into localStorage would silently overwrite what
+   * the same person picked in their browser.
+   */
+  const setPreference = (
+    pref: ThemePreference,
+    options: { persist?: boolean } = {},
+  ) => {
     preference.value = pref
-    storeTheme(pref)
+    if (options.persist !== false) storeTheme(pref)
     apply()
   }
 

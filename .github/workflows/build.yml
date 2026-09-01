@@ -20,8 +20,7 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # CHANGE DETECTION – only build the images that actually changed.
-  #   app → main app image (backend + bundled frontend)
-  #   mcp → standalone MCP server image
+  #   app → main app image (backend + bundled frontend, incl. embedded MCP)
   # On a push to main or develop we force a full rebuild (a release/merge can
   # leave the paths-filter diff empty, and merging to these branches is a
   # deliberate release/staging deploy).
@@ -30,7 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.filter.outputs.app }}
-      mcp: ${{ steps.filter.outputs.mcp }}
       force: ${{ steps.meta.outputs.force }}
       # Image tag variant shared by every build job:
       #   pull_request → pr_<number>   (e.g. pr_12)
@@ -66,10 +64,8 @@ jobs:
             app:
               - 'backend/**'
               - 'frontend/**'
+              - 'frontend-public/**'
               - 'Dockerfile'
-              - '.github/workflows/build.yml'
-            mcp:
-              - 'mcp-server/**'
               - '.github/workflows/build.yml'
 
   # ---------------------------------------------------------------------------
@@ -101,6 +97,45 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend
           path: frontend/dist
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # PUBLIC FRONTEND – the read-only documentation site.
+  #
+  # Built separately from the authenticated SPA because it ships to a different
+  # place: the backend serves ./static behind a login and ./public to everyone,
+  # so this bundle goes into public/docs and the SPA into static/app.
+  # ---------------------------------------------------------------------------
+  build-frontend-public:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.app == 'true' || needs.detect-changes.outputs.force == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: frontend-public
+        run: bun install
+
+      - name: Test
+        working-directory: frontend-public
+        run: bun run test
+
+      - name: Build public frontend
+        working-directory: frontend-public
+        run: bun run build
+
+      - name: Upload public frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend-public
+          path: frontend-public/dist
           retention-days: 1
 
   # ---------------------------------------------------------------------------
@@ -165,7 +200,7 @@ jobs:
   # MAIN APP IMAGE – backend bundle + bundled frontend, via the root Dockerfile.
   # ---------------------------------------------------------------------------
   build-docker-app:
-    needs: [detect-changes, build-backend, build-frontend]
+    needs: [detect-changes, build-backend, build-frontend, build-frontend-public]
     if: needs.detect-changes.outputs.app == 'true' || needs.detect-changes.outputs.force == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -184,10 +219,20 @@ jobs:
           name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend
           path: frontend_artifact
 
-      - name: Merge frontend into dist
+      - name: Download public frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-frontend-public
+          path: frontend_public_artifact
+
+      - name: Merge frontends into dist
         run: |
+          # authenticated SPA -> static/ (served behind authOrRedirectToLogin)
           mkdir -p dist/static
           cp -r frontend_artifact/static/* dist/static/
+          # documentation site -> public/ (served to everyone, no auth)
+          mkdir -p dist/public
+          cp -r frontend_public_artifact/public/* dist/public/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -212,39 +257,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-app
 
   # ---------------------------------------------------------------------------
-  # MCP SERVER IMAGE – standalone OAuth2-protected MCP server (Bun).
-  # ---------------------------------------------------------------------------
-  build-docker-mcp:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.mcp == 'true' || needs.detect-changes.outputs.force == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.SYMBIOSIKA_AZURECR_IO_USER }}
-          password: ${{ secrets.SYMBIOSIKA_AZURECR_IO_TOKEN }}
-
-      - name: Build and push MCP server image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./mcp-server
-          file: ./mcp-server/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.event.repository.name }}-mcp:${{ needs.detect-changes.outputs.image_tag }}
-            ${{ env.REGISTRY }}/${{ github.event.repository.name }}-mcp:${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.event.repository.name }}-mcp
-          cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-mcp
-
-  # ---------------------------------------------------------------------------
   # COOLIFY DEPLOY TRIGGERS
   # After the images are pushed, ask Coolify to redeploy. Each job runs only
   # for its own branch (and never for pull_request builds, whose images are
@@ -258,7 +270,7 @@ jobs:
   # failing — so the build stays green until deploys are configured.
   # ---------------------------------------------------------------------------
   deploy-prod:
-    needs: [build-docker-app, build-docker-mcp]
+    needs: [build-docker-app]
     if: github.event_name != 'pull_request' && github.ref_name == 'main'
     runs-on: ubuntu-latest
     steps:
@@ -280,7 +292,7 @@ jobs:
             || true
 
   deploy-staging:
-    needs: [build-docker-app, build-docker-mcp]
+    needs: [build-docker-app]
     if: github.event_name != 'pull_request' && github.ref_name == 'develop'
     runs-on: ubuntu-latest
     steps:

@@ -35,3 +35,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # public static files
 public/manage/**/*aes-keys.generated.env
+
+# Built SPA bundle, copied into ./static/app by the frontend build (and into the
+# image by CI). Never part of the repository — it used to be easy to sweep into a
+# commit with `git add -A` after a local build.
+static/app/

@@ -14,11 +14,15 @@ Uses the debug email flow: the magic-link token is read directly from `logs/emai
 
 ## Steps
 
-Run the script and show the full output:
+Run the script **from the `backend/` directory** and show the full output:
 
 ```bash
 bash ./.scripts/testuser.sh
 ```
+
+(The script expects to live in `<app-root>/.scripts/` — it reads the magic-link
+email from `<app-root>/logs/email/`, which the server writes relative to its
+working directory.)
 
 ## What the script does
 

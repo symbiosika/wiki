@@ -14,7 +14,15 @@
 # NOTE ON LOGS: the app writes its log files to `logs/` relative to its working
 # directory, which is /usr/src/app in the image (see Dockerfile WORKDIR). The
 # `app_logs` volume below persists that directory so logs survive container
-# restarts/redeploys. The main app.log is only written when WRITE_DEBUG_FILES=true.
+# restarts/redeploys. The main app.log is only written when WRITE_DEBUG_FILES=true;
+# the operations log (logs/ops.log) is written unless OPS_LOG_FILE=false.
+#
+# DEBUGGING "502 Bad Gateway": see docs/bad-gateway-debugging.md. The app logs
+# boots, crashes, signals, a 30s heartbeat (memory vs. container limit, event
+# loop lag, in-flight requests) and every slow or failed request as `[ops]`
+# NDJSON lines — enough to tell a proxy problem from a container problem from
+# an app problem. Enable the `app_logs` volume below so those lines survive a
+# restart, which is exactly when they matter.
 name: ${PROJECT_NAME:-wiki}
 
 services:
@@ -31,6 +39,19 @@ services:
       # Enables writing app.log (with rotation, 10 files x 1MB) to the logs/ dir.
       WRITE_DEBUG_FILES: ${WRITE_DEBUG_FILES:-true}
       CRON_LOG: ${CRON_LOG:-true}
+
+      # --- Operations log (Bad Gateway diagnostics) ---
+      # See docs/bad-gateway-debugging.md. Defaults are production-safe; the
+      # heartbeat is one small JSON line every 30s.
+      OPS_LOG: ${OPS_LOG:-true}
+      OPS_LOG_FILE: ${OPS_LOG_FILE:-true}
+      OPS_HEARTBEAT_MS: ${OPS_HEARTBEAT_MS:-30000}
+      OPS_SLOW_REQUEST_MS: ${OPS_SLOW_REQUEST_MS:-3000}
+      # Full access log — only while hunting a specific problem.
+      OPS_LOG_ALL_REQUESTS: ${OPS_LOG_ALL_REQUESTS:-false}
+      # Set to enable GET /internal/diagnostics (live snapshot, works even
+      # while the DB is down). Unset = the path does not exist.
+      DIAGNOSTICS_TOKEN: ${DIAGNOSTICS_TOKEN:-}
 
       # --- URL / CORS ---
       BASE_URL: ${BASE_URL}
@@ -50,6 +71,17 @@ services:
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
 
+      # --- Microsoft 365 login (optional) ---
+      # With both values set, the login page shows an additional
+      # "Mit Microsoft 365 anmelden" button (the magic link stays available).
+      # Redirect URI to register in Entra ID:
+      #   ${BASE_URL}/api/v1/user/auth/microsoft/callback
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      # Directory to authenticate against: tenant GUID (single organisation),
+      # `organizations` or `common` (default, any Microsoft account).
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
+
       # --- Email (SMTP) ---
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-465}
@@ -62,11 +94,44 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-mistralai/mistral-large}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+
+      # --- MCP server (embedded, served at ${BASE_URL}/mcp) ---
+      # OAUTH_INTROSPECTION_SECRET keeps /oauth/introspect available for
+      # external resource servers; the embedded MCP server validates tokens
+      # in-process and does not need it. WIKI_TENANT_ID is an optional
+      # fallback organisation for credentials without a tenant binding
+      # (leave empty on multi-tenant deployments).
+      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET:-}
+      WIKI_TENANT_ID: ${WIKI_TENANT_ID:-}
     volumes:
       # >>> This is what persists the log files <<<
       # - app_logs:/usr/src/app/logs
       # Alternatively bind-mount to a host directory:
       # - ./logs/app:/usr/src/app/logs
+    # Makes restarts visible instead of merely suspected: `docker ps` shows the
+    # health state and `docker events` records every transition, so a container
+    # that quietly restarts under load stops being invisible. `curl` is present
+    # in the image (installed in the Dockerfile for the Infisical CLI).
+    #
+    # /health answers as soon as the process serves requests — note that the
+    # application's own routes are registered a little later, once the DB
+    # connection and licence check are through (see docs/bad-gateway-debugging.md).
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    # Bounded stdout logs. Without this the json-file driver grows without
+    # limit and a full disk becomes its own outage.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    # A memory limit turns a leak into a clean, logged container OOM instead of
+    # an unexplained kill somewhere in the LXC. Set it below what the LXC has.
+    # mem_limit: 2g
 
   postgres:
     image: pgvector/pgvector:pg17
@@ -82,23 +147,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Standalone MCP server (see mcp-server/README.md).
-  # Behind the "mcp" profile, so it only starts when explicitly requested:
-  #   docker compose -f docker-compose.prod.yml --profile mcp up -d
-  mcp:
-    image: ${REGISTRY:-symbiosika.azurecr.io}/wiki-mcp:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    profiles:
-      - mcp
-    ports:
-      - "${MCP_PORT:-8787}:8787"
-    environment:
-      MCP_PORT: ${MCP_PORT:-8787}
-      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
-      OAUTH_ISSUER: ${OAUTH_ISSUER}
-      OAUTH_INTROSPECTION_SECRET: ${OAUTH_INTROSPECTION_SECRET}
-      WIKI_TENANT_ID: ${WIKI_TENANT_ID}
 
 volumes:
   app_logs:

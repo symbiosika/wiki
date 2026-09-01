@@ -119,24 +119,36 @@ export const useWiki = defineStore('wiki', () => {
   // ----- config (facet vocabularies) --------------------------------------
 
   /**
-   * Load the tenant's knowledge config (page-type / status vocabularies) once.
-   * Cached for the session — the vocabularies rarely change and every page
-   * uses the same lists, so we avoid re-fetching on each page switch.
+   * Organisation the cached config belongs to. The config is per tenant, so
+   * caching without this would serve the previous organisation's vocabularies
+   * and page-type icons after a switch.
+   */
+  const configTenantId = ref<string | null>(null)
+
+  /**
+   * Load the tenant's knowledge config (page-type / status vocabularies and
+   * page-type presentation). Cached per organisation — the vocabularies rarely
+   * change and every page uses the same lists, so we avoid re-fetching on each
+   * page switch.
    */
   const loadConfig = async (tenantId: string) => {
-    if (state.value.config) return
+    if (state.value.config && configTenantId.value === tenantId) return
     try {
       state.value.config = await fetcher.get<WikiKnowledgeConfig>(
         `${api(tenantId)}/knowledge/texts/config`,
       )
+      configTenantId.value = tenantId
     } catch {
-      // fall back to empty vocabularies — the facet selectors simply stay empty
-      state.value.config = {
-        autoSummaries: true,
-        pageTypes: [],
-        statuses: [],
-        attributes: [],
-      }
+      /*
+       * Leave the config unset so the next caller retries. Caching an empty
+       * fallback here turns one transient failure — a 403 during a cold start,
+       * a blip — into a session-long outage with no way back: empty facet
+       * selectors and, since every tree row resolves its icon through this
+       * config, a wiki with no page-type icons at all. Every consumer already
+       * reads it as `config?.x ?? fallback`, so null is safe.
+       */
+      state.value.config = null
+      configTenantId.value = null
     }
   }
 
@@ -147,6 +159,7 @@ export const useWiki = defineStore('wiki', () => {
    */
   const reloadConfig = async (tenantId: string) => {
     state.value.config = null
+    configTenantId.value = null
     await loadConfig(tenantId)
   }
 
@@ -425,7 +438,11 @@ export const useWiki = defineStore('wiki', () => {
   const savePageMeta = async (
     tenantId: string,
     pageId: string,
-    patch: { pageType?: string | null; status?: string | null },
+    patch: {
+      pageType?: string | null
+      status?: string | null
+      publicMode?: 'public' | 'excluded' | null
+    },
     verifiedByUserId?: string,
   ) => {
     const body: Record<string, unknown> = { tenantId, ...patch }
@@ -454,8 +471,24 @@ export const useWiki = defineStore('wiki', () => {
           state.value.page.verifiedAt = updated.verifiedAt
           state.value.page.verifiedBy = updated.verifiedBy
         }
+        if ('publicMode' in patch) {
+          state.value.page.publicMode = patch.publicMode ?? null
+        }
       }
       state.value.lastSavedAt = new Date().toISOString()
+
+      // Publishing inherits down the tree, so this one page is never the whole
+      // change: descendants flip with it. Reload the tree (and the page, whose
+      // own resolved flag the response cannot be relied on to carry) so every
+      // globe marker reflects what is actually public now.
+      if ('publicMode' in patch) {
+        await Promise.all([
+          loadTree(tenantId),
+          state.value.page?.id === pageId
+            ? loadPage(tenantId, pageId)
+            : Promise.resolve(),
+        ])
+      }
     } catch (error) {
       state.value.saveError =
         error instanceof Error ? error.message : 'Failed to save page metadata'

@@ -1,3 +1,8 @@
+// The test-run endpoint executes an agent, which must not call an LLM here.
+// Set explicitly rather than relying on another test file having done it: this
+// file has to pass on its own.
+process.env.POSTPROCESSING_DEV_STUB = "true";
+
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Hono } from "hono";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
@@ -39,21 +44,26 @@ describe("Post-processing agent routes", () => {
 
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org));
+      .where(eq(postProcessingAgents.tenantId, org));
     await getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org2));
+      .where(eq(postProcessingAgents.tenantId, org2));
   });
 
   afterAll(() => {
+    // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+    // `.catch` rather than `.then`: an unawaited cleanup that rejects after the
+    // file is done becomes an unhandled rejection between test files, which Bun
+    // counts as an error and turns into exit code 1 — blamed on whichever file
+    // happened to be running.
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org))
-      .then(() => {});
+      .where(eq(postProcessingAgents.tenantId, org))
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
     getDb()
       .delete(postProcessingAgents)
-      .where(eq(postProcessingAgents.organisationId, org2))
-      .then(() => {});
+      .where(eq(postProcessingAgents.tenantId, org2))
+      .catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("rejects an empty prompt", async () => {

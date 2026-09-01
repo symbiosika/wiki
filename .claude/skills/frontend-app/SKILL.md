@@ -5,6 +5,7 @@ description: >
   Use when the user asks to create a Vue component, add a page/view, style something with Tailwind,
   use PrimeVue/Volt components, add icons, use the Fetcher, work with Pinia stores, or set up i18n.
   Use when the user asks about auto-imports, ConfirmDialog, or dark mode.
+  Use when writing or running frontend tests (vitest, *.spec.ts).
 ---
 
 # Frontend App
@@ -26,7 +27,39 @@ Vue 3 SPA (Composition API, no SSR). Built with Vite, Tailwind CSS v4, PrimeVue/
 
 - `bun run dev` - Dev server
 - `bun run build` - Type check + production build
+- `bun run test` - Vitest suite (~3s, no setup)
+- `bun run type-check` - vue-tsc
 - Path alias: `@` → `./src`
+
+## Testing (vitest — cheap, always run it)
+
+Config: `vitest.config.ts`, environment `happy-dom`, includes `src/**/*.spec.ts`.
+No dev server, backend or database required.
+
+```bash
+bun run test                          # whole suite (~3s)
+bun run test src/utils/date.spec.ts   # single file
+bun run test:watch                    # watch mode
+```
+
+Specs sit next to the code (`src/utils/date.ts` → `src/utils/date.spec.ts`).
+Test pure logic — utils, parsers, editor helpers, store logic — rather than
+rendered markup.
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { parseServerDate } from './date'
+
+describe('parseServerDate', () => {
+  it('treats a naive timestamp as UTC', () => {
+    expect(parseServerDate('2026-07-22 17:20:07')?.toISOString())
+      .toBe('2026-07-22T17:20:07.000Z')
+  })
+})
+```
+
+Add a spec for every non-trivial function you write, and run `bun run test`
+plus `bun run type-check` before calling a frontend change done.
 
 ## Auto-Imports
 

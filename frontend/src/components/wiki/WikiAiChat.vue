@@ -30,7 +30,7 @@
         <span
           class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
         >
-          <IconRobot class="h-5 w-5" />
+          <IconChat class="h-5 w-5" />
         </span>
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0">
@@ -100,7 +100,7 @@
           <span
             class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"
           >
-            <IconRobot class="h-6 w-6" />
+            <IconChat class="h-6 w-6" />
           </span>
           <p class="text-sm font-medium text-surface-700 dark:text-surface-200">
             {{ $t('Chat.emptyTitle') }}
@@ -261,7 +261,8 @@
 <script setup lang="ts">
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
-import IconRobot from '~icons/mdi/robot-outline'
+import { teamsAuthHeaders } from '@/utils/teamsSession'
+import IconChat from '~icons/mdi/message-text-outline'
 import IconClose from '~icons/mdi/close'
 import IconSend from '~icons/mdi/send'
 import IconStop from '~icons/mdi/stop'
@@ -345,6 +346,10 @@ const initializeChat = () => {
   chat.value = new Chat({
     transport: new DefaultChatTransport({
       api: `/api/v1/tenant/${tenantId.value}/chat`,
+      // The transport does its own fetch, so the bearer session (Teams tab) has
+      // to be attached here. A function, not a fixed object: the token is
+      // replaced when a session is refreshed mid-conversation.
+      headers: teamsAuthHeaders,
     }),
   })
 }

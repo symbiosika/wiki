@@ -76,7 +76,13 @@ describe("Wiki page image endpoint", () => {
     // pages only — deleting the uploaded file row here races with the next
     // test file over the single-connection PGlite socket; the framework's
     // reference tracking + cleanup cron handles orphaned files anyway.
-    deleteTestPages().then(() => {});
+    // `.catch` rather than `.then`: when that race does bite, the rejection
+    // arrives after the file is done and would land as an unhandled rejection
+    // between test files, which Bun counts as an error and turns into exit
+    // code 1 — blamed on whichever file happened to be running.
+    deleteTestPages().catch((error) =>
+      console.warn("afterAll cleanup failed:", error)
+    );
   });
 
   test("page member can fetch a referenced image", async () => {

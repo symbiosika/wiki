@@ -19,6 +19,7 @@
   "dependencies": {
     "@ai-sdk/vue": "3.0.230",
     "@floating-ui/dom": "^1.8.0",
+    "@microsoft/teams-js": "^2.55.0",
     "@simplewebauthn/browser": "^13.0.0",
     "@tailwindcss/vite": "^4.1.17",
     "@tiptap/core": "^3.27.3",

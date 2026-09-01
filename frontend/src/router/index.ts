@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import DefaultLayout from '../components/layout/Default.vue'
+import { isTeamsHost } from '@/utils/teamsSession'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -56,6 +57,11 @@ const router = createRouter({
           component: () => import('../views/manage/document-tags.vue'),
         },
         {
+          path: 'tenant/:tenantId/manage/agent-instructions',
+          name: 'AgentInstructions',
+          component: () => import('../views/manage/agent-instructions.vue'),
+        },
+        {
           path: 'tenant/:tenantId/manage/post-processing-agents',
           name: 'PostProcessingAgents',
           component: () => import('../views/manage/post-processing-agents.vue'),
@@ -69,6 +75,18 @@ const router = createRouter({
           path: 'tenant/:tenantId/chat',
           name: 'Chat',
           component: () => import('../views/chat/index.vue'),
+        },
+        // "Fragen": the plain-language chat with saved sessions. Separate from
+        // the technical /chat view above, which stays as it is.
+        //
+        // One record with an optional session id, not two: a new conversation
+        // gets its id while the first answer is already streaming, and the
+        // route is rewritten right then. Two records would remount the view at
+        // that moment and cut the stream.
+        {
+          path: 'tenant/:tenantId/ask/:sessionId?',
+          name: 'Ask',
+          component: () => import('../views/ask/index.vue'),
         },
         {
           path: 'tenant/:tenantId/profile',
@@ -139,6 +157,16 @@ const redirectToLogin = () => {
  * Navigation guard
  */
 router.beforeEach((to, from, next) => {
+  // In a Teams tab there is no session cookie to look for and no login page to
+  // go to: the session lives in memory and is established before the app mounts
+  // (see utils/teamsSession). Navigation is never the place to fix it — an
+  // expired session surfaces as a 401 in the fetcher, which re-authenticates
+  // against the Teams host.
+  if (isTeamsHost()) {
+    next()
+    return
+  }
+
   // Check authentication for protected routes
   if (!isAuthenticated()) {
     redirectToLogin()

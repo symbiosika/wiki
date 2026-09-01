@@ -14,6 +14,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@framework/lib/db/db-connection";
 import { urlToMarkdown } from "@framework/lib/knowledge/parsing/url";
+import { KNOWLEDGE_FILES_BUCKET } from "@framework/lib/knowledge/knowledge-text-files";
 import { upsertKnowledgeTextFromSource } from "@framework/lib/knowledge/knowledge-text-sync";
 import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
@@ -65,7 +66,7 @@ export const enqueueRun = async (
     .insert(urlImportJobRuns)
     .values({
       jobId,
-      organisationId: ctx.organisationId,
+      tenantId: ctx.tenantId,
       trigger,
       status: "running",
       total: urls.length,
@@ -78,7 +79,7 @@ export const enqueueRun = async (
   await createJob(
     URL_IMPORT_JOB_TYPE,
     { runId: run.id, jobId },
-    ctx.organisationId,
+    ctx.tenantId,
   );
 
   return run;
@@ -124,7 +125,7 @@ const resolveWikiPath = async (
       .from(knowledgeText)
       .where(
         and(
-          eq(knowledgeText.tenantId, job.organisationId),
+          eq(knowledgeText.tenantId, job.tenantId),
           eq(knowledgeText.title, title),
           parentId
             ? eq(knowledgeText.parentId, parentId)
@@ -143,7 +144,7 @@ const resolveWikiPath = async (
     let id = existing[0]?.id;
     if (!id) {
       const page = await createKnowledgeText({
-        tenantId: job.organisationId,
+        tenantId: job.tenantId,
         userId: ownerUserId,
         createdBy: job.createdBy ?? undefined,
         teamId: job.teamId ?? undefined,
@@ -151,7 +152,6 @@ const resolveWikiPath = async (
         parentId: parentId ?? undefined,
         title,
         text: "",
-        embeddingEnabled: false,
       });
       id = page.id;
     }
@@ -226,15 +226,20 @@ export const executeJobRun = async (runId: string): Promise<void> => {
 
         // Pass the tenant context so non-HTML downloads (PDFs) can be routed
         // through the tenant-scoped PDF parser instead of being rejected.
+        // The images such a PDF yields belong to the page this import creates,
+        // so they go into the page image bucket rather than the parser's own —
+        // that is where the page's file bookkeeping and the page-scoped image
+        // endpoints (MCP clients without `files:read`) can reach them.
         const parsed = await urlToMarkdown(entry.url, {
           parseContext: {
-            tenantId: job.organisationId,
+            tenantId: job.tenantId,
             userId: job.createdBy ?? undefined,
             teamId: job.teamId ?? undefined,
           },
+          imageBucket: KNOWLEDGE_FILES_BUCKET,
         });
         const upsert = await upsertKnowledgeTextFromSource({
-          tenantId: job.organisationId,
+          tenantId: job.tenantId,
           sourceIdentifier: entry.url,
           matchScope: { urlImportJobId: job.id },
           title: entry.title || parsed.title || entry.url,
@@ -374,7 +379,7 @@ export const tickScheduler = async (now: Date = new Date()): Promise<void> => {
     try {
       await enqueueRun(
         {
-          organisationId: job.organisationId,
+          tenantId: job.tenantId,
           userId: job.createdBy ?? undefined,
         },
         job.id,

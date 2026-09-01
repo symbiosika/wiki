@@ -7,7 +7,7 @@ export type UrlImportUrlStatus = 'pending' | 'success' | 'error'
 
 export interface UrlImportJob {
   id: string
-  organisationId: string
+  tenantId: string
   name: string
   /** 5-field Linux cron expression */
   cron: string
@@ -26,7 +26,7 @@ export interface UrlImportJob {
 export interface UrlImportJobUrl {
   id: string
   jobId: string
-  organisationId: string
+  tenantId: string
   url: string
   title: string | null
   /**
@@ -55,7 +55,7 @@ export interface UrlImportRunResultItem {
 export interface UrlImportRun {
   id: string
   jobId: string
-  organisationId: string
+  tenantId: string
   trigger: 'manual' | 'scheduled'
   status: UrlImportRunStatus
   total: number

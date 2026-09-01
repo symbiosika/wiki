@@ -1,7 +1,8 @@
 /**
  * Route tests. The AI/STT calls run through the dev stub (PROTOCOL_DEV_STUB),
- * so this suite must be run with that env set:
- *   PROTOCOL_DEV_STUB=true bun test src/routes/tenant/[tenantId]/protocol/index.test.ts
+ * which the suite sets itself — so a plain
+ *   bun test src/routes/tenant/[tenantId]/protocol/index.test.ts
+ * works as well as `bun run test:local`, and neither needs an AI provider key.
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Hono } from "hono";
@@ -15,7 +16,12 @@ import {
 import { testFetcher } from "@framework/test/fetcher.test";
 import { getDb } from "@framework/lib/db/db-connection";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
-import defineProtocolRoutes from "./index";
+
+// The route module and the libs behind it read PROTOCOL_DEV_STUB at import
+// time (static imports are hoisted, so this has to happen before the dynamic
+// import below — same pattern as ../../../../lib/audio/transcription/realtime.test.ts).
+process.env.PROTOCOL_DEV_STUB = "true";
+const { default: defineProtocolRoutes } = await import("./index");
 
 let app: SymbiosikaFrameworkHonoApp;
 let token: string;
@@ -34,8 +40,12 @@ describe("Protocol Routes", () => {
     await cleanup();
   });
 
+  // Fire and forget cleanup (Bun limitation — see the backend-testing skill).
+  // `.catch` rather than `.then`: a rejection after the file is done would
+  // otherwise land as an unhandled rejection between test files, which Bun
+  // counts as an error and turns into exit code 1.
   afterAll(() => {
-    cleanup().then(() => {});
+    cleanup().catch((error) => console.warn("afterAll cleanup failed:", error));
   });
 
   test("unauthenticated create is rejected", async () => {

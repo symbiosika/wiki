@@ -27,6 +27,19 @@ export interface WikiTreeNode {
   userId: string | null;
   tenantWide: boolean;
   updatedAt: string;
+  /**
+   * Controlled `pageType` facet, surfaced so the sidebar can show the icon and
+   * colour configured for that type (see the tenant knowledge config's
+   * `pageTypeStyles`). Null when the page carries no type.
+   */
+  pageType: string | null;
+  /**
+   * Resolved public-visibility flag (framework knowledge-text-public.ts).
+   * Surfaced so the sidebar can mark which pages are reachable without a
+   * login — inheritance means a page can be public without carrying an own
+   * intent, so this cannot be derived client-side.
+   */
+  publicEffective: boolean;
   children: WikiTreeNode[];
 }
 
@@ -53,6 +66,8 @@ const toNode = (row: KnowledgeTextListRow): WikiTreeNode => ({
   userId: row.userId ?? null,
   tenantWide: row.tenantWide ?? false,
   updatedAt: row.updatedAt,
+  pageType: row.pageType ?? null,
+  publicEffective: row.publicEffective ?? false,
   children: [],
 });
 

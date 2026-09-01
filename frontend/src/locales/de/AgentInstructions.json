@@ -1,0 +1,19 @@
+{
+  "tabTitle": "Agenten-Anweisungen",
+  "title": "Agenten-Anweisungen",
+  "tabDescription": "Anweisungen für jeden KI-Agenten, der sich per MCP mit {tenant} verbindet. Sie werden einmal zu Beginn einer Sitzung geladen — beschreibe hier, was wo liegt, welche Bereiche verbindlich sind, Namenskonventionen und Hausregeln.",
+  "content": "Anweisungen",
+  "contentHint": "Markdown wird unterstützt. Kurz und sachlich halten — jede Agenten-Sitzung liest den Text vollständig.",
+  "placeholder": "z. B.\n# Über dieses Wiki\n- Das Handbuch unter „Unternehmen“ ist für Prozesse verbindlich.\n- Nenne immer den Seitentitel, aus dem eine Antwort stammt.\n- Produktspezifikationen liegen unter „Produkte“ und gelten nur mit Status „verifiziert“.",
+  "charCount": "{count} / {max} Zeichen",
+  "save": "Speichern",
+  "saved": "Agenten-Anweisungen gespeichert",
+  "saveError": "Agenten-Anweisungen konnten nicht gespeichert werden",
+  "loadError": "Agenten-Anweisungen konnten nicht geladen werden",
+  "remove": "Anweisungen löschen",
+  "removeConfirm": "Agenten-Anweisungen für diese Organisation löschen? Agenten starten ihre Sitzungen dann ohne Briefing.",
+  "removed": "Agenten-Anweisungen gelöscht",
+  "removeError": "Agenten-Anweisungen konnten nicht gelöscht werden",
+  "lastSaved": "Zuletzt gespeichert: {date}",
+  "notConfigured": "Noch keine Agenten-Anweisungen hinterlegt"
+}

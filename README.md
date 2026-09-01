@@ -13,9 +13,42 @@ Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
   To-do-Listen) und einklappbarem Seitenbaum
   (Persönlich / Teams / Organisation) plus Organisations-/Team-/
   Einladungsverwaltung.
-- **MCP-Server** (`mcp-server/`): eigenständiger OAuth2-Resource-Server, über
-  den eine Chat-App das Wiki als "Brain" nutzen kann (Identität, Discovery,
-  Lesen, Schreiben). Siehe [`mcp-server/README.md`](./mcp-server/README.md).
+- **Öffentliche Doku-Seite** (`frontend-public/`): schlanke, read-only
+  Zweitansicht für veröffentlichte Seiten — ohne Login, ohne Editor. Sie liest
+  ausschließlich die öffentliche API (`/api/v1/public/wiki/:tenantId/…`) und
+  zeigt nur, was über `publicMode` freigegeben wurde. Ausgeliefert unter
+  `/docs/` aus `backend/public/` (das Haupt-Frontend liegt dagegen hinter dem
+  Login unter `/static/app/`). Siehe
+  [`frontend-public/README.md`](./frontend-public/README.md).
+- **MCP-Server** (`backend/src/mcp/`): in den Backend-Prozess eingebetteter
+  MCP-Server (erreichbar unter `/mcp`, OAuth2/API-Token-Auth über das
+  Framework), über den eine Chat-App das Wiki als "Brain" nutzen kann
+  (Identität, Discovery, Lesen, Schreiben).
+  - Jedes Tool trägt MCP-**Annotations** (`readOnlyHint`, `destructiveHint`,
+    `idempotentHint`, `openWorldHint`), damit Clients (Claude & Co.) Lesen und
+    Schreiben schon vor dem Aufruf unterscheiden können: alle lesenden Tools
+    sind `readOnlyHint: true`, die schreibenden markieren zusätzlich, ob sie
+    Bestehendes überschreiben (`destructiveHint`) und ob ein Wiederholen
+    denselben Zustand ergibt (`idempotentHint`). `openWorldHint` ist überall
+    `false` — das Wiki ist eine geschlossene Domäne. Gesetzt werden die Hints
+    zentral über `READ_ONLY` / `writeAnnotations()` in
+    [`backend/src/mcp/tools/_define.ts`](./backend/src/mcp/tools/_define.ts);
+    `annotations.test.ts` schlägt fehl, wenn ein neues Tool sie vergisst.
+  - Jede Seite in einer Tool-Antwort trägt neben ihrer `id` auch ihre **`url`**,
+    damit eine Chat-App die Quelle verlinken kann statt nur eine undurchsichtige
+    Seiten-ID zu kennen. Das passiert generisch für alle Tools in
+    [`backend/src/mcp/page-url.ts`](./backend/src/mcp/page-url.ts) — Zeilen, die
+    keine Seiten sind (Teams, Organisationen, Facetten-Vokabulare, Collection-
+    Datensätze), bleiben unangetastet.
+  - Die Adresse einer Seite kommt aus
+    [`backend/src/lib/wiki/page-url.ts`](./backend/src/lib/wiki/page-url.ts) —
+    eine Quelle für alle Erzeuger. Sie ist nicht aus der Routen-Tabelle
+    ableitbar: die App liegt unter `/static/app/` und routet per Hash, ein
+    Seiten-Link ist also
+    `${BASE_URL}/static/app/#/tenant/<tenantId>/wiki/<pageId>` (Abschnitte mit
+    `#anchor`). Der App-interne Chat (`backend/src/ai/tools/wiki/`) liefert
+    denselben Pfad relativ, damit ein Klick in der Antwort ohne Reload
+    navigiert.
 - **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
   aufnehmen → **Live-Transkription** (der Text erscheint schon während des
   Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →
@@ -59,6 +92,11 @@ bun run dev           # Terminal 2: API auf http://localhost:3000
 cd ../frontend
 bun install
 bun run dev           # http://localhost:5173/static/app/
+
+# Öffentliche Doku-Seite (optional)
+cd ../frontend-public
+bun install
+bun run dev           # http://localhost:5174/docs/
 ```
 
 Hinweis für die lokale PGlite-DB: in `backend/.env`
@@ -69,6 +107,104 @@ parallel verschränkten Queries; gegen eine echte Postgres
 Login lokal ohne SMTP: `SMTP_HOST=console.localhost` (Default) schreibt
 Magic-Link-Mails nach `backend/logs/email/`. Testuser anlegen:
 `bash backend/framework/.scripts/testuser.sh http://localhost:3000`.
+
+### Anmeldung mit Microsoft 365 (optional)
+
+Sind Client-ID **und** Secret einer Entra-ID-App gesetzt, zeigt die
+Anmeldeseite direkt auf der ersten Stufe zusätzlich den Button
+„Mit Microsoft 365 anmelden“. Der Magic-Link-Login bleibt unverändert
+verfügbar – die Microsoft-Anmeldung kommt nur dazu. Fehlt eine der beiden
+Variablen, erscheint der Button nicht.
+
+```env
+MICROSOFT_CLIENT_ID=<Application (client) ID>
+MICROSOFT_CLIENT_SECRET=<Client Secret>
+# Verzeichnis: Tenant-GUID (nur eigene Organisation), `organizations`
+# oder `common` (Default, jedes Microsoft-Konto)
+MICROSOFT_TENANT_ID=<Directory (tenant) ID>
+```
+
+In der Entra-App als Redirect-URI (Plattform „Web“) exakt hinterlegen:
+
+```
+<BASE_URL>/api/v1/user/auth/microsoft/callback
+```
+
+Benötigte Delegated Permissions: `openid`, `profile`, `email`, `User.Read`.
+
+Der Login läuft über die Framework-Endpunkte `/api/v1/user/auth/microsoft`
+(Start) und `/api/v1/user/auth/microsoft/callback` (Rückkehr, setzt die
+Auth-Cookies). Angemeldet wird über die E-Mail-Adresse des Microsoft-Kontos:
+existiert ein Account mit dieser Adresse, wird er verwendet (egal ob er
+ursprünglich per Magic-Link entstanden ist), andernfalls wird er neu angelegt –
+inklusive offener Organisations-Einladungen. Details siehe
+`backend/framework/docs/framework/2_BuildIn_Usermanagement.md`.
+
+Verlangt die Instanz Einladungscodes (aktive Einträge in `invitation_codes`),
+legt eine unbekannte Adresse **keinen** Account an, auch nicht per Microsoft:
+das verifizierte Profil parkt für 15 Minuten in einem HttpOnly-Cookie und der
+Browser landet wieder auf `/login.html?provider=microsoft`. Dort fragt die
+letzte Stufe der Anmeldeseite den Einladungscode ab und schickt ihn an
+`POST /api/v1/user/oauth/complete-registration`; erst das erzeugt den Account.
+Liegt für die Adresse eine offene Organisations-Einladung vor, entfällt der
+Umweg. Ein falscher Code kann bis zum Ablauf beliebig oft neu eingegeben
+werden.
+
+## Preview-Container (alles in einem)
+
+[`Dockerfile.preview`](./Dockerfile.preview) baut ein einziges Image mit
+**PGlite + Backend + Frontend** – keine externe Datenbank, keine Secrets, kein
+Compose-Verbund. Gedacht für schlanke Preview-Deployments (PR-Previews, Demos,
+schneller Smoke-Test); für Produktion bleibt [`Dockerfile`](./Dockerfile) +
+[`docker-compose.prod.yml`](./docker-compose.prod.yml) zuständig.
+
+```bash
+git submodule update --init --recursive     # framework muss ausgecheckt sein
+
+docker build -f Dockerfile.preview -t wiki-preview .
+docker run --rm -p 3000:3000 -v wiki_preview:/data wiki-preview
+# oder:
+docker compose -f docker-compose.preview.yml up --build
+```
+
+Danach `http://localhost:3000` öffnen. Login per Magic-Link: die Mail landet
+wegen `SMTP_HOST=console.localhost` im Container-Log
+(`docker logs -f <container>`), der Link ist direkt anklickbar.
+
+Was der Container beim Start macht
+([`.docker/preview-entrypoint.sh`](./.docker/preview-entrypoint.sh)):
+
+1. **Secrets** (AES, JWT, OAuth-Introspection) beim ersten Start erzeugen und
+   in `/data/secrets.env` (0600) ablegen – danach wiederverwenden, damit
+   Sessions und verschlüsselte Tenant-Secrets Neustarts überleben. Von außen
+   gesetzte Variablen haben immer Vorrang.
+2. **PGlite** starten: eingebettete Postgres inkl. `pgvector`, über
+   pglite-socket auf `127.0.0.1:5432`. Es läuft dasselbe Skript wie bei
+   `bun run db:local`.
+3. **Migrationen** (`framework:migrate` + `app:migrate`) wie im Prod-Image.
+4. **App** starten (`bun ./dist/index.js`), bei SIGTERM wird die Datenbank
+   sauber geschlossen.
+
+Alles Zustandsbehaftete liegt unter `/data` (Datenbank, Secrets, lokale
+Uploads). Volume mounten = Preview überlebt Neustarts, Volume weglassen =
+Wegwerf-Instanz, die bei jedem Start frisch beginnt.
+
+Nützliche Env-Variablen:
+
+| Variable | Default | Bedeutung |
+| --- | --- | --- |
+| `BASE_URL` | `http://localhost:3000` | Öffentliche URL = OAuth2-Issuer, muss zur Browser-Adresse passen |
+| `APP_NAME` | `Symbiosika Wiki (Preview)` | Anzeigename (Mails, OAuth-Metadaten) |
+| `PREVIEW_DATA_DIR` | `/data` | Ablage für DB, Secrets, Uploads |
+| `PREVIEW_EMBEDDED_DB` | `auto` | `false` = externe Postgres über `POSTGRES_*` nutzen |
+| `PREVIEW_SKIP_MIGRATIONS` | `false` | Migrationen beim Start überspringen |
+| `AI_PROVIDER`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY` | – | optional; ohne Keys sind die KI-Features No-ops |
+| `SMTP_*` | Console-Modus | echten SMTP-Server statt Container-Log verwenden |
+
+Grenzen: PGlite ist eine dateibasierte Single-Process-Datenbank (deshalb
+`POSTGRES_CONNECTION_POOL_SIZE=1`) und der Container hält App und Datenbank im
+selben Prozessbaum – gut für eine Preview-Instanz, nicht für echte Last oder
+echte Daten.
 
 ## Tests
 

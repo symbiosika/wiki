@@ -1,0 +1,18 @@
+{
+  "signingIn": "Anmeldung über Microsoft Teams…",
+  "signInFailed": "Anmeldung fehlgeschlagen",
+  "signInFailedHint": "Die Anmeldung über Microsoft Teams war nicht möglich. Bitte den Tab neu laden. Bleibt es dabei, wende dich an die Administration deiner Organisation.",
+  "retry": "Erneut versuchen",
+  "invitationCodeTitle": "Einladungscode erforderlich",
+  "invitationCodeIntro": "Du bist als {email} angemeldet. Für diesen Server ist zusätzlich ein Einladungscode nötig, um ein Konto anzulegen.",
+  "invitationCodeLabel": "Einladungscode",
+  "invitationCodePlaceholder": "Code eingeben",
+  "invitationCodeSubmit": "Fortfahren",
+  "invitationCodeMissing": "Bitte gib einen Einladungscode ein.",
+  "invitationCodeRejected": "Dieser Einladungscode ist nicht gültig.",
+  "signInFailedNotInTeams": "Diese Seite läuft nicht in Microsoft Teams. Sie ist dafür gedacht, als Teams-Tab geöffnet zu werden — im Browser bitte die normale Anmeldung nutzen.",
+  "signInFailedNoToken": "Microsoft Teams hat kein Token für diese App ausgegeben. Das liegt fast immer an der App-Registrierung: Application ID URI, der Scope „access_as_user\" oder die vorautorisierten Teams-Clients fehlen, oder die Zustimmung wurde nicht erteilt.",
+  "signInFailedExchange": "Der Server hat die Anmeldung abgelehnt. Details stehen im Server-Log.",
+  "signInDetails": "Technische Meldung",
+  "openInBrowser": "Im Browser anmelden"
+}

@@ -1,0 +1,87 @@
+name: Tests
+
+# Runs the unit/integration test suites on EVERY push (any branch) and on every
+# pull request. Unlike build.yml there is no path filtering and no change
+# detection: a push must always tell you whether the tests are green.
+#
+# The suites are independent jobs so they run in parallel and a failure
+# points straight at the affected part of the stack:
+#   backend      – bun test against an embedded PGlite database (.scripts/test-local.ts)
+#                  (includes the embedded MCP server under backend/src/mcp)
+#   frontend     – vitest (happy-dom)
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Only the newest run per branch/PR matters — cancel superseded ones.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BACKEND – app + framework tests.
+  # test:local boots PGlite (no Docker, no external Postgres), applies the
+  # framework and app migrations, then runs `bun test`. It also provides the
+  # JWT/AES/SMTP env the framework needs, so nothing has to be configured here.
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Tests that import URLs spin up a local HTTP server on 127.0.0.1; the
+      # SSRF guard blocks private targets unless this is set.
+      SSRF_ALLOW_PRIVATE_TARGETS: "true"
+      # Keeps the protocol tests off any real LLM provider.
+      PROTOCOL_DEV_STUB: "true"
+      # No AI provider keys are configured on purpose: the embedding/search
+      # suites detect the missing key and assert the graceful-degradation path
+      # instead of calling a paid API from CI.
+    steps:
+      - name: Checkout (with framework submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: backend
+        run: bun install
+
+      - name: Run tests
+        working-directory: backend
+        run: bun run test:local
+
+  # ---------------------------------------------------------------------------
+  # FRONTEND – vitest unit tests (src/**/*.spec.ts).
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: bun install
+
+      - name: Run tests
+        working-directory: frontend
+        run: bun run test
+

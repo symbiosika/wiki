@@ -10,6 +10,11 @@ import type {
   TenantMember,
 } from '@/types/usermanagement'
 import type { WikiSearchMode } from '@/types/wiki'
+import {
+  applyBrandColors,
+  clearBrandColors,
+  type BrandColors,
+} from '@/utils/brandColor'
 
 // Types
 interface User {
@@ -27,6 +32,12 @@ interface Tenant {
   name: string
 }
 
+/** existence + cache-busting metadata of an organisation's logo */
+interface TenantLogoInfo {
+  exists: boolean
+  updatedAt: string | null
+}
+
 interface AppState {
   isDarkMode: boolean
   loading: boolean
@@ -39,10 +50,51 @@ interface AppState {
   isMobile: boolean
   /** the user's preferred sidebar search mode (server-persisted) */
   searchMode: WikiSearchMode
+  /** per-organisation logo metadata, keyed by tenant id */
+  tenantLogos: Record<string, TenantLogoInfo>
 }
 
 /** key under which the search-mode preference lives in `user_settings` */
 const SEARCH_MODE_SETTING_KEY = 'wiki.searchMode'
+/** key under which per-organisation branding colours live in `tenant_settings` */
+const BRANDING_SETTING_KEY = 'branding'
+
+/** Embedding provider status of the deployment, as the settings UI shows it. */
+export interface EmbeddingProviderStatus {
+  /** Provider selected via EMBEDDING_PROVIDER on the server. */
+  provider: string
+  /** False when the server has no API key for that provider. */
+  configured: boolean
+  /** Model new embeddings would use, or null when not configured. */
+  model: string | null
+  /** Env var the operator has to set, for the UI hint. */
+  requiredEnvVar: string | null
+}
+
+/** Organisation-wide embedding switch + provider status. */
+export interface EmbeddingSettings {
+  enabled: boolean
+  provider: EmbeddingProviderStatus
+  /** Pages marked for embedding that have no vectors yet. */
+  pendingPages: number
+}
+
+/** Result of triggering the backfill for the pages that still need vectors. */
+export interface EmbeddingBackfillResult {
+  /** Jobs created by this call. */
+  enqueued: number
+  /** Pages waiting when the call started. */
+  pendingPages: number
+  /** Skipped because a job was already queued or running. */
+  alreadyQueued: number
+}
+
+export interface EmbeddingSettingsUpdate extends EmbeddingSettings {
+  /** Pages whose derived flag was flipped by the change. */
+  pagesUpdated: number
+  /** RAG mirrors removed (only when switching off). */
+  mirrorsRemoved: number
+}
 const SEARCH_MODES: WikiSearchMode[] = ['hybrid', 'fulltext', 'semantic']
 /** smart hybrid search is the default when the user has no stored choice */
 const DEFAULT_SEARCH_MODE: WikiSearchMode = 'hybrid'
@@ -71,6 +123,7 @@ export const useApp = defineStore('app', () => {
     isMobile: false,
     isDarkMode: false,
     searchMode: DEFAULT_SEARCH_MODE,
+    tenantLogos: {},
   })
 
   const checkDarkMode = () => {
@@ -167,6 +220,89 @@ export const useApp = defineStore('app', () => {
     }
   }
 
+  // ----- organisation branding colours ---------------------------------------
+
+  /**
+   * Load and apply the organisation's brand colours from `tenant_settings`.
+   * Best-effort and readable by any tenant member: a 404 (nothing stored yet)
+   * or any failure simply reverts to the default palette from `base.css`.
+   */
+  const getBranding = async (tenantId: string): Promise<BrandColors> => {
+    try {
+      const setting = await fetcher.get<{ key: string; valueJson?: BrandColors }>(
+        `/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`,
+      )
+      return setting.valueJson ?? {}
+    } catch {
+      // no branding stored yet (404) or read failed
+      return {}
+    }
+  }
+
+  const loadBranding = async (tenantId: string) => {
+    if (!tenantId) {
+      clearBrandColors()
+      return
+    }
+    applyBrandColors(await getBranding(tenantId))
+  }
+
+  /**
+   * Persist the organisation's brand colours (tenant admins/owners only) and
+   * apply them immediately. Passing null/empty for a colour clears it.
+   */
+  const saveBranding = async (tenantId: string, colors: BrandColors) => {
+    await fetcher.post(
+      `/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`,
+      {
+        valueJson: colors,
+        description: 'Per-organisation branding colours',
+      },
+    )
+    applyBrandColors(colors)
+  }
+
+  // ----- organisation-wide embedding (semantic search) ------------------------
+
+  /**
+   * Read the organisation's embedding switch together with the deployment's
+   * embedding provider status. `provider.configured` is false when the server
+   * has no API key for the configured provider — the settings UI shows that
+   * instead of silently offering a feature that cannot run.
+   */
+  const getEmbeddingSettings = async (
+    tenantId: string,
+  ): Promise<EmbeddingSettings> =>
+    fetcher.get<EmbeddingSettings>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-settings`,
+    )
+
+  /**
+   * Switch embedding on/off for EVERY page of the organisation (admins only).
+   * There is deliberately no per-page switch.
+   */
+  const saveEmbeddingSettings = async (
+    tenantId: string,
+    enabled: boolean,
+  ): Promise<EmbeddingSettingsUpdate> =>
+    fetcher.put<EmbeddingSettingsUpdate>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-settings`,
+      { enabled },
+    )
+
+  /**
+   * Queue one background embedding job per page that is marked but has no
+   * vectors yet (admins only). Idempotent — safe to press again after a
+   * partial run.
+   */
+  const startEmbeddingBackfill = async (
+    tenantId: string,
+  ): Promise<EmbeddingBackfillResult> =>
+    fetcher.post<EmbeddingBackfillResult>(
+      `/api/v1/tenant/${tenantId}/knowledge/embedding-backfill`,
+      {},
+    )
+
   const getTenants = async () => {
     const tenants = await fetcher.get<{ tenantId: string; name: string }[]>(
       '/api/v1/user/tenants',
@@ -195,6 +331,8 @@ export const useApp = defineStore('app', () => {
       },
     })
     state.value.selectedTenant = tenantId
+    // Re-theme the UI for the newly selected organisation.
+    await loadBranding(tenantId)
   }
 
   const setupTenant = async (tenantName: string) => {
@@ -213,6 +351,44 @@ export const useApp = defineStore('app', () => {
     await fetcher.put(`/api/v1/tenant/${tenantId}`, { name })
     const tenant = state.value.tenants.find((org) => org.id === tenantId)
     if (tenant) tenant.name = name
+  }
+
+  // ----- organisation logo ---------------------------------------------------
+
+  /**
+   * Load a tenant's logo metadata (best-effort). Populates `tenantLogos` so the
+   * header knows whether to render a logo and which `?v=` cache buster to use.
+   */
+  const loadTenantLogoInfo = async (tenantId: string) => {
+    if (!tenantId) return
+    try {
+      const info = await fetcher.get<TenantLogoInfo>(
+        `/api/v1/tenant/${tenantId}/logo/info`,
+      )
+      state.value.tenantLogos[tenantId] = info
+    } catch {
+      state.value.tenantLogos[tenantId] = { exists: false, updatedAt: null }
+    }
+  }
+
+  /** Cache-busting URL for a tenant's logo, or null when it has none. */
+  const tenantLogoUrl = (tenantId: string): string | null => {
+    const info = state.value.tenantLogos[tenantId]
+    if (!info?.exists) return null
+    const version = info.updatedAt ? encodeURIComponent(info.updatedAt) : '1'
+    return `/api/v1/tenant/${tenantId}/logo?v=${version}`
+  }
+
+  const uploadTenantLogo = async (tenantId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await fetcher.postFormData(`/api/v1/tenant/${tenantId}/logo`, formData)
+    await loadTenantLogoInfo(tenantId)
+  }
+
+  const deleteTenantLogo = async (tenantId: string) => {
+    await fetcher.delete(`/api/v1/tenant/${tenantId}/logo`)
+    state.value.tenantLogos[tenantId] = { exists: false, updatedAt: null }
   }
 
   const deleteTenant = async (tenantId: string) => {
@@ -460,6 +636,9 @@ export const useApp = defineStore('app', () => {
       ) {
         state.value.selectedTenant = state.value.tenants[0]!.id
       }
+
+      // apply the selected organisation's brand colours (best-effort)
+      await loadBranding(state.value.selectedTenant)
     } catch (error) {
       state.value.user = null
       state.value.tenants = []
@@ -505,12 +684,22 @@ export const useApp = defineStore('app', () => {
     uploadProfileImage,
     loadSearchMode,
     setSearchMode,
+    getBranding,
+    loadBranding,
+    saveBranding,
+    getEmbeddingSettings,
+    saveEmbeddingSettings,
+    startEmbeddingBackfill,
     waitForInit,
     setSelectedTenant,
     getTenants,
     setupTenant,
     createTenant,
     updateTenantName,
+    loadTenantLogoInfo,
+    tenantLogoUrl,
+    uploadTenantLogo,
+    deleteTenantLogo,
     deleteTenant,
     leaveTenant,
     getTenantMembers,

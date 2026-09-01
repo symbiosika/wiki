@@ -11,6 +11,10 @@
  * reply arriving token by token) re-renders as it grows.
  */
 import { renderMarkdown, renderMarkdownInline } from '@/utils/markdown'
+import {
+  needsAuthenticatedFetch,
+  resolveImageSrc,
+} from '@/components/editor/authenticatedImageSrc'
 
 const props = withDefaults(
   defineProps<{
@@ -30,9 +34,43 @@ const html = computed(() =>
     ? renderMarkdownInline(props.content)
     : renderMarkdown(props.content),
 )
+
+/**
+ * Markdown can embed authenticated image paths, and an `<img src>` cannot send
+ * a bearer token — inside a Microsoft Teams tab those images would all 401. The
+ * rendered HTML arrives through `v-html`, so there is no binding to attach a
+ * resolved source to; the elements are patched after each render instead.
+ *
+ * Read-only display, so patching the DOM is safe here: nothing serialises this
+ * markup back into stored content.
+ */
+const container = ref<HTMLElement | null>(null)
+
+watch(
+  [html, container],
+  async () => {
+    const root = container.value
+    if (!root) return
+    await nextTick()
+
+    for (const image of Array.from(root.querySelectorAll('img'))) {
+      const src = image.getAttribute('src') ?? ''
+      if (!needsAuthenticatedFetch(src)) continue
+
+      image.setAttribute('data-src', src)
+      try {
+        image.setAttribute('src', await resolveImageSrc(src))
+      } catch {
+        // Leave the original source: the browser shows its own broken-image
+        // state, which is more honest than an empty element.
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <!-- eslint-disable-next-line vue/no-v-html -- input is sanitized in utils/markdown.ts -->
-  <div class="md-body" v-html="html" />
+  <div ref="container" class="md-body" v-html="html" />
 </template>
