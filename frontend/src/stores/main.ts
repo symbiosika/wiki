@@ -89,6 +89,21 @@ export interface EmbeddingBackfillResult {
   alreadyQueued: number
 }
 
+/**
+ * Result of the one-time consolidation of page images into a single bucket.
+ * `danglingReferences` are references whose file no longer exists — they are
+ * reported rather than rewritten.
+ */
+export interface WikiImageBucketMigrationResult {
+  movedFiles: number
+  rewrittenPages: number
+  rewrittenBlocks: number
+  rewrittenVersions: number
+  addedReferences: number
+  danglingReferences: number
+  dryRun: boolean
+}
+
 export interface EmbeddingSettingsUpdate extends EmbeddingSettings {
   /** Pages whose derived flag was flipped by the change. */
   pagesUpdated: number
@@ -300,6 +315,19 @@ export const useApp = defineStore('app', () => {
   ): Promise<EmbeddingBackfillResult> =>
     fetcher.post<EmbeddingBackfillResult>(
       `/api/v1/tenant/${tenantId}/knowledge/embedding-backfill`,
+      {},
+    )
+
+  /**
+   * Move page images that a document import left in the parser's own bucket
+   * into the bucket page images belong in, rewriting the references that point
+   * at them (admins only). Idempotent — a second run finds nothing to do.
+   */
+  const migrateWikiImageBuckets = async (
+    tenantId: string,
+  ): Promise<WikiImageBucketMigrationResult> =>
+    fetcher.post<WikiImageBucketMigrationResult>(
+      `/api/v1/tenant/${tenantId}/wiki/images/migrate-bucket`,
       {},
     )
 
@@ -690,6 +718,7 @@ export const useApp = defineStore('app', () => {
     getEmbeddingSettings,
     saveEmbeddingSettings,
     startEmbeddingBackfill,
+    migrateWikiImageBuckets,
     waitForInit,
     setSelectedTenant,
     getTenants,

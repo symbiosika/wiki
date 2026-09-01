@@ -146,6 +146,13 @@
     "backfillHint": "Die Seiten werden nacheinander über die Jobs-Warteschlange indexiert. Das dauert je nach Anzahl einige Minuten und kann jederzeit erneut angestoßen werden — bereits eingeplante Seiten werden übersprungen.",
     "backfillStarted": "Indexierung gestartet ({count} Seite(n) eingeplant)"
   },
+  "imageBucket": {
+    "title": "Seitenbilder zusammenführen",
+    "description": "Bilder, die beim Import eines Dokuments (PDF/URL) entstanden sind, wurden früher in einem eigenen Speicherbereich abgelegt. Dort greift weder die Dateiverwaltung der Seite noch der Bildzugriff für KI-Assistenten. Diese Wartung verschiebt sie in den Bereich, in dem Seitenbilder liegen, und zieht die Verweise nach.",
+    "run": "Bilder zusammenführen",
+    "hint": "Einmalig nötig, gilt für diese Organisation. Kann gefahrlos erneut ausgeführt werden — dann passiert nichts mehr.",
+    "done": "{files} Bild(er) verschoben, {pages} Seite(n) angepasst."
+  },
   "logo": {
     "title": "Logo",
     "hint": "Wird oben in der Seitenleiste anstelle des Organisationsnamens angezeigt.",
@@ -175,6 +182,7 @@
     "brandingLoadFailed": "Farben konnten nicht geladen werden",
     "brandingSaveFailed": "Farben konnten nicht gespeichert werden",
     "embeddingSaveFailed": "KI-Suche konnte nicht gespeichert werden",
-    "embeddingBackfillFailed": "Indexierung konnte nicht gestartet werden"
+    "embeddingBackfillFailed": "Indexierung konnte nicht gestartet werden",
+    "imageBucketMigrationFailed": "Bilder konnten nicht zusammengeführt werden"
   }
 }

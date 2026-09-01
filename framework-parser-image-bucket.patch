@@ -1,0 +1,350 @@
+diff --git a/src/lib/knowledge/knowledge-text-import.ts b/src/lib/knowledge/knowledge-text-import.ts
+index f180a29..5b73c34 100644
+--- a/src/lib/knowledge/knowledge-text-import.ts
++++ b/src/lib/knowledge/knowledge-text-import.ts
+@@ -29,6 +29,7 @@ import {
+   syncKnowledgeTextBlocks,
+   type KnowledgeTextBlockInput,
+ } from "./knowledge-text-blocks";
++import { KNOWLEDGE_FILES_BUCKET } from "./knowledge-text-files";
+ import { syncKnowledgeTextEmbeddingSafe } from "./knowledge-text-embedding";
+ import type {
+   KnowledgeTextSelect,
+@@ -124,6 +125,20 @@ type FileParserOptions = {
+   detectTables?: boolean;
+ };
+ 
++/**
++ * Bucket for images a parser extracts from an imported document.
++ *
++ * The same bucket the block editor uploads into, deliberately: from the
++ * moment the page exists, an extracted image IS a page image. Only there does
++ * the page's file bookkeeping reach it — `syncKnowledgeTextFileReferences`
++ * links it to the page on the first save, clears its expiry, and gives it the
++ * grace-period expiry when the last reference (or the page) goes away. In the
++ * parser's own default bucket it would instead sit outside the page
++ * lifecycle: never cleaned up, and unreachable through the page-scoped image
++ * endpoints that serve clients without the `files:read` scope.
++ */
++const IMPORT_IMAGE_BUCKET = KNOWLEDGE_FILES_BUCKET;
++
+ /** Convert an uploaded file to markdown text (plus any parser-extracted metadata) */
+ const fileToMarkdown = async (
+   file: File,
+@@ -143,7 +158,10 @@ const fileToMarkdown = async (
+     return { text: getTurndown().turndown(await file.text()).trim() };
+   }
+   // PDF, plain text, … via the existing parsing pipeline
+-  const parsed = await parseFile(file, context, parserOptions);
++  const parsed = await parseFile(file, context, {
++    ...parserOptions,
++    imageBucket: IMPORT_IMAGE_BUCKET,
++  });
+   return { text: parsed.text, metadata: parsed.metadata };
+ };
+ 
+@@ -313,6 +331,7 @@ export const importKnowledgeTextFromUrl = async (
+       teamId: options.teamId,
+       workspaceId: options.workspaceId,
+     },
++    imageBucket: IMPORT_IMAGE_BUCKET,
+   });
+   if (result.markdown.trim().length === 0) {
+     throw new Error("The page contains no extractable text");
+diff --git a/src/lib/knowledge/parsing/index.ts b/src/lib/knowledge/parsing/index.ts
+index 8d99003..fa9037e 100644
+--- a/src/lib/knowledge/parsing/index.ts
++++ b/src/lib/knowledge/parsing/index.ts
+@@ -64,6 +64,12 @@ export const parseFile = async (
+     ocr?: boolean;
+     /** Extra service: detect tables and render them as Markdown. */
+     detectTables?: boolean;
++    /**
++     * Storage bucket for images extracted from the document. Defaults to
++     * `PARSED_IMAGES_BUCKET` ("images"); a caller that owns the images
++     * afterwards passes its own (see `PdfParserOptions.imageBucket`).
++     */
++    imageBucket?: string;
+   }
+ ): Promise<{
+   text: string;
+@@ -103,6 +109,7 @@ export const parseFile = async (
+       parseImagesInDoc: options?.parseImagesInDoc,
+       ocr: options?.ocr,
+       detectTables: options?.detectTables,
++      imageBucket: options?.imageBucket,
+     });
+ 
+     // Create a combined text from all pages if available
+diff --git a/src/lib/knowledge/parsing/pdf/generic.test.ts b/src/lib/knowledge/parsing/pdf/generic.test.ts
+index ff53828..991c7df 100644
+--- a/src/lib/knowledge/parsing/pdf/generic.test.ts
++++ b/src/lib/knowledge/parsing/pdf/generic.test.ts
+@@ -19,8 +19,12 @@ process.env.POSTGRES_DB ??= "symbiosika";
+ 
+ // Stub only the storage write, so the reference-resolving logic in ./images
+ // (rewrite on success, strip on failure) runs for real.
++const savedBuckets: string[] = [];
+ mock.module("../../../storage", () => ({
+-  saveFile: async (file: File) => ({ path: `/storage/${file.name}` }),
++  saveFile: async (file: File, bucket: string) => {
++    savedBuckets.push(bucket);
++    return { path: `/storage/${file.name}` };
++  },
+ }));
+ 
+ const {
+@@ -33,6 +37,12 @@ const {
+ // Registry dispatcher — exercised here so the capability tests reuse the same
+ // fake service + env this file already stands up.
+ const { getConfiguredParserCapabilities } = await import("./index");
++const { PARSED_IMAGES_BUCKET } = await import("./images");
++// The public parsing entry point the knowledge-page importer calls. Exercised
++// here so the `imageBucket` option is covered over the whole path it travels
++// (parseFile → parsePdfFileAsMardown → parser → image storage), not just at
++// the parser's own doorstep.
++const { parseFile } = await import("../index");
+ 
+ // --- A mini fake parsing service implementing the wire contract ------------
+ 
+@@ -172,6 +182,7 @@ afterAll(() => {
+ 
+ afterEach(() => {
+   resetGenericParserCapabilitiesCache();
++  savedBuckets.length = 0;
+   failNextParse = false;
+   nextResultBody = null;
+   delete process.env.PDF_PARSER_SERVICE_MODE;
+@@ -238,6 +249,26 @@ describe("Generic PDF Parser Service (against a fake service)", () => {
+     expect(result.pages?.[0]?.text).toBe("Hersteller ![img-1](/storage/img-1)");
+   });
+ 
++  test("stores extracted images in the parsed-images bucket by default", async () => {
++    await parsePdfFileAsMarkdownGeneric(pdfFile(), { tenantId: "tenant-1" });
++
++    expect(savedBuckets).toEqual([PARSED_IMAGES_BUCKET]);
++  });
++
++  test("parseFile routes extracted images into the requested bucket", async () => {
++    // The knowledge-page importer passes the page image bucket here so an
++    // imported document's pictures land where a page's own images live.
++    process.env.PDF_PARSER_SERVICE = "generic";
++
++    const result = await parseFile(pdfFile(), { tenantId: "tenant-1" }, {
++      extractImages: true,
++      imageBucket: "knowledge",
++    });
++
++    expect(savedBuckets).toEqual(["knowledge"]);
++    expect(result.text).toContain("![img-1](/storage/img-1)");
++  });
++
+   test("strips placeholders for images the service listed but did not send", async () => {
+     nextResultBody = {
+       model: "generic-v1",
+diff --git a/src/lib/knowledge/parsing/pdf/generic.ts b/src/lib/knowledge/parsing/pdf/generic.ts
+index 649194b..26564b2 100644
+--- a/src/lib/knowledge/parsing/pdf/generic.ts
++++ b/src/lib/knowledge/parsing/pdf/generic.ts
+@@ -146,6 +146,7 @@ export const parsePdfFileAsMarkdownGeneric: PdfParser = async (
+       page.text,
+       page.images ?? [],
+       context.tenantId,
++      options?.imageBucket,
+     );
+     page.text = text;
+     if (savedPaths.length > 0) {
+diff --git a/src/lib/knowledge/parsing/pdf/images.ts b/src/lib/knowledge/parsing/pdf/images.ts
+index 512d3eb..4327925 100644
+--- a/src/lib/knowledge/parsing/pdf/images.ts
++++ b/src/lib/knowledge/parsing/pdf/images.ts
+@@ -1,6 +1,17 @@
+ import log from "../../../log";
+ import { saveFile } from "../../../storage";
+ 
++/**
++ * Default bucket for images a parsing service extracted from a document.
++ *
++ * Kept as the default so existing callers are unaffected. A caller that owns
++ * the images afterwards should pass its own bucket instead: the knowledge
++ * page importer stores them in the "knowledge" bucket, where the page's file
++ * reference tracking (expiry, cleanup on delete) and the page-scoped image
++ * read both apply — neither of which reaches into this bucket.
++ */
++export const PARSED_IMAGES_BUCKET = "images";
++
+ /**
+  * Persist a base64-encoded image (raw base64 or a `data:` URL) to storage and
+  * return the stored file path. Returns null when the payload is empty.
+@@ -11,6 +22,7 @@ export const saveBase64ImageToStorage = async (
+   base64OrDataUrl: string | null | undefined,
+   id: string,
+   tenantId: string,
++  bucket: string = PARSED_IMAGES_BUCKET,
+ ): Promise<string | null> => {
+   // Defensive: providers may hand us a null/empty payload (e.g. Mistral OCR
+   // returns `image_base64: null` for every image when image extraction is off).
+@@ -31,7 +43,7 @@ export const saveBase64ImageToStorage = async (
+   const blob = new Blob([bytes], { type: "image/jpeg" });
+   const file = new File([blob], id, { type: "image/jpeg" });
+ 
+-  const savedFile = await saveFile(file, "images", tenantId, "db");
++  const savedFile = await saveFile(file, bucket, tenantId, "db");
+   return savedFile.path;
+ };
+ 
+@@ -56,7 +68,7 @@ const referencePattern = (id: string): RegExp =>
+ 
+ /**
+  * Persist a page's images and point its markdown references at the stored
+- * paths.
++ * paths. `bucket` decides where they land (see {@link PARSED_IMAGES_BUCKET}).
+  *
+  * The important half is the failure path: a reference whose image was **not**
+  * persisted — extraction disabled, empty payload, service reported an image it
+@@ -75,6 +87,7 @@ export const resolveImageReferences = async (
+   text: string,
+   images: ParsedPageImage[],
+   tenantId: string,
++  bucket: string = PARSED_IMAGES_BUCKET,
+ ): Promise<{ text: string; savedPaths: string[] }> => {
+   let out = text;
+   const savedPaths: string[] = [];
+@@ -85,6 +98,7 @@ export const resolveImageReferences = async (
+       image.base64,
+       image.id,
+       tenantId,
++      bucket,
+     );
+ 
+     if (savedPath) {
+diff --git a/src/lib/knowledge/parsing/pdf/mistral-ocr.test.ts b/src/lib/knowledge/parsing/pdf/mistral-ocr.test.ts
+index 68544ba..e1a1c14 100644
+--- a/src/lib/knowledge/parsing/pdf/mistral-ocr.test.ts
++++ b/src/lib/knowledge/parsing/pdf/mistral-ocr.test.ts
+@@ -16,14 +16,17 @@ process.env.MISTRAL_API_KEY ??= "test-key";
+ // in the same module and must run for real. `saveFile` is the single point
+ // where the real implementation would touch storage.
+ const savedImages: string[] = [];
++const savedBuckets: string[] = [];
+ mock.module("../../../storage", () => ({
+-  saveFile: async (file: File) => {
++  saveFile: async (file: File, bucket: string) => {
+     savedImages.push(file.name);
++    savedBuckets.push(bucket);
+     return { path: `/storage/${file.name}` };
+   },
+ }));
+ 
+ const { parsePdfFileAsMarkdownMistral } = await import("./mistral-ocr");
++const { PARSED_IMAGES_BUCKET } = await import("./images");
+ 
+ const CONTEXT = { tenantId: "00000000-0000-0000-0000-000000000000" };
+ 
+@@ -77,6 +80,7 @@ const installFetchMock = (
+ afterEach(() => {
+   globalThis.fetch = originalFetch;
+   savedImages.length = 0;
++  savedBuckets.length = 0;
+ });
+ 
+ afterAll(() => {
+@@ -100,6 +104,27 @@ describe("Mistral OCR parser", () => {
+     expect(result.pages?.map((p) => p.page)).toEqual([1, 2]);
+   });
+ 
++  test("stores images in the bucket the caller asked for", async () => {
++    installFetchMock(true);
++
++    await parsePdfFileAsMarkdownMistral(pdf(), CONTEXT, {
++      extractImages: true,
++      imageBucket: "knowledge",
++    });
++
++    expect(savedBuckets).toEqual(["knowledge"]);
++  });
++
++  test("falls back to the parsed-images bucket when none is given", async () => {
++    installFetchMock(true);
++
++    await parsePdfFileAsMarkdownMistral(pdf(), CONTEXT, {
++      extractImages: true,
++    });
++
++    expect(savedBuckets).toEqual([PARSED_IMAGES_BUCKET]);
++  });
++
+   test("drops the reference instead of emitting a dead link when extraction is off", async () => {
+     installFetchMock(false);
+ 
+diff --git a/src/lib/knowledge/parsing/pdf/mistral-ocr.ts b/src/lib/knowledge/parsing/pdf/mistral-ocr.ts
+index dc9efda..1b5e808 100644
+--- a/src/lib/knowledge/parsing/pdf/mistral-ocr.ts
++++ b/src/lib/knowledge/parsing/pdf/mistral-ocr.ts
+@@ -130,6 +130,7 @@ export const parsePdfFileAsMarkdownMistral = async (
+         page.markdown,
+         (page.images ?? []).map((i) => ({ id: i.id, base64: i.image_base64 })),
+         context.tenantId,
++        options?.imageBucket,
+       );
+       page.markdown = text;
+       savedCount += savedPaths.length;
+diff --git a/src/lib/knowledge/parsing/pdf/mistral-openrouter.ts b/src/lib/knowledge/parsing/pdf/mistral-openrouter.ts
+index 917eb0f..95e4b02 100644
+--- a/src/lib/knowledge/parsing/pdf/mistral-openrouter.ts
++++ b/src/lib/knowledge/parsing/pdf/mistral-openrouter.ts
+@@ -172,7 +172,8 @@ export const parsePdfFileAsMarkdownMistralOpenRouter = async (
+           const path = await saveBase64ImageToStorage(
+             part.image_url.url,
+             `or-img-${savedImagePaths.length}.jpeg`,
+-            context.tenantId
++            context.tenantId,
++            options?.imageBucket
+           );
+           if (path) savedImagePaths.push(path);
+         }
+diff --git a/src/lib/knowledge/parsing/pdf/types.ts b/src/lib/knowledge/parsing/pdf/types.ts
+index 6a2f1b2..b5569c7 100644
+--- a/src/lib/knowledge/parsing/pdf/types.ts
++++ b/src/lib/knowledge/parsing/pdf/types.ts
+@@ -48,6 +48,14 @@ export type PdfParserOptions = {
+   ocr?: boolean;
+   /** Extra service: detect tables and render them as Markdown in the text. */
+   detectTables?: boolean;
++  /**
++   * Storage bucket for images the service extracts from the document.
++   * Defaults to `PARSED_IMAGES_BUCKET` ("images"). A caller that owns the
++   * images afterwards passes its own bucket — the knowledge page importer
++   * uses the "knowledge" bucket so the page's file reference tracking and the
++   * page-scoped image read apply to them.
++   */
++  imageBucket?: string;
+ };
+ 
+ /**
+diff --git a/src/lib/knowledge/parsing/url.ts b/src/lib/knowledge/parsing/url.ts
+index d65e808..8d7da2e 100644
+--- a/src/lib/knowledge/parsing/url.ts
++++ b/src/lib/knowledge/parsing/url.ts
+@@ -47,6 +47,13 @@ export type UrlToMarkdownOptions = {
+   };
+   /** Override the PDF parser service/model (falls back to PDF_PARSER_SERVICE). */
+   pdfModel?: string;
++  /**
++   * Storage bucket for images extracted from a PDF behind the URL. Defaults
++   * to `PARSED_IMAGES_BUCKET` ("images"); a caller that turns the result into
++   * a page passes the bucket that page's images belong in (see
++   * `PdfParserOptions.imageBucket`).
++   */
++  imageBucket?: string;
+ };
+ 
+ export type UrlToMarkdownResult = {
+@@ -217,6 +224,7 @@ export const urlToMarkdown = async (
+     );
+     const parsed = await parsePdfFileAsMardown(file, opts.parseContext, {
+       model: opts.pdfModel,
++      imageBucket: opts.imageBucket,
+     });
+     const markdown = (parsed.pages?.map((p) => p.text).join("\n\n") ?? "").trim();
+     if (!markdown) {
