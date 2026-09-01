@@ -128,6 +128,65 @@ describe('renderMarkdown — wiki links', () => {
   })
 })
 
+describe('renderMarkdown — image descriptions', () => {
+  const REF = '/files/db/knowledge/33333333-3333-3333-3333-333333333333.png'
+  const FULL = `/api/v1/tenant/${TENANT}${REF}`
+
+  it('renders the marker as a folded caption under its image', () => {
+    const html = renderMarkdown(
+      `![Schaltplan](${FULL})\n<image-description src="${FULL}">Steuerplatine mit Netzteil links</image-description>`,
+      opts,
+    )
+    // the marker itself never reaches the page
+    expect(html).not.toContain('image-description>')
+    expect(html).not.toContain('<image-description')
+    expect(html).toContain('<details class="image-description">')
+    expect(html).toContain('Steuerplatine mit Netzteil links')
+    // and it sits after the image, not before it
+    expect(html.indexOf('<img')).toBeLessThan(html.indexOf('<details'))
+  })
+
+  it('matches the marker across the two path forms', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${REF}">Nahaufnahme</image-description>`,
+      opts,
+    )
+    expect(html).toContain('Nahaufnahme')
+    expect(html.indexOf('<img')).toBeLessThan(html.indexOf('<details'))
+  })
+
+  it('collapses a multi-line description to one line', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${FULL}">Zeile eins\nZeile zwei</image-description>`,
+      opts,
+    )
+    expect(html).toContain('Zeile eins Zeile zwei')
+  })
+
+  it('escapes html inside a description', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${FULL}">&lt;img src=x onerror=alert(1)&gt;</image-description>`,
+      opts,
+    )
+    // the description is text: it stays escaped, so no second element appears
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html.match(/<img\b/g)?.length).toBe(1)
+  })
+
+  it('drops an empty or orphaned marker without leaving markup behind', () => {
+    const html = renderMarkdown(
+      `Text\n\n<image-description src="${REF}"> </image-description>`,
+      opts,
+    )
+    expect(html).not.toContain('image-description')
+  })
+
+  it('leaves a page without markers untouched', () => {
+    const html = renderMarkdown(`![a](${FULL})`, opts)
+    expect(html).not.toContain('details')
+  })
+})
+
 describe('markdownToText', () => {
   it('flattens markdown to readable text', () => {
     expect(markdownToText('# Title\n\nSome **bold** text.')).toBe('Title Some bold text.')

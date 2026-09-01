@@ -42,6 +42,17 @@ returns a real image block. To show images to the USER, prefer view_image
 (one image, large + zoomable) or view_page_images (gallery of all images of
 a page).
 
+Image descriptions: a page result lists its pictures in \`embeddedImages\`
+(\`ref\` + \`description\` where one exists), and the page text carries the same
+description as an \`<image-description src="…">…\` marker below the image. That
+text is page CONTENT — quote it, answer from it, and cite the page as usual. It
+is what someone wrote about the picture, not a substitute for it: when the
+answer depends on a detail (a value on a schematic, a label on a photo), still
+load the image with get_page_image and look. An image with no description is
+knowledge you have not read yet — say so, or look at it. When you learn what an
+undescribed picture shows and the description would help the next reader, offer
+to add one (edit_page_content: put the marker on the line below the image).
+
 Page links: every object that identifies a page (search hits, tree nodes,
 pages you read or create, link targets, outline headings) carries \`url\`, the
 address that opens it in the wiki (sections link to their \`#anchor\`). Hand

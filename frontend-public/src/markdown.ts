@@ -156,9 +156,59 @@ const sanitizeFragment = (root: DocumentFragment, options: RenderOptions): void 
   for (const el of toRemove) el.remove()
 }
 
+/**
+ * Turn every `<image-description>` marker into a collapsed caption below the
+ * image it describes.
+ *
+ * The marker is how an image's description travels through the page text — so
+ * search, the embedding and an AI reader see it. For a visitor it is markup:
+ * left alone it renders as a stray line of text under the picture (the
+ * sanitizer keeps unknown elements, and a custom element shows its content).
+ * A `<details>` puts it where a caption belongs and keeps it folded, which is
+ * exactly how the wiki itself shows it.
+ */
+const renderImageDescriptions = (root: DocumentFragment): void => {
+  const markers = Array.from(root.querySelectorAll('image-description'))
+  if (markers.length === 0) return
+
+  const images = Array.from(root.querySelectorAll('img'))
+  const key = (src: string) => (PAGE_IMAGE.exec(src)?.[1] ?? '').toLowerCase()
+
+  for (const marker of markers) {
+    const text = (marker.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const wanted = key(marker.getAttribute('src') ?? '')
+    const target =
+      images.find((img) => {
+        const name = key(img.getAttribute('src') ?? '')
+        return name !== '' && name === wanted
+      }) ??
+      (marker.previousElementSibling?.tagName === 'IMG'
+        ? (marker.previousElementSibling as HTMLElement)
+        : null)
+
+    const anchor = marker.parentElement
+    marker.remove()
+    if (!text) continue
+
+    const details = document.createElement('details')
+    details.className = 'image-description'
+    const summary = document.createElement('summary')
+    summary.textContent = 'Bildbeschreibung'
+    const body = document.createElement('p')
+    body.textContent = text
+    details.append(summary, body)
+
+    if (target) target.after(details)
+    else if (anchor) anchor.after(details)
+    else root.append(details)
+  }
+}
+
 const sanitizeHtml = (html: string, options: RenderOptions): string => {
   const template = document.createElement('template')
   template.innerHTML = html
+  // before the sanitizer walk, so the caption it produces is sanitized too
+  renderImageDescriptions(template.content)
   sanitizeFragment(template.content, options)
   return template.innerHTML
 }

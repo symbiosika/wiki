@@ -31,7 +31,8 @@ import type {
   McpToolDefinition,
 } from "@framework/types";
 import { defineTool, READ_ONLY } from "./_define";
-import { annotateEmbeddedImages, extractEmbeddedImageRefs } from "./_shapes";
+import { annotateEmbeddedImages } from "./_shapes";
+import { extractPageImages } from "../../lib/wiki/image-descriptions";
 import { callApi, fail, ok, tenantPath, type ToolResult } from "../api";
 import { buildAppHtml, type AppName } from "../ui/build";
 
@@ -281,16 +282,24 @@ export const appUiTools: McpToolDefinition[] = [
       );
       if (page.isError) return page;
       const data = (page.structuredContent ?? {}) as Record<string, unknown>;
-      const refs = extractEmbeddedImageRefs(
+      const images = extractPageImages(
         typeof data.content === "string" ? data.content : "",
       );
-      if (refs.length === 0) {
+      if (images.length === 0) {
         return fail("This page embeds no images.");
+      }
+      // The gallery labels each tile with the image's description where the
+      // page has one — the file name it used to show tells nobody anything.
+      const captions: Record<string, string> = {};
+      for (const image of images) {
+        const caption = image.description ?? image.alt;
+        if (caption) captions[image.ref] = caption;
       }
       return ok({
         pageId: data.id ?? args.pageId,
         title: data.title,
-        images: refs,
+        images: images.map((image) => image.ref),
+        ...(Object.keys(captions).length > 0 ? { captions } : {}),
       });
     },
   ),

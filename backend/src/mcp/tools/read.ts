@@ -98,7 +98,7 @@ export const readTools: McpToolDefinition[] = [
           ids: args.pageIds,
           includeText: args.includeText ?? true,
         },
-        transform: slimBatchRows,
+        transform: (data) => annotateEmbeddedImages(slimBatchRows(data)),
       }),
   ),
 
@@ -144,7 +144,7 @@ export const readTools: McpToolDefinition[] = [
       callApi(
         ctx,
         tenantPath(ctx, `/knowledge/texts/${args.pageId}/section`),
-        { query: { anchor: args.anchor } },
+        { query: { anchor: args.anchor }, transform: annotateEmbeddedImages },
       ),
   ),
 
@@ -178,7 +178,10 @@ export const readTools: McpToolDefinition[] = [
       callApi(
         ctx,
         tenantPath(ctx, `/knowledge/texts/${args.pageId}/content`),
-        { query: { fromLine: args.fromLine, maxLines: args.maxLines } },
+        {
+          query: { fromLine: args.fromLine, maxLines: args.maxLines },
+          transform: annotateEmbeddedImages,
+        },
       ),
   ),
 
@@ -222,6 +225,7 @@ export const readTools: McpToolDefinition[] = [
             maxDepth: args.maxDepth,
             maxChars: args.maxChars,
           },
+          transform: annotateEmbeddedImages,
         },
       ),
   ),
@@ -392,7 +396,7 @@ export const readTools: McpToolDefinition[] = [
           ctx,
           `/knowledge/texts/${args.pageId}/history/${args.versionId}`,
         ),
-        { transform: pageVersion },
+        { transform: (data) => annotateEmbeddedImages(pageVersion(data)) },
       ),
   ),
 ];

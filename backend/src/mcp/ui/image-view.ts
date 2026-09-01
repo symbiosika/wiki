@@ -16,6 +16,8 @@ type ImagesData = {
   title?: string;
   caption?: string;
   images?: string[];
+  /** Per-image caption (the image's wiki description), keyed by reference. */
+  captions?: Record<string, string>;
 };
 
 const statusEl = document.getElementById("status")!;
@@ -96,7 +98,8 @@ function altOf(ref: string): string {
 }
 
 async function renderSingle(data: ImagesData, ref: string) {
-  const caption = data.caption || data.title || "";
+  // an explicit caption from the tool call wins over the wiki description
+  const caption = data.caption || data.captions?.[ref] || data.title || "";
   const loaded = await loadImage(data.pageId, ref);
   statusEl.hidden = true;
   if (!loaded) {
@@ -144,12 +147,18 @@ async function renderGallery(data: ImagesData, refs: string[]) {
         tile.textContent = `${altOf(ref)} (could not be loaded)`;
         return;
       }
+      const caption = data.captions?.[ref] ?? "";
       const img = document.createElement("img");
       img.src = loaded.src;
-      img.alt = altOf(ref);
+      img.alt = caption || altOf(ref);
       tile.append(img);
+      if (caption) {
+        const label = document.createElement("figcaption");
+        label.textContent = caption;
+        tile.append(label);
+      }
       tile.addEventListener("click", () =>
-        openLightbox(loaded.src, altOf(ref)),
+        openLightbox(loaded.src, caption || altOf(ref)),
       );
     }),
   );

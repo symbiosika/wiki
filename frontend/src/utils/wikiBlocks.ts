@@ -10,6 +10,7 @@
 import { marked } from 'marked'
 import type { WikiBlock } from '@/types/wiki'
 import { embedWikiLinkMarkers } from '@/components/editor/wikiLink'
+import { embedImageDescriptions } from '@/components/editor/wikiImage'
 
 marked.setOptions({ gfm: true, breaks: false })
 
@@ -65,13 +66,20 @@ const embedTaskLists = (root: DocumentFragment | HTMLElement): void => {
 /**
  * Parse a fragment on its way INTO the editor: bare `[[Target]]` markers (from
  * a markdown block, or written by an agent through the API/MCP tools) become
- * real page references first, and markdown task lists become real checklists.
+ * real page references first, markdown task lists become real checklists, and
+ * `<image-description>` markers move onto the image they describe.
+ *
+ * All three exist because the editor's schema only knows its own nodes: markup
+ * it does not recognise is dropped on the next save, so a description (or a
+ * checklist state) that is not lifted into a real attribute here is lost the
+ * first time a human edits the page.
  */
 const parseFragmentForEditor = (html: string): HTMLElement[] => {
   const template = document.createElement('template')
   template.innerHTML = html
   embedWikiLinkMarkers(template.content)
   embedTaskLists(template.content)
+  embedImageDescriptions(template.content)
   return Array.from(template.content.children) as HTMLElement[]
 }
 

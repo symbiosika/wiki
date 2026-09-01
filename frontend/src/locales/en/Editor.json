@@ -44,7 +44,11 @@
   "image": {
     "alignLeft": "Align left",
     "alignCenter": "Center",
-    "alignRight": "Align right"
+    "alignRight": "Align right",
+    "description": "Description",
+    "descriptionLabel": "Image description",
+    "descriptionHint": "Describe what the image shows — folded away for readers, readable for search and AI",
+    "descriptionPlaceholder": "What does this image show?"
   },
   "imageUploadError": "Image upload failed. Please try again.",
   "markdown": {

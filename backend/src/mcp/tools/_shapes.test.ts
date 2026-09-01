@@ -5,6 +5,7 @@
 import { describe, test, expect } from "bun:test";
 import {
   annotateEmbeddedImages,
+  compactSnippetImages,
   stripEmpty,
   slimPageRow,
   slimPageRows,
@@ -170,6 +171,7 @@ describe("composite shapes", () => {
 describe("annotateEmbeddedImages", () => {
   const ref =
     "/api/v1/tenant/t1/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png";
+  const tail = "/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png";
 
   test("lists embedded images and adds the hint", () => {
     const out = annotateEmbeddedImages({
@@ -177,10 +179,34 @@ describe("annotateEmbeddedImages", () => {
       title: "T",
       content: `intro\n\n![diagram](${ref})\n\n<img src="${ref}">`,
     }) as Record<string, unknown>;
-    expect(out.embeddedImages).toEqual([
-      "/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png",
-    ]);
+    expect(out.embeddedImages).toEqual([{ ref: tail, alt: "diagram" }]);
     expect(String(out.embeddedImagesHint)).toContain("get_page_image");
+  });
+
+  test("carries the description of an image", () => {
+    const out = annotateEmbeddedImages({
+      id: "p1",
+      content:
+        `![Schaltplan](${ref})\n` +
+        `<image-description src="${ref}">Steuerplatine mit Netzteil links</image-description>`,
+    }) as Record<string, unknown>;
+    expect(out.embeddedImages).toEqual([
+      {
+        ref: tail,
+        alt: "Schaltplan",
+        description: "Steuerplatine mit Netzteil links",
+      },
+    ]);
+    // the hint has to say that the description IS content, not a side note
+    expect(String(out.embeddedImagesHint)).toContain("page content");
+  });
+
+  test("says so when an image has no description", () => {
+    const out = annotateEmbeddedImages({
+      id: "p1",
+      content: `![a](${ref})`,
+    }) as Record<string, unknown>;
+    expect(String(out.embeddedImagesHint)).toContain("looking");
   });
 
   test("lists images extracted from an imported document (images bucket)", () => {
@@ -191,9 +217,34 @@ describe("annotateEmbeddedImages", () => {
       title: "Systemkatalog",
       content: `## Zimmer-Funkruf über Funkbox\n\n![img-0.jpeg](${imported})`,
     }) as Record<string, unknown>;
+    // the alt text is only the parser's file name, so it is not reported
     expect(out.embeddedImages).toEqual([
-      "/files/db/images/3885f189-5b63-4daf-8ea4-d981078039eb.jpeg",
+      { ref: "/files/db/images/3885f189-5b63-4daf-8ea4-d981078039eb.jpeg" },
     ]);
+  });
+
+  test("annotates a subtree's children too", () => {
+    const out = annotateEmbeddedImages({
+      id: "root",
+      content: "kein Bild",
+      children: [
+        { id: "child", content: `![a](${ref})`, children: [] },
+      ],
+    }) as Record<string, unknown>;
+    const child = (out.children as Record<string, unknown>[])[0]!;
+    expect(child.embeddedImages).toEqual([{ ref: tail, alt: "a" }]);
+    // the parent itself gains nothing but must not lose its own fields
+    expect(out.id).toBe("root");
+    expect(out.embeddedImages).toBeUndefined();
+  });
+
+  test("annotates every row of a batch", () => {
+    const out = annotateEmbeddedImages([
+      { id: "p1", content: "nur Text" },
+      { id: "p2", content: `![a](${ref})` },
+    ]) as Record<string, unknown>[];
+    expect(out[0]!.embeddedImages).toBeUndefined();
+    expect(out[1]!.embeddedImages).toEqual([{ ref: tail, alt: "a" }]);
   });
 
   test("leaves pages without images untouched", () => {
@@ -205,5 +256,33 @@ describe("annotateEmbeddedImages", () => {
     expect(annotateEmbeddedImages("x")).toBe("x");
     expect(annotateEmbeddedImages(null)).toBe(null);
     expect(annotateEmbeddedImages([1])).toEqual([1]);
+  });
+});
+
+describe("compactSnippetImages", () => {
+  const ref =
+    "/api/v1/tenant/t1/files/db/knowledge/0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d.png";
+
+  test("shrinks the image in a search hit's snippet to its description", () => {
+    const out = compactSnippetImages([
+      {
+        id: "p1",
+        title: "Anlage",
+        snippet:
+          `Aufbau ![Schaltplan](${ref})\n` +
+          `<image-description src="${ref}">Steuerplatine</image-description> Ende`,
+      },
+    ]) as Record<string, unknown>[];
+    expect(out[0]!.snippet).toBe("Aufbau [image: Steuerplatine] Ende");
+  });
+
+  test("leaves a hit without images untouched", () => {
+    const hits = [{ id: "p1", snippet: "Urlaub über das Portal" }];
+    expect(compactSnippetImages(hits)).toEqual(hits);
+  });
+
+  test("ignores payloads that are not search hits", () => {
+    expect(compactSnippetImages(null)).toBe(null);
+    expect(compactSnippetImages("x")).toBe("x");
   });
 });

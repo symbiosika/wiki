@@ -135,6 +135,25 @@ body {
   border-radius: 0.5rem;
   border: 1px solid var(--color-line);
 }
+/* an image's description: below the picture, folded away until asked for */
+.prose-doc details.image-description {
+  margin-top: -0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+.prose-doc details.image-description > summary {
+  cursor: pointer;
+  list-style: none;
+  opacity: 0.8;
+}
+.prose-doc details.image-description > summary::-webkit-details-marker { display: none; }
+.prose-doc details.image-description > summary::before { content: '▸ '; }
+.prose-doc details.image-description[open] > summary::before { content: '▾ '; }
+.prose-doc details.image-description > p {
+  margin: 0.35rem 0 0;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--color-line);
+}
 .prose-doc table {
   width: 100%;
   border-collapse: collapse;

@@ -38,6 +38,10 @@ import {
 import { getRelatedKnowledgeTexts } from "@framework/lib/knowledge/knowledge-text-links";
 import { getPageChunkContext } from "@framework/lib/knowledge/knowledge-text-chunks";
 import { wikiPagePath } from "../../../lib/wiki/page-url";
+import {
+  compactImagesForSnippet,
+  extractPageImages,
+} from "../../../lib/wiki/image-descriptions";
 
 /** Two chat modes. "read" is the safe default; "edit" unlocks the write tools. */
 export type WikiChatMode = "read" | "edit";
@@ -141,7 +145,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
             title: r.title,
             path: r.path,
             pathIds: r.pathIds,
-            snippet: r.snippet,
+            snippet: compactImagesForSnippet(r.snippet),
             summary: r.summary,
             matchedBy: r.matchedBy,
             chunkOrder: r.chunkOrder,
@@ -204,7 +208,10 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
       "Read the full markdown content of a wiki page by its pageId. Returns " +
       "line-numbered content so you can quote it and (in edit mode) target " +
       "edits precisely, plus the page's `url` for citing it. Get pageIds from " +
-      "search_wiki or list_wiki_pages.",
+      "search_wiki or list_wiki_pages. If the page embeds pictures, `images` " +
+      "lists them with the `description` someone wrote for each — that text " +
+      "is page content, quote it like any other. An image without a " +
+      "description is content you cannot read: say so instead of guessing.",
     inputSchema: valibotSchema(
       v.object({
         pageId: v.pipe(
@@ -234,6 +241,7 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           { tenantId: ctx.tenantId, userId: ctx.userId },
           { fromLine, maxLines },
         );
+        const images = extractPageImages(view.content);
         return {
           success: true,
           pageId: view.id,
@@ -243,6 +251,11 @@ function buildReadTools(ctx: WikiToolContext): ToolMap {
           fromLine: view.fromLine,
           toLine: view.toLine,
           totalLines: view.totalLines,
+          // What the page's pictures show, where someone described them. This
+          // assistant cannot look at an image, so a described one is the only
+          // kind it can answer about — and an undescribed one is knowledge it
+          // has to admit it cannot read.
+          ...(images.length > 0 ? { images } : {}),
         };
       } catch (error) {
         return toError(error);
