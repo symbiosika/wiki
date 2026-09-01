@@ -3,29 +3,12 @@
 **Target repo:** `symbiosika/symbiosika-framework` (the `backend/framework`
 submodule). **Not** `symbiosika/wiki`.
 
-> ## STATUS: implemented, pushed as a branch, PR open
+> ## STATUS: merged upstream, submodule bumped
 >
-> Branch `claude/parser-image-bucket` in the framework repo (commit
-> `795f8b0`), based on `origin/develop`. `framework-parser-image-bucket.patch`
-> at this repo's root is the same change as a `git diff` for review or for
-> applying by hand (`git apply framework-parser-image-bucket.patch`).
->
-> Verified locally: `bun test src/lib/knowledge/parsing/pdf/generic.test.ts
-> src/lib/knowledge/parsing/pdf/mistral-ocr.test.ts` → 23 pass, and
-> `bun run test:local src/lib/knowledge/knowledge-text-import.test.ts
-> src/lib/knowledge/knowledge-text-files.test.ts src/lib/knowledge/parsing`
-> → 67 pass, 2 fail. Both failures are pre-existing and unrelated (two
-> embedding tests in `knowledge-text-import.test.ts` time out without AI
-> keys; they fail the same way with these changes stashed).
-> `typecheck` and `typecheck:strict` are clean.
->
-> **⚠️ Submodule pointer:** the wiki submodule still points at
-> `bad2602` (current `develop`). Once the framework PR is merged, bump it:
-> ```bash
-> cd backend/framework && git fetch origin && git checkout <merged-sha>
-> cd ../.. && git add backend/framework
-> git commit -m "chore: bump framework to the parser image bucket change"
-> ```
+> Merged as symbiosika/symbiosika-framework#130. The wiki submodule points at
+> `77c1012` (framework `develop` including the merge), and the follow-up in
+> `backend/src/lib/url-import/runner.ts` is in place, so nothing here is
+> outstanding. Kept as the record of why the parser gained the option.
 
 ## Why
 
@@ -80,11 +63,15 @@ framework is affected.
   the public `parseFile` entry point (the path the importer takes), so the
   option is covered over the whole chain rather than at the doorstep.
 
-## Follow-up in the wiki app (after the bump)
+## Wiki app side
 
-`backend/src/lib/url-import/runner.ts` calls `urlToMarkdown` directly for
-scheduled URL imports and should pass `imageBucket: KNOWLEDGE_FILES_BUCKET`
-too. It is deliberately **not** in the wiki PR: the option does not exist until
-this framework change is merged and the submodule pointer is bumped, and a wiki
-PR that references it would not typecheck in CI. Small change, one line — do it
-in the same commit as the bump.
+- `backend/src/lib/wiki/images.ts` resolves the bucket from the page's own
+  reference and reads `PARSED_IMAGES_BUCKET` from the framework rather than
+  keeping its own copy of the name.
+- `backend/src/lib/wiki/image-bucket-migration.ts` moves the images existing
+  imports already put in the parser bucket.
+- `backend/src/lib/url-import/runner.ts` passes
+  `imageBucket: KNOWLEDGE_FILES_BUCKET` for scheduled URL imports, which call
+  `urlToMarkdown` directly instead of going through the importer. Landed
+  together with the submodule bump — before it, the option did not exist and a
+  wiki PR referencing it would not have typechecked.

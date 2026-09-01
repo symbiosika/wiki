@@ -29,10 +29,10 @@
  */
 import { getKnowledgeTextById } from "@framework/lib/knowledge/knowledge-texts";
 import { KNOWLEDGE_FILES_BUCKET } from "@framework/lib/knowledge/knowledge-text-files";
+import { PARSED_IMAGES_BUCKET } from "@framework/lib/knowledge/parsing/pdf/images";
 import { getFileFromDb } from "@framework/lib/storage/db";
 
-/** Bucket the document parsers store extracted images in. */
-export const PARSED_IMAGES_BUCKET = "images";
+export { PARSED_IMAGES_BUCKET };
 
 /** Buckets an image may be read from when a page references it. */
 export const PAGE_IMAGE_BUCKETS = [
