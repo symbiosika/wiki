@@ -107,7 +107,7 @@ aktiv**, statt bei einem Treffer stehenzubleiben:
 
 Viele Produkt- und Anleitungsseiten leben von **Bildern**: Datenblätter,
 Schaltpläne, Diagramme, Screenshots, Schritt-für-Schritt-Fotos. Seiten betten
-Bilder als `/files/db/knowledge/<uuid>.<ext>`-Pfade ein.
+Bilder als `/files/db/<bucket>/<uuid>.<ext>`-Pfade ein.
 
 - **Wenn DU das Bild brauchst** (um es zu verstehen und die Antwort darauf zu
   stützen): `get_page_image` (pageId + genau die Bildreferenz aus dem Inhalt) —

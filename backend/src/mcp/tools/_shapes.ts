@@ -20,9 +20,16 @@ export const stripEmpty = (row: Row): Row => {
   return out;
 };
 
-/** Wiki image references as they appear in page content (markdown or html). */
+/**
+ * Wiki image references as they appear in page content (markdown or html).
+ *
+ * Two buckets carry page images: "knowledge" (uploaded in the block editor)
+ * and "images" (extracted from an imported PDF / URL by a parsing service).
+ * Matching only the first one hid every image of an imported page from the
+ * model — the paths were in the content, but nothing said they were loadable.
+ */
 const IMAGE_REF_RE =
-  /\/files\/db\/knowledge\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}/gi;
+  /\/files\/db\/(?:knowledge|images)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}/gi;
 
 /** All unique wiki image references embedded in a page's content. */
 export const extractEmbeddedImageRefs = (content: string): string[] => [
