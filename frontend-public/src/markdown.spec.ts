@@ -52,6 +52,23 @@ describe('renderMarkdown — image rewriting', () => {
     expect(html).not.toContain('/files/db/knowledge/')
   })
 
+  it('points imported images (images bucket) at the same endpoint', () => {
+    const file = '3885f189-5b63-4daf-8ea4-d981078039eb.jpeg'
+    const html = renderMarkdown(`![img-0.jpeg](/files/db/images/${file})`, opts)
+    expect(html).toContain(
+      `/api/v1/public/wiki/${TENANT}/pages/${PAGE}/images/${file}`,
+    )
+    expect(html).not.toContain('/files/db/images/')
+  })
+
+  it('leaves images from other buckets alone', () => {
+    const html = renderMarkdown(
+      '![alt](/files/db/chat/44444444-4444-4444-4444-444444444444.png)',
+      opts,
+    )
+    expect(html).toContain('/files/db/chat/')
+  })
+
   it('leaves external images untouched', () => {
     const html = renderMarkdown('![alt](https://example.com/x.png)', opts)
     expect(html).toContain('https://example.com/x.png')
@@ -108,6 +125,65 @@ describe('renderMarkdown — wiki links', () => {
     // the payload survives as visible text, never as an element
     expect(html).toContain('&lt;img')
     expect(html).not.toMatch(/<img[\s>]/)
+  })
+})
+
+describe('renderMarkdown — image descriptions', () => {
+  const REF = '/files/db/knowledge/33333333-3333-3333-3333-333333333333.png'
+  const FULL = `/api/v1/tenant/${TENANT}${REF}`
+
+  it('renders the marker as a folded caption under its image', () => {
+    const html = renderMarkdown(
+      `![Schaltplan](${FULL})\n<image-description src="${FULL}">Steuerplatine mit Netzteil links</image-description>`,
+      opts,
+    )
+    // the marker itself never reaches the page
+    expect(html).not.toContain('image-description>')
+    expect(html).not.toContain('<image-description')
+    expect(html).toContain('<details class="image-description">')
+    expect(html).toContain('Steuerplatine mit Netzteil links')
+    // and it sits after the image, not before it
+    expect(html.indexOf('<img')).toBeLessThan(html.indexOf('<details'))
+  })
+
+  it('matches the marker across the two path forms', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${REF}">Nahaufnahme</image-description>`,
+      opts,
+    )
+    expect(html).toContain('Nahaufnahme')
+    expect(html.indexOf('<img')).toBeLessThan(html.indexOf('<details'))
+  })
+
+  it('collapses a multi-line description to one line', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${FULL}">Zeile eins\nZeile zwei</image-description>`,
+      opts,
+    )
+    expect(html).toContain('Zeile eins Zeile zwei')
+  })
+
+  it('escapes html inside a description', () => {
+    const html = renderMarkdown(
+      `![a](${FULL})\n<image-description src="${FULL}">&lt;img src=x onerror=alert(1)&gt;</image-description>`,
+      opts,
+    )
+    // the description is text: it stays escaped, so no second element appears
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html.match(/<img\b/g)?.length).toBe(1)
+  })
+
+  it('drops an empty or orphaned marker without leaving markup behind', () => {
+    const html = renderMarkdown(
+      `Text\n\n<image-description src="${REF}"> </image-description>`,
+      opts,
+    )
+    expect(html).not.toContain('image-description')
+  })
+
+  it('leaves a page without markers untouched', () => {
+    const html = renderMarkdown(`![a](${FULL})`, opts)
+    expect(html).not.toContain('details')
   })
 })
 

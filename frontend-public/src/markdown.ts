@@ -6,7 +6,7 @@
  *   1. Sanitizing. The output goes into the DOM via `v-html`, and page content
  *      is authored by people, so scripts, event handlers and dangerous URL
  *      schemes are stripped first.
- *   2. Image rewriting. Pages embed images as `/files/db/knowledge/<uuid>.<ext>`,
+ *   2. Image rewriting. Pages embed images as `/files/db/<bucket>/<uuid>.<ext>`,
  *      a path that needs `files:read`. Public readers have no scopes at all, so
  *      those are rewritten to the per-page public image endpoint, which
  *      authorizes by "page is published AND references this file".
@@ -55,8 +55,13 @@ const isSafeUrl = (value: string | null): boolean => {
   return SAFE_URL.test(cleaned)
 }
 
-/** `/files/db/knowledge/<uuid>.<ext>` as embedded by the editor. */
-const KNOWLEDGE_IMAGE = /\/files\/db\/knowledge\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/i
+/**
+ * `/files/db/<bucket>/<uuid>.<ext>` as embedded in page content: "knowledge"
+ * for an editor upload, "images" for a picture a parsing service extracted
+ * from an imported PDF / URL. Both are served by the public image endpoint,
+ * which resolves the bucket from the page's own reference.
+ */
+const PAGE_IMAGE = /\/files\/db\/(?:knowledge|images)\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/i
 
 /** `[[Target]]` or `[[Target|alias]]`. */
 const WIKI_LINK = /^\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]$/
@@ -127,7 +132,7 @@ const sanitizeFragment = (root: DocumentFragment, options: RenderOptions): void 
 
       if (node.tagName === 'IMG') {
         const src = node.getAttribute('src') ?? ''
-        const image = KNOWLEDGE_IMAGE.exec(src)
+        const image = PAGE_IMAGE.exec(src)
         if (image) {
           node.setAttribute(
             'src',
@@ -151,9 +156,59 @@ const sanitizeFragment = (root: DocumentFragment, options: RenderOptions): void 
   for (const el of toRemove) el.remove()
 }
 
+/**
+ * Turn every `<image-description>` marker into a collapsed caption below the
+ * image it describes.
+ *
+ * The marker is how an image's description travels through the page text — so
+ * search, the embedding and an AI reader see it. For a visitor it is markup:
+ * left alone it renders as a stray line of text under the picture (the
+ * sanitizer keeps unknown elements, and a custom element shows its content).
+ * A `<details>` puts it where a caption belongs and keeps it folded, which is
+ * exactly how the wiki itself shows it.
+ */
+const renderImageDescriptions = (root: DocumentFragment): void => {
+  const markers = Array.from(root.querySelectorAll('image-description'))
+  if (markers.length === 0) return
+
+  const images = Array.from(root.querySelectorAll('img'))
+  const key = (src: string) => (PAGE_IMAGE.exec(src)?.[1] ?? '').toLowerCase()
+
+  for (const marker of markers) {
+    const text = (marker.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const wanted = key(marker.getAttribute('src') ?? '')
+    const target =
+      images.find((img) => {
+        const name = key(img.getAttribute('src') ?? '')
+        return name !== '' && name === wanted
+      }) ??
+      (marker.previousElementSibling?.tagName === 'IMG'
+        ? (marker.previousElementSibling as HTMLElement)
+        : null)
+
+    const anchor = marker.parentElement
+    marker.remove()
+    if (!text) continue
+
+    const details = document.createElement('details')
+    details.className = 'image-description'
+    const summary = document.createElement('summary')
+    summary.textContent = 'Bildbeschreibung'
+    const body = document.createElement('p')
+    body.textContent = text
+    details.append(summary, body)
+
+    if (target) target.after(details)
+    else if (anchor) anchor.after(details)
+    else root.append(details)
+  }
+}
+
 const sanitizeHtml = (html: string, options: RenderOptions): string => {
   const template = document.createElement('template')
   template.innerHTML = html
+  // before the sanitizer walk, so the caption it produces is sanitized too
+  renderImageDescriptions(template.content)
   sanitizeFragment(template.content, options)
   return template.innerHTML
 }

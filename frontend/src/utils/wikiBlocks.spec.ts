@@ -118,6 +118,55 @@ describe('page references in loaded blocks', () => {
   })
 })
 
+describe('image descriptions in loaded blocks', () => {
+  const REF =
+    '/api/v1/tenant/t-1/files/db/knowledge/11111111-1111-1111-1111-111111111111.png'
+
+  test('a marker written by an agent lands on the image', () => {
+    const blocks: WikiBlock[] = [
+      {
+        id: 'b1',
+        type: 'markdown',
+        content:
+          `![Schaltplan](${REF})\n` +
+          `<image-description src="${REF}">Steuerplatine mit Netzteil links</image-description>`,
+      },
+    ]
+    const html = blocksToEditorHtml(blocks)
+    expect(html).toContain(
+      'data-description="Steuerplatine mit Netzteil links"',
+    )
+    // the marker itself is gone: the editor schema would drop it on save
+    expect(html).not.toContain('image-description>')
+  })
+
+  test('saving it back keeps the description on the image', () => {
+    const html = blocksToEditorHtml([
+      {
+        id: 'b1',
+        type: 'markdown',
+        content: `![a](${REF})\n<image-description src="${REF}">Nahaufnahme</image-description>`,
+      },
+    ])
+    const saved = editorHtmlToBlocks(html)
+    expect(saved).toHaveLength(1)
+    expect(saved[0]!.content).toContain('data-description="Nahaufnahme"')
+  })
+
+  test('an html block keeps a description it already has', () => {
+    const html = blocksToEditorHtml([
+      {
+        id: 'b1',
+        type: 'html',
+        content: `<img src="${REF}" data-description="Vom Editor">`,
+      },
+    ])
+    expect(editorHtmlToBlocks(html)[0]!.content).toContain(
+      'data-description="Vom Editor"',
+    )
+  })
+})
+
 describe('blocksAreEqual', () => {
   const a: WikiBlock[] = [{ id: '1', type: 'html', content: '<p>x</p>' }]
 

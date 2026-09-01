@@ -7,41 +7,93 @@
     <!-- image selected: size + alignment controls -->
     <div
       v-if="editor.isActive('image')"
-      class="flex items-center gap-0.5 rounded-lg border border-surface-200 bg-surface-0 p-1 shadow-lg dark:border-surface-700 dark:bg-surface-900"
+      class="flex flex-col gap-1 rounded-lg border border-surface-200 bg-surface-0 p-1 shadow-lg dark:border-surface-700 dark:bg-surface-900"
     >
-      <button
-        v-for="size in sizes"
-        :key="size.value"
-        type="button"
-        :title="size.label"
-        class="flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors"
-        :class="
-          imageSize() === size.value
-            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
-        "
-        @click="setSize(size.value)"
-      >
-        {{ size.label }}
-      </button>
+      <div class="flex items-center gap-0.5">
+        <button
+          v-for="size in sizes"
+          :key="size.value"
+          type="button"
+          :title="size.label"
+          class="flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors"
+          :class="
+            imageSize() === size.value
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+              : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+          "
+          @click="setSize(size.value)"
+        >
+          {{ size.label }}
+        </button>
 
-      <span class="mx-1 h-5 w-px bg-surface-200 dark:bg-surface-700" />
+        <span class="mx-1 h-5 w-px bg-surface-200 dark:bg-surface-700" />
 
-      <button
-        v-for="align in aligns"
-        :key="align.value"
-        type="button"
-        :title="align.label"
-        class="flex h-7 min-w-7 items-center justify-center rounded transition-colors"
-        :class="
-          imageAlign() === align.value
-            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-            : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
-        "
-        @click="setAlign(align.value)"
+        <button
+          v-for="align in aligns"
+          :key="align.value"
+          type="button"
+          :title="align.label"
+          class="flex h-7 min-w-7 items-center justify-center rounded transition-colors"
+          :class="
+            imageAlign() === align.value
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+              : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+          "
+          @click="setAlign(align.value)"
+        >
+          <component :is="align.icon" class="h-4 w-4" />
+        </button>
+
+        <span class="mx-1 h-5 w-px bg-surface-200 dark:bg-surface-700" />
+
+        <!-- description: what the picture shows. Folded away in the page, but
+             it is what search, embeddings and AI clients read. -->
+        <button
+          type="button"
+          :title="$t('Editor.image.descriptionHint')"
+          class="flex h-7 items-center gap-1 rounded px-1.5 text-xs font-medium transition-colors"
+          :class="
+            imageDescription()
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+              : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+          "
+          @click="toggleDescriptionInput"
+        >
+          <IconImageText class="h-4 w-4" />
+          {{ $t('Editor.image.description') }}
+        </button>
+      </div>
+
+      <!-- the description itself gets its own row: a long text stays readable
+           and editable instead of scrolling inside a one-line field -->
+      <div
+        v-if="showDescriptionInput"
+        class="flex flex-col gap-1 border-t border-surface-200 pt-1 dark:border-surface-700"
       >
-        <component :is="align.icon" class="h-4 w-4" />
-      </button>
+        <textarea
+          ref="descriptionInputRef"
+          v-model="descriptionText"
+          rows="4"
+          :placeholder="$t('Editor.image.descriptionPlaceholder')"
+          class="w-full min-w-[24rem] resize-y rounded border border-surface-200 bg-surface-0 px-2 py-1.5 text-xs leading-relaxed text-surface-900 outline-none focus:border-primary dark:border-surface-700 dark:bg-surface-950 dark:text-surface-0"
+          @keydown.enter.exact.prevent="applyDescription"
+          @keydown.ctrl.enter.prevent="applyDescription"
+          @keydown.meta.enter.prevent="applyDescription"
+          @keydown.escape.prevent="showDescriptionInput = false"
+        />
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-surface-500 dark:text-surface-400">
+            {{ $t('Editor.image.descriptionEditHint') }}
+          </span>
+          <button
+            type="button"
+            class="flex h-7 items-center rounded px-2 text-xs font-medium text-primary hover:bg-primary-50 dark:hover:bg-primary-900/30"
+            @click="applyDescription"
+          >
+            {{ $t('Common.save') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- text selected: inline formatting -->
@@ -112,7 +164,13 @@ import { isTextSelection } from '@tiptap/core'
 import IconAlignLeft from '~icons/mdi/format-align-left'
 import IconAlignCenter from '~icons/mdi/format-align-center'
 import IconAlignRight from '~icons/mdi/format-align-right'
-import { IMAGE_SIZES, type ImageSize, type ImageAlign } from './wikiImage'
+import IconImageText from '~icons/mdi/image-text'
+import {
+  IMAGE_SIZES,
+  normalizeImageDescription,
+  type ImageSize,
+  type ImageAlign,
+} from './wikiImage'
 
 const props = defineProps<{ editor: Editor }>()
 
@@ -121,6 +179,10 @@ const { t } = useI18n()
 const showLinkInput = ref(false)
 const linkUrl = ref('')
 const linkInputRef = ref<HTMLInputElement | null>(null)
+
+const showDescriptionInput = ref(false)
+const descriptionText = ref('')
+const descriptionInputRef = ref<HTMLTextAreaElement | null>(null)
 
 const marks = [
   {
@@ -193,6 +255,29 @@ const setSize = (size: ImageSize) => {
     .focus()
     .updateAttributes('image', { size: imageSize() === size ? null : size })
     .run()
+}
+
+const imageDescription = () =>
+  (props.editor.getAttributes('image').description as string | null) ?? null
+
+/**
+ * Open the editor prefilled with what the image already says, or close it.
+ * The field wraps over several lines for comfort, but the description is stored
+ * as one line — it travels as an html attribute and as one line of markdown,
+ * so `normalizeImageDescription` collapses any break the author typed.
+ */
+const toggleDescriptionInput = () => {
+  showDescriptionInput.value = !showDescriptionInput.value
+  if (!showDescriptionInput.value) return
+  descriptionText.value = imageDescription() ?? ''
+  void nextTick(() => descriptionInputRef.value?.focus())
+}
+
+/** Store the description on the image (an empty field removes it). */
+const applyDescription = () => {
+  const description = normalizeImageDescription(descriptionText.value)
+  props.editor.chain().focus().updateAttributes('image', { description }).run()
+  showDescriptionInput.value = false
 }
 
 const setAlign = (align: ImageAlign) => {

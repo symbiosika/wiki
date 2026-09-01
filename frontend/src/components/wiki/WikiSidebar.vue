@@ -414,6 +414,10 @@ watch(
   (id) => {
     if (id) {
       wiki.loadTree(id)
+      // The tree rows show the icon configured for a page's type, so the
+      // knowledge config is needed here too — not only once a page is open.
+      // `loadConfig` is a no-op when it is already cached.
+      void wiki.loadConfig(id)
       app.loadTenantLogoInfo(id)
     }
   },

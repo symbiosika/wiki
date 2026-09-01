@@ -2,26 +2,72 @@
  * Read access to the images embedded in wiki pages — scoped by PAGE
  * visibility instead of the generic `files:read` scope.
  *
- * Background: the block editor uploads images into the "knowledge" bucket
- * and embeds them as `/files/db/knowledge/<uuid>.<ext>`. That generic files
- * endpoint requires the `files:read` scope, which OAuth clients of the MCP
- * server (claude.ai & co) do not get. This module lets a caller fetch an
- * image with only `knowledge:read`, under two conditions enforced here:
+ * Background: page images are embedded as `/files/db/<bucket>/<uuid>.<ext>`.
+ * That generic files endpoint requires the `files:read` scope, which OAuth
+ * clients of the MCP server (claude.ai & co) do not get. This module lets a
+ * caller fetch an image with only `knowledge:read`, under two conditions
+ * enforced here:
  *
  *   1. the caller can see the page (same visibility rules as reading it), and
  *   2. the requested file is actually referenced by that page's content —
- *      so the endpoint cannot be used to enumerate the whole bucket.
+ *      so the endpoint cannot be used to enumerate a whole bucket.
+ *
+ * A page's images do not all live in the same bucket, and that is why this
+ * module resolves the bucket from the page instead of assuming one:
+ *
+ *   - "knowledge": images uploaded through the block editor
+ *     (`uploadKnowledgeTextImage`).
+ *   - "images": images a parsing service extracted from an imported document
+ *     (PDF import / URL import — see framework `parsing/pdf/images.ts`, which
+ *     stores them with `saveFile(file, "images", …)`). Pages created by an
+ *     import reference these, and reading them used to fail with a 404 that
+ *     looked like "the page does not reference this file".
+ *
+ * Only these two buckets are readable through a page: they are the ones a
+ * page's own content is built from. Everything else (chat attachments,
+ * avatars, …) stays behind `files:read`.
  */
 import { getKnowledgeTextById } from "@framework/lib/knowledge/knowledge-texts";
-import {
-  extractKnowledgeFileIds,
-  KNOWLEDGE_FILES_BUCKET,
-} from "@framework/lib/knowledge/knowledge-text-files";
+import { KNOWLEDGE_FILES_BUCKET } from "@framework/lib/knowledge/knowledge-text-files";
+import { PARSED_IMAGES_BUCKET } from "@framework/lib/knowledge/parsing/pdf/images";
 import { getFileFromDb } from "@framework/lib/storage/db";
+
+export { PARSED_IMAGES_BUCKET };
+
+/** Buckets an image may be read from when a page references it. */
+export const PAGE_IMAGE_BUCKETS = [
+  KNOWLEDGE_FILES_BUCKET,
+  PARSED_IMAGES_BUCKET,
+] as const;
 
 /** `<uuid>.<ext>` — the filename shape produced by the image upload. */
 const FILENAME_PATTERN =
   /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.[a-z0-9]{1,8}$/i;
+
+/**
+ * `/files/db/<bucket>/<uuid>` for the buckets above, in markdown and html
+ * alike. The bucket is captured: it is what the file is then looked up in, so
+ * a reference can never reach outside the buckets listed here.
+ */
+const IMAGE_REFERENCE_PATTERN = new RegExp(
+  `/files/db/(${PAGE_IMAGE_BUCKETS.join("|")})/` +
+    "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
+  "gi"
+);
+
+/**
+ * Map every image a page's content references to the bucket it is referenced
+ * from (`<file id>` → `<bucket>`).
+ */
+export const extractPageImageReferences = (
+  content: string
+): Map<string, string> => {
+  const refs = new Map<string, string>();
+  for (const match of content.matchAll(IMAGE_REFERENCE_PATTERN)) {
+    refs.set(match[2]!.toLowerCase(), match[1]!.toLowerCase());
+  }
+  return refs;
+};
 
 /**
  * The filename + reference half of an image read, shared by the authenticated
@@ -51,13 +97,15 @@ async function loadReferencedImage(
   // Visibility check: throws when the page is not readable in this context.
   const page = await loadPage();
 
-  // Reference check: the page's content must actually embed this file.
-  const referencedIds = extractKnowledgeFileIds(page.text ?? "");
-  if (!referencedIds.includes(fileId)) {
+  // Reference check: the page's content must actually embed this file. The
+  // bucket comes from that same reference, so an image is only ever read from
+  // where the page itself points.
+  const bucket = extractPageImageReferences(page.text ?? "").get(fileId);
+  if (!bucket) {
     throw new Error("Image not found or access denied");
   }
 
-  return getFileFromDb(filename, KNOWLEDGE_FILES_BUCKET, tenantId);
+  return getFileFromDb(filename, bucket, tenantId);
 }
 
 /**

@@ -44,7 +44,12 @@
   "image": {
     "alignLeft": "Linksbündig",
     "alignCenter": "Zentriert",
-    "alignRight": "Rechtsbündig"
+    "alignRight": "Rechtsbündig",
+    "description": "Beschreibung",
+    "descriptionLabel": "Bildbeschreibung",
+    "descriptionHint": "Beschreiben, was auf dem Bild zu sehen ist — eingeklappt für Leser, lesbar für Suche und KI",
+    "descriptionPlaceholder": "Was ist auf dem Bild zu sehen?",
+    "descriptionEditHint": "Enter speichert · Esc bricht ab · wird als eine Zeile gespeichert"
   },
   "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
   "markdown": {
