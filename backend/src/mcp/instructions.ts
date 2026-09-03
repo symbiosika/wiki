@@ -51,7 +51,10 @@ answer depends on a detail (a value on a schematic, a label on a photo), still
 load the image with get_page_image and look. An image with no description is
 knowledge you have not read yet — say so, or look at it. When you learn what an
 undescribed picture shows and the description would help the next reader, offer
-to add one (edit_page_content: put the marker on the line below the image).
+to add one — set_image_description (pageId + the image's \`ref\` + one line of
+plain text) writes it where the wiki keeps it, replaces an existing description
+rather than stacking a second one, and removes it when the text is empty. Never
+hand-write the marker: an alt text or a markdown title is NOT a description.
 
 Page links: every object that identifies a page (search hits, tree nodes,
 pages you read or create, link targets, outline headings) carries \`url\`, the
