@@ -18,6 +18,9 @@ const WRITE_TOOLS: Record<string, { destructive: boolean; idempotent: boolean }>
   append_to_page: { destructive: false, idempotent: false },
   update_page: { destructive: true, idempotent: true },
   edit_page_content: { destructive: true, idempotent: false },
+  // replaces the description instead of stacking a second one, so
+  // repeating the call leaves the page exactly as it is
+  set_image_description: { destructive: true, idempotent: true },
   delete_page: { destructive: true, idempotent: true },
   create_collection_record: { destructive: false, idempotent: false },
   update_collection_record: { destructive: true, idempotent: true },

@@ -137,10 +137,13 @@ was auf dem Bild zu sehen ist. Dieselbe Beschreibung steht im Seitentext als
 - Ein Bild **ohne** `description` ist ungelesenes Wissen: ansehen, oder sagen,
   dass du es nicht beurteilen kannst.
 - Wenn du weißt, was ein unbeschriebenes Bild zeigt, biete an, es zu
-  dokumentieren: `edit_page_content` und den Marker in die Zeile unter das Bild
-  setzen —
-  `<image-description src="/files/db/…/<uuid>.png">Kurzbeschreibung</image-description>`.
-  Eine Zeile, keine Zeilenumbrüche, beschreibe nur Sichtbares.
+  dokumentieren: **`set_image_description`** (`pageId` + `ref` aus
+  `embeddedImages` + eine Zeile Text). Das ist der einzige Weg, das Feld zu
+  füllen — ein Alt-Text oder ein Markdown-Titel ist **keine** Beschreibung und
+  wird nie als solche übernommen; den Marker von Hand schreiben musst du nicht.
+  Erneutes Setzen **ersetzt** die Beschreibung, ein leerer Text **entfernt**
+  sie. Eine Zeile, keine Zeilenumbrüche, beschreibe nur Sichtbares — und sieh
+  dir das Bild vorher mit `get_page_image` an, statt zu raten.
 
 ### 5. Antworten
 - Antwort **aus dem Wiki-Inhalt** formulieren, nicht paraphrasiertes Vorwissen.
@@ -235,6 +238,7 @@ Meeting-Notizen, eine Antwort, die andere brauchen werden), biete an, es festzuh
 | **Was ist auf dem Bild?** | `embeddedImages[].description` der gelesenen Seite |
 | **Ein Bild dem Nutzer zeigen (groß/zoombar)** | `view_image` |
 | **Alle Bilder einer Seite zeigen (Galerie)** | `view_page_images` |
+| **Bildbeschreibung setzen/ändern/löschen** | `set_image_description` |
 | **Ganze Seite formatiert zeigen** | `view_page` (`anchor` für Abschnitt) |
 | Seite anlegen | `create_page` |
 | Umbenennen/Verschieben/Facetten | `update_page` |

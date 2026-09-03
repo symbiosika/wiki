@@ -20,6 +20,7 @@ import { buildWikiTree } from "../../../../lib/wiki/tree";
 import { getPageTypeUsage } from "../../../../lib/wiki/page-type-usage";
 import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
+import { setWikiImageDescription } from "../../../../lib/wiki/set-image-description";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -229,6 +230,84 @@ export default function defineWikiRoutes(
         const message =
           error instanceof Error ? error.message : "Failed to load image";
         return c.json({ success: false, error: message }, 404);
+      }
+    }
+  );
+
+  /**
+   * PUT /tenant/:tenantId/wiki/:pageId/images/:filename/description
+   *
+   * Set, replace or remove the description of an image embedded in a wiki page
+   * — the caption the wiki shows and the text every AI reader gets INSTEAD of
+   * the picture (a page result lists it as `embeddedImages[].description`).
+   *
+   * The description is stored in the page itself (on the `<img>` of a block,
+   * as an `<image-description>` marker in markdown/plain text), so it travels
+   * with the content: history, full-text search and the embedding pick it up
+   * through the normal save path. An empty/absent `description` removes it.
+   *
+   * Page-scoped like the image read above: readable page + `knowledge:write`
+   * on it, and the file must actually be referenced by the page.
+   */
+  app.put(
+    `${baseRoute}/:pageId/images/:filename/description`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Set the description of an image embedded in a wiki page",
+      responses: {
+        200: {
+          description:
+            "The stored description plus every image of the page after the write",
+          content: {
+            "application/json": {
+              schema: resolver(v.any()),
+            },
+          },
+        },
+      },
+    }),
+    validateScope("knowledge:write"),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+        filename: v.string(),
+      })
+    ),
+    validator(
+      "json",
+      v.object({
+        description: v.optional(v.nullable(v.string())),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId, filename } = c.req.valid("param");
+      const { description } = c.req.valid("json");
+      const userId = c.get("usersId");
+      try {
+        const data = await setWikiImageDescription(
+          pageId,
+          filename,
+          description ?? null,
+          { tenantId, userId }
+        );
+        return c.json({ success: true, data });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to set the image description";
+        // "not found / access denied" (page) and "does not embed that image"
+        // are both 404s: from the caller's side the image is not there.
+        const notFound =
+          message.includes("not found") ||
+          message.includes("access denied") ||
+          message.includes("does not embed");
+        return c.json({ success: false, error: message }, notFound ? 404 : 400);
       }
     }
   );
