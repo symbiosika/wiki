@@ -261,6 +261,17 @@ const imageDescription = () =>
   (props.editor.getAttributes('image').description as string | null) ?? null
 
 /**
+ * Which image the description field belongs to, or `null` when the selection
+ * is not on an image. The same picture may sit in a page more than once, so
+ * the position identifies it — the src alone would not.
+ */
+const selectedImageId = () => {
+  if (!props.editor.isActive('image')) return null
+  const src = (props.editor.getAttributes('image').src as string | null) ?? ''
+  return `${props.editor.state.selection.from}:${src}`
+}
+
+/**
  * Open the editor prefilled with what the image already says, or close it.
  * The field wraps over several lines for comfort, but the description is stored
  * as one line — it travels as an html attribute and as one line of markdown,
@@ -272,6 +283,17 @@ const toggleDescriptionInput = () => {
   descriptionText.value = imageDescription() ?? ''
   void nextTick(() => descriptionInputRef.value?.focus())
 }
+
+/**
+ * The menu stays open while the author clicks from picture to picture, so an
+ * open field has to follow the selection: without this it would keep showing
+ * the previous image's description until closed and opened again — and saving
+ * would then write that text onto the wrong image.
+ */
+watch(selectedImageId, (id) => {
+  if (id === null || !showDescriptionInput.value) return
+  descriptionText.value = imageDescription() ?? ''
+})
 
 /** Store the description on the image (an empty field removes it). */
 const applyDescription = () => {
