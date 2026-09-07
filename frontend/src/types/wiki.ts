@@ -182,18 +182,17 @@ export interface AgentInstructions {
 }
 
 /**
- * Per-modality "extra service" flags the configured parsing service advertises
- * via its capabilities. Any flag defaults to `false` when absent. Mirrors the
- * framework `ServiceModality.features` shape (camelCase).
+ * The "extra service" flags one modality advertises, exactly as the parsing
+ * service named them: wire names (`snake_case`, e.g. `extract_images`, `ocr`,
+ * `detect_tables`) mapped to booleans. An absent key means "not offered".
+ *
+ * Deliberately an open map, mirroring the framework's
+ * `ServiceModality.features`: the backend forwards any option the service
+ * advertises, so a flag nobody here has heard of still works once the service
+ * offers it. Read it via `hasFeature()` in `@/utils/parserCapabilities`, which
+ * also accepts the camelCase spelling an older backend normalized keys to.
  */
-export interface WikiParserFeatures {
-  extractImages?: boolean
-  extractFields?: boolean
-  async?: boolean
-  parseImagesInDoc?: boolean
-  ocr?: boolean
-  detectTables?: boolean
-}
+export type WikiParserFeatures = Record<string, boolean>
 
 /** One document type the configured parsing service accepts. */
 export interface WikiParserModality {

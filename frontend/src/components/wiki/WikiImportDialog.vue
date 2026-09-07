@@ -43,8 +43,11 @@
           <span class="text-sm text-surface-600 dark:text-surface-300">
             {{ $t('Wiki.import.dropHint') }}
           </span>
-          <span class="text-xs text-surface-400 dark:text-surface-500">
-            {{ $t('Wiki.import.fileTypes') }}
+          <span
+            class="text-xs text-surface-400 dark:text-surface-500"
+            :title="allAcceptedTypes"
+          >
+            {{ $t('Wiki.import.fileTypes', { types: acceptedTypesLabel }) }}
           </span>
           <span
             class="mt-1 flex items-center gap-1 text-xs text-surface-400 dark:text-surface-500"
@@ -60,7 +63,7 @@
           type="file"
           multiple
           class="hidden"
-          :accept="FILE_ACCEPT"
+          :accept="fileAccept"
           @change="onFilesSelected"
         />
         <input
@@ -289,22 +292,39 @@
         {{ $t('Wiki.import.splitIntoBlocks') }}
       </label>
 
-      <!-- parser pass-through options: only what the configured service supports -->
-      <div
-        v-if="mode === 'file' && availableFlags.length"
-        class="flex flex-col gap-1.5"
-      >
+      <!--
+        Parser options: only what the configured service advertises, and only
+        active for the file types actually queued. One that does not apply
+        stays visible with the reason — hiding it looks like a missing feature,
+        and silently accepting it looks like it did something.
+      -->
+      <div v-if="showParserFlags" class="flex flex-col gap-1.5">
         <label class="text-sm text-surface-700 dark:text-surface-300">
           {{ $t('Wiki.import.parserOptionsLabel') }}
         </label>
-        <label
-          v-for="flag in availableFlags"
-          :key="flag.key"
-          class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
-        >
-          <Checkbox v-model="parserFlags[flag.key]" binary />
-          {{ $t(flag.labelKey) }}
-        </label>
+        <div v-for="flag in flagStates" :key="flag.key" class="flex flex-col">
+          <label
+            class="flex items-center gap-2 text-sm"
+            :class="
+              flag.enabled
+                ? 'text-surface-700 dark:text-surface-300'
+                : 'text-surface-400 dark:text-surface-500'
+            "
+          >
+            <Checkbox
+              v-model="parserFlags[flag.key]"
+              binary
+              :disabled="!flag.enabled"
+            />
+            {{ $t(flag.labelKey) }}
+          </label>
+          <span
+            v-if="flag.reason"
+            class="ml-7 text-xs text-surface-400 dark:text-surface-500"
+          >
+            {{ flag.reason }}
+          </span>
+        </div>
         <span class="text-xs text-surface-400 dark:text-surface-500">
           {{ $t('Wiki.import.parserOptionsHint') }}
         </span>
@@ -356,45 +376,55 @@ import IconCurrent from '~icons/mdi/file-tree-outline'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
-import type { WikiScope, WikiParserFeatures } from '@/types/wiki'
+import type { WikiParserModality, WikiScope } from '@/types/wiki'
+import {
+  acceptedExtensions,
+  fileAcceptAttribute,
+  findModality,
+  hasFeature,
+  isAcceptedFile,
+  isAdvertisedAnywhere,
+  isInHouseFile,
+  toWireName,
+} from '@/utils/parserCapabilities'
 
 const props = defineProps<{ tenantId: string }>()
 const visible = defineModel<boolean>('visible', { required: true })
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const route = useRoute()
 const toast = useToast()
 const wiki = useWiki()
 const agentsStore = usePostProcessingAgents()
 
-/** accepted upload types (backend also parses PDF and office docs) */
-const FILE_ACCEPT =
-  '.md,.markdown,.txt,.html,.htm,.pdf,.doc,.docx,text/markdown,text/plain,text/html,application/pdf'
-/** extensions we keep when a folder / mixed selection is dropped */
-const SUPPORTED_EXTENSIONS = [
-  'md',
-  'markdown',
-  'txt',
-  'html',
-  'htm',
-  'pdf',
-  'doc',
-  'docx',
-]
-
 /**
- * Well-known parser "extra service" flags we surface as import checkboxes,
- * in display order. `key` matches the capabilities `features` map and the
- * import form field the backend reads; `labelKey` is its i18n label.
+ * Parser options we can put a label on, in display order. `key` is the
+ * option's WIRE name — the same name the service advertises in
+ * `modalities[].features` and the backend forwards it under. So this list
+ * carries labels only: no formats, no assumption about what is supported.
+ *
+ * It may grow with whatever the service adds next (`preferred_language`,
+ * `polish_markdown`, …) — an entry that nothing advertises is never rendered.
  */
 const PARSER_FLAGS = [
-  { key: 'extractImages', labelKey: 'Wiki.import.flags.extractImages' },
+  { key: 'extract_images', labelKey: 'Wiki.import.flags.extractImages' },
   { key: 'ocr', labelKey: 'Wiki.import.flags.ocr' },
-  { key: 'parseImagesInDoc', labelKey: 'Wiki.import.flags.parseImagesInDoc' },
-  { key: 'detectTables', labelKey: 'Wiki.import.flags.detectTables' },
-] as const satisfies readonly { key: keyof WikiParserFeatures; labelKey: string }[]
+  {
+    key: 'parse_images_in_doc',
+    labelKey: 'Wiki.import.flags.parseImagesInDoc',
+  },
+  { key: 'detect_tables', labelKey: 'Wiki.import.flags.detectTables' },
+] as const
 
-type ParserFlagKey = (typeof PARSER_FLAGS)[number]['key']
+/**
+ * The one option the backend takes as a field of its own (it stores the
+ * returned images and rewrites the page's placeholders); everything else
+ * travels as an opaque service option.
+ */
+const EXTRACT_IMAGES = 'extract_images'
+
+/** How many extensions the hint under the drop zone spells out. */
+const MAX_SHOWN_TYPES = 14
 
 /** localStorage key under which the last checkbox selection is remembered. */
 const LS_PARSER_FLAGS = 'wiki.import.parserFlags'
@@ -428,18 +458,22 @@ const dragOver = ref(false)
 const loadCachedFlags = (): Record<string, boolean> => {
   try {
     const raw = localStorage.getItem(LS_PARSER_FLAGS)
-    if (raw) return JSON.parse(raw) as Record<string, boolean>
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, boolean>
+    // A selection stored before the keys became wire names ("detectTables")
+    // still counts — the user ticked those boxes.
+    return Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => [toWireName(key), value]),
+    )
   } catch {
     // ignore malformed cache
   }
   return {}
 }
 const parserFlags = ref<Record<string, boolean>>(loadCachedFlags())
-/** Flag keys the configured parsing service actually advertises. */
-const availableFlagKeys = ref<ParserFlagKey[]>([])
-const availableFlags = computed(() =>
-  PARSER_FLAGS.filter((f) => availableFlagKeys.value.includes(f.key)),
-)
+
+/** What the configured parsing service advertises; empty until discovered. */
+const parserModalities = ref<WikiParserModality[]>([])
 
 // Persist the selection so the next import defaults to the same choices.
 watch(
@@ -454,30 +488,128 @@ watch(
   { deep: true },
 )
 
-/** Discover which pass-through options the configured parser supports. */
-const loadCapabilities = async () => {
-  try {
-    const caps = await wiki.fetchParserCapabilities(props.tenantId)
-    const keys = new Set<ParserFlagKey>()
-    for (const modality of caps.modalities) {
-      for (const flag of PARSER_FLAGS) {
-        if (modality.features?.[flag.key]) keys.add(flag.key)
-      }
-    }
-    availableFlagKeys.value = [...keys]
-  } catch {
-    // discovery is best-effort — no capabilities means no extra checkboxes
-    availableFlagKeys.value = []
-  }
+/**
+ * Ask the service what it accepts. Kept as a promise so a file picked before
+ * the answer arrives is still filtered against the real list instead of the
+ * fallback (see {@link addPicked}).
+ *
+ * Failure stays soft on purpose: no capabilities means fewer formats and fewer
+ * options, never a blocked dialog.
+ */
+let capabilitiesPending: Promise<void> | null = null
+
+const loadCapabilities = (): Promise<void> => {
+  capabilitiesPending = wiki
+    .fetchParserCapabilities(props.tenantId)
+    .then((caps) => {
+      parserModalities.value = caps.modalities ?? []
+    })
+    .catch(() => {
+      parserModalities.value = []
+    })
+  return capabilitiesPending
 }
 
-/** The enabled flags that are also advertised — the set we send on submit. */
-const selectedParserFlags = (): Partial<Record<ParserFlagKey, boolean>> => {
-  const out: Partial<Record<ParserFlagKey, boolean>> = {}
-  for (const key of availableFlagKeys.value) {
-    if (parserFlags.value[key]) out[key] = true
+/** Accepted types for the file input, derived from the capabilities. */
+const fileAccept = computed(() => fileAcceptAttribute(parserModalities.value))
+
+/** All accepted extensions, for the drop zone's `title` tooltip. */
+const allAcceptedTypes = computed(() =>
+  acceptedExtensions(parserModalities.value).join(' '),
+)
+
+/** The short hint under the drop zone — the same list, capped. */
+const acceptedTypesLabel = computed(() => {
+  const types = acceptedExtensions(parserModalities.value).map((e) =>
+    e.slice(1),
+  )
+  const shown = types.slice(0, MAX_SHOWN_TYPES)
+  const rest = types.length - shown.length
+  return rest > 0
+    ? t('Wiki.import.fileTypesMore', { types: shown.join(', '), count: rest })
+    : shown.join(', ')
+})
+
+/**
+ * The queued files that actually reach the parsing service. Markdown, text and
+ * HTML are read by the backend itself, so no parser option applies to them and
+ * they must not gate the checkboxes for the files that do go to the service.
+ */
+const parsedEntries = computed(() =>
+  entries.value.filter((entry) => !isInHouseFile(entry.file)),
+)
+
+/** One parser option as rendered: active, or greyed out with a reason. */
+interface FlagState {
+  key: string
+  labelKey: string
+  enabled: boolean
+  /** why it does not apply to the current selection (only when disabled) */
+  reason?: string
+}
+
+/** Why `modality` does not offer an option — one sentence per modality. */
+const unavailableReason = (modalities: string[]): string =>
+  modalities
+    .map((modality) =>
+      te(`Wiki.import.flagUnavailable.${modality}`)
+        ? t(`Wiki.import.flagUnavailable.${modality}`)
+        : t('Wiki.import.flagUnavailable.other', { modality }),
+    )
+    .join(' ')
+
+/**
+ * The options to show: advertised by the service somewhere, and active only
+ * where every queued file's modality advertises them. A file whose modality we
+ * cannot resolve (discovery down) gates nothing — the backend then forwards
+ * the options unfiltered, so offering them is the honest answer.
+ */
+const flagStates = computed<FlagState[]>(() =>
+  PARSER_FLAGS.filter((flag) =>
+    isAdvertisedAnywhere(parserModalities.value, flag.key),
+  ).map((flag) => {
+    const lacking = new Set<string>()
+    for (const entry of parsedEntries.value) {
+      const modality = findModality(parserModalities.value, entry.file)
+      if (!modality) continue
+      if (!hasFeature(modality.features, flag.key)) {
+        lacking.add(modality.modality)
+      }
+    }
+    return lacking.size === 0
+      ? { ...flag, enabled: true }
+      : { ...flag, enabled: false, reason: unavailableReason([...lacking]) }
+  }),
+)
+
+/**
+ * Hide the whole block when nothing is advertised, and when every queued file
+ * is read in-house — there is no parser in the picture then.
+ */
+const showParserFlags = computed(
+  () =>
+    mode.value === 'file' &&
+    flagStates.value.length > 0 &&
+    (entries.value.length === 0 || parsedEntries.value.length > 0),
+)
+
+/**
+ * The parser options we actually send: ticked, and applicable to every queued
+ * file. An option that does not apply is left out of the request but stays in
+ * the remembered selection for the next import.
+ */
+const parserOptionsForSubmit = (): {
+  extractImages: boolean
+  serviceOptions: Record<string, boolean>
+} => {
+  const serviceOptions: Record<string, boolean> = {}
+  let extractImages = false
+  for (const flag of flagStates.value) {
+    if (!flag.enabled || !parserFlags.value[flag.key]) continue
+    if (flag.key === EXTRACT_IMAGES) extractImages = true
+    else serviceOptions[flag.key] = true
   }
-  return out
+  return { extractImages, serviceOptions }
 }
 
 const submitting = ref(false)
@@ -487,11 +619,6 @@ const folderInputRef = ref<HTMLInputElement | null>(null)
 let uidCounter = 0
 
 const stripExtension = (name: string): string => name.replace(/\.[^.]+$/, '')
-
-const isSupported = (name: string): boolean => {
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  return SUPPORTED_EXTENSIONS.includes(ext)
-}
 
 /** Human-readable file size (B / KB / MB). */
 const formatSize = (bytes: number): string => {
@@ -506,16 +633,37 @@ const dirOf = (relativePath: string): string => {
   return idx > 0 ? relativePath.slice(0, idx) : ''
 }
 
-const addPicked = (picked: { file: File; relPath: string }[]) => {
+/**
+ * Queue the picked files, dropping the ones the backend cannot read.
+ *
+ * Waits for the capability discovery first: a folder drop right after opening
+ * the dialog would otherwise be filtered against the PDF-only fallback and
+ * silently throw away every office file in it. Whatever is dropped for real is
+ * reported rather than swallowed.
+ */
+const addPicked = async (picked: { file: File; relPath: string }[]) => {
   if (submitting.value) return
+  if (capabilitiesPending) await capabilitiesPending
+  let skipped = 0
   for (const { file, relPath } of picked) {
-    if (!isSupported(file.name)) continue
+    if (!isAcceptedFile(file, parserModalities.value)) {
+      skipped++
+      continue
+    }
     entries.value.push({
       uid: `f${uidCounter++}`,
       file,
       title: stripExtension(file.name),
       path: relPath,
       status: 'idle',
+    })
+  }
+  if (skipped > 0) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Wiki.import.skippedUnsupported', { count: skipped }),
+      detail: t('Wiki.import.skippedUnsupportedDetail'),
+      life: 6000,
     })
   }
 }
@@ -526,16 +674,16 @@ const removeEntry = (uid: string) => {
 
 // ----- file / folder selection ------------------------------------------
 
-const onFilesSelected = (event: Event) => {
+const onFilesSelected = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const picked = Array.from(input.files ?? []).map((file) => ({
     file,
     // webkitRelativePath is set for a directory pick, "" for a plain file pick
     relPath: dirOf(file.webkitRelativePath ?? ''),
   }))
-  addPicked(picked)
   // reset so selecting the same file/folder again re-triggers change
   input.value = ''
+  await addPicked(picked)
 }
 
 // ----- drag & drop (with folder support via the entries API) -------------
@@ -604,7 +752,7 @@ const onDrop = async (event: DragEvent) => {
       picked.push({ file, relPath: '' })
     }
   }
-  addPicked(picked)
+  await addPicked(picked)
 }
 
 // AI post-processing: '' = none, otherwise the agent id (sent as agent:<id>)
@@ -829,7 +977,7 @@ const submitFiles = async () => {
         notifyOnCompletion: true,
         title: entry.title.trim() || undefined,
         parentId,
-        ...selectedParserFlags(),
+        ...parserOptionsForSubmit(),
       })
       entry.status = 'done'
     } catch (error) {

@@ -27,6 +27,14 @@ export interface KnowledgeIngestResult {
   /** present for wiki-page imports (texts/import, texts/import-url) */
   knowledgeText?: WikiPage
   blocks?: unknown[]
+  /**
+   * Non-fatal notes the parsing service reported for the imported file: a
+   * truncated transcript, skipped scan pages, an unreadable mail attachment.
+   * The service returns a partial result on purpose — an import that carries
+   * these succeeded, but it is not complete. Machine-readable codes
+   * (`<name>:<detail>`); see `@/utils/parserWarnings`.
+   */
+  parserWarnings?: string[]
   /** present for RAG knowledge entries (from-url, upload-and-extract, …) */
   id?: string
   ok?: boolean
