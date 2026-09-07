@@ -67,6 +67,24 @@
       "fetchFailed": "Failed to load invitations"
     }
   },
+  "invited": {
+    "title": "Invited users",
+    "hint": "Users who were invited to this organisation but have not joined yet. Withdrawing an invitation makes its link and email invalid.",
+    "status": "Status",
+    "invitedAt": "Invited on",
+    "empty": "No open invitations.",
+    "revoke": "Withdraw",
+    "revokeTitle": "Withdraw invitation",
+    "revokeConfirm": "Are you sure you want to withdraw the invitation for {email}? The invitation link will stop working.",
+    "revokeSuccess": "Invitation withdrawn",
+    "statuses": {
+      "pending": "Pending",
+      "declined": "Declined"
+    },
+    "errors": {
+      "revokeFailed": "Failed to withdraw invitation"
+    }
+  },
   "metadata": {
     "tabTitle": "Document tags",
     "title": "Document tags",
