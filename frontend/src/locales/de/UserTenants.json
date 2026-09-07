@@ -67,6 +67,24 @@
       "fetchFailed": "Einladungen konnten nicht geladen werden"
     }
   },
+  "invited": {
+    "title": "Eingeladene Benutzer",
+    "hint": "Benutzer, die in diese Organisation eingeladen wurden, aber noch nicht beigetreten sind. Wird eine Einladung zurückgezogen, werden ihr Link und ihre E-Mail ungültig.",
+    "status": "Status",
+    "invitedAt": "Eingeladen am",
+    "empty": "Keine offenen Einladungen.",
+    "revoke": "Zurückziehen",
+    "revokeTitle": "Einladung zurückziehen",
+    "revokeConfirm": "Möchtest du die Einladung für {email} wirklich zurückziehen? Der Einladungslink funktioniert danach nicht mehr.",
+    "revokeSuccess": "Einladung zurückgezogen",
+    "statuses": {
+      "pending": "Offen",
+      "declined": "Abgelehnt"
+    },
+    "errors": {
+      "revokeFailed": "Einladung konnte nicht zurückgezogen werden"
+    }
+  },
   "metadata": {
     "tabTitle": "Dokument-Tags",
     "title": "Dokument-Tags",

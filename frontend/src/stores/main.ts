@@ -7,6 +7,7 @@ import type {
   Team,
   TeamMember,
   TenantInvitation,
+  TenantInvitationAdminView,
   TenantMember,
 } from '@/types/usermanagement'
 import type { WikiSearchMode } from '@/types/wiki'
@@ -490,6 +491,27 @@ export const useApp = defineStore('app', () => {
     await getTenantInvitations()
   }
 
+  /**
+   * All invitations of one organisation, for its admins. This is the admin
+   * overview of invitations that were sent out - not the invitations the
+   * current user has received (see getTenantInvitations for those).
+   */
+  const getTenantInvitationsAsAdmin = async (tenantId: string) => {
+    return await fetcher.get<TenantInvitationAdminView[]>(
+      `/api/v1/tenant/${tenantId}/invitations`,
+    )
+  }
+
+  /** Withdraw an invitation that was sent out (admins only). */
+  const revokeTenantInvitation = async (
+    tenantId: string,
+    invitationId: string,
+  ) => {
+    await fetcher.delete(
+      `/api/v1/tenant/${tenantId}/invitations/${invitationId}`,
+    )
+  }
+
   // ----- teams ---------------------------------------------------------------
 
   const getTeams = async () => {
@@ -712,6 +734,8 @@ export const useApp = defineStore('app', () => {
     getTenantInvitations,
     acceptInvitation,
     declineInvitation,
+    getTenantInvitationsAsAdmin,
+    revokeTenantInvitation,
     getTeams,
     getTeam,
     createTeam,
