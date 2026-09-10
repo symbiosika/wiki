@@ -79,6 +79,20 @@ describe('WikiImage', () => {
     editor.destroy()
   })
 
+  test('renders the image lazily without persisting the display hints', () => {
+    const editor = makeEditor(
+      '<img src="/api/v1/tenant/t/files/db/knowledge/x.png" alt="x">',
+    )
+    const img = editor.view.dom.querySelector('figure.wiki-image img')
+    expect(img?.getAttribute('loading')).toBe('lazy')
+    expect(img?.getAttribute('decoding')).toBe('async')
+    // display hints live on the rendered element only, never in the document
+    const html = editor.getHTML()
+    expect(html).not.toContain('loading=')
+    expect(html).not.toContain('decoding=')
+    editor.destroy()
+  })
+
   test('updateAttributes changes the rendered size/alignment', () => {
     const editor = makeEditor(
       '<img src="/api/v1/tenant/t/files/db/wiki/x.png" alt="x">',

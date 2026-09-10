@@ -169,6 +169,14 @@ export const WikiImage = Image.extend<WikiImageOptions>({
           dom.setAttribute(key, String(value))
         }
       }
+      // Only fetch and decode what is near the viewport. A long page can carry
+      // hundreds of images; without this every one of them is requested the
+      // moment the document renders and they queue behind the browser's
+      // per-host connection limit, while each decode blocks the main thread.
+      // Both are display hints on the rendered element only — the node's
+      // attributes, and therefore what gets saved, are unaffected.
+      dom.setAttribute('loading', 'lazy')
+      dom.setAttribute('decoding', 'async')
       figure.append(dom)
 
       const src = String(node.attrs.src ?? '')
