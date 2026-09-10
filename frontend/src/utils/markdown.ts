@@ -56,8 +56,12 @@ const isSafeUrl = (value: string | null): boolean => {
  * - a link left without a target is unwrapped to plain text (never a dead
  *   link that looks clickable)
  * - external links get `target="_blank"` + `rel="noopener noreferrer"`
+ *
+ * Exported because the wiki's read-only page renderer builds its DOM itself
+ * (see components/wiki/WikiPageReader.vue) instead of going through a string:
+ * it has to sanitize the same fragment it is about to mount.
  */
-const sanitizeFragment = (root: DocumentFragment): void => {
+export const sanitizeFragment = (root: DocumentFragment): void => {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
   const toRemove: Element[] = []
   /** Links without a usable target: keep the text, drop the <a>. */

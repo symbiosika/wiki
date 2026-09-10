@@ -260,9 +260,27 @@
           NOTE: bound directly to the store state (not a local copy set after
           await): the render flush runs before the awaiting caller resumes,
           so a local copy would still be stale when the editor mounts.
+
+          Reading a page renders the blocks as plain DOM; only editing builds a
+          ProseMirror document. That is the difference between opening a long
+          imported page and freezing the browser on it, and it costs nothing in
+          the common case: a reader has no use for the editor.
+
+          The switch is `wantsEdit`, not `editable`: whether the edit lock has
+          been granted yet decides whether the editor is WRITABLE, and waiting
+          for it here would show the reader for a moment and then rebuild the
+          same page as an editor.
         -->
+        <WikiPageReader
+          v-if="!wantsEdit"
+          :key="`read:${page.id}:${reloadKey}`"
+          :blocks="wiki.state.blocks"
+          :tenant-id="tenantId"
+          @toc="toc = $event"
+        />
         <BlockEditor
-          :key="`${page.id}:${reloadKey}`"
+          v-else
+          :key="`edit:${page.id}:${reloadKey}`"
           ref="editorRef"
           :blocks="wiki.state.blocks"
           :editable="editable"
