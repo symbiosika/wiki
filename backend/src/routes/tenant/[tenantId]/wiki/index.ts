@@ -20,6 +20,7 @@ import { buildWikiTree } from "../../../../lib/wiki/tree";
 import { getPageTypeUsage } from "../../../../lib/wiki/page-type-usage";
 import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
+import { IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL } from "../../../../lib/http/image-cache-headers";
 import { setWikiImageDescription } from "../../../../lib/wiki/set-image-description";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
@@ -222,8 +223,11 @@ export default function defineWikiRoutes(
           headers: {
             "Content-Type": file.type || "application/octet-stream",
             "Content-Length": bytes.byteLength.toString(),
-            // page permissions can change at any time — keep caching private
-            "Cache-Control": "private, max-age=300",
+            // The file behind this path never changes (fresh id per upload),
+            // so the browser may keep it as long as it likes. Page permissions
+            // can change at any time, hence private: no shared cache serves
+            // it to anyone the route itself would refuse.
+            "Cache-Control": IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL,
           },
         });
       } catch (error) {

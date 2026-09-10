@@ -12,7 +12,12 @@ import { saveFileToDb } from "@framework/lib/storage/db";
 import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { syncKnowledgeTextBlocks } from "@framework/lib/knowledge/knowledge-text-blocks";
 import { setKnowledgeTextPublicMode } from "@framework/lib/knowledge/knowledge-text-public";
-import { getWikiPageImage, getPublicWikiPageImage } from "./images";
+import {
+  getWikiPageImage,
+  getPublicWikiPageImage,
+  PAGE_IMAGE_BUCKETS,
+} from "./images";
+import { PAGE_IMAGE_CACHE_BUCKETS } from "../http/image-cache-headers";
 
 const TENANT = TEST_ORGANISATION_1.id;
 const OWNER = TEST_ORG1_USER_1.id;
@@ -150,5 +155,16 @@ describe("wiki page images", () => {
     await setKnowledgeTextPublicMode(page.id, "public", context);
     const file = await getPublicWikiPageImage(TENANT, page.id, image.filename);
     expect(file.size).toBe(PNG_BYTES.byteLength);
+  });
+});
+
+describe("page image buckets", () => {
+  test("the cache-header wrapper names exactly the buckets a page reads from", () => {
+    // ../http/image-cache-headers cannot import this module (it would open
+    // the database on import), so it spells the buckets out — this keeps the
+    // two lists from drifting apart.
+    expect([...PAGE_IMAGE_CACHE_BUCKETS].sort()).toEqual(
+      [...PAGE_IMAGE_BUCKETS].sort()
+    );
   });
 });
