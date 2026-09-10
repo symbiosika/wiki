@@ -902,7 +902,7 @@ onBeforeUnmount(() => {
 
 const JUMP_HIGHLIGHT_MS = 2200
 let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
-// increments on every scheduleJump so a stale retry loop bows out
+// increments on every new jump so a stale retry or re-centring loop bows out
 let jumpToken = 0
 
 /** The rendered editor root (ProseMirror content), if mounted. */
@@ -940,8 +940,41 @@ const findMatchEl = (text: string): HTMLElement | null => {
   return null
 }
 
+/** How far off centre the target may end up before it is scrolled again. */
+const JUMP_DRIFT_TOLERANCE_PX = 120
+/** Attempts to re-centre the target while the real block sizes settle. */
+const JUMP_SETTLE_ATTEMPTS = 5
+const JUMP_SETTLE_INTERVAL_MS = 150
+
+/**
+ * Nudge a scrolled-to element back to the centre while the page settles.
+ *
+ * In reading mode the blocks below the fold have no layout yet
+ * (`content-visibility`, see WikiPageReader), so they report an estimated
+ * height until they are first rendered and the first scroll can land next to
+ * the target instead of on it. Each re-render corrects the estimate, so this
+ * re-centres a few times over about a second and then stops — long enough for
+ * the sizes to be real, short enough not to fight a reader who scrolls away.
+ */
+const settleJump = (el: HTMLElement, token: number) => {
+  let attempts = 0
+  const tick = () => {
+    if (token !== jumpToken || attempts++ >= JUMP_SETTLE_ATTEMPTS) return
+    const rect = el.getBoundingClientRect()
+    const offCentre = Math.abs(
+      rect.top + rect.height / 2 - window.innerHeight / 2,
+    )
+    if (offCentre > JUMP_DRIFT_TOLERANCE_PX) {
+      el.scrollIntoView({ behavior: 'auto', block: 'center' })
+    }
+    setTimeout(tick, JUMP_SETTLE_INTERVAL_MS)
+  }
+  setTimeout(tick, JUMP_SETTLE_INTERVAL_MS * 2)
+}
+
 const scrollAndHighlight = (el: HTMLElement) => {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  settleJump(el, ++jumpToken)
   document
     .querySelectorAll('.wiki-jump-highlight')
     .forEach((node) => node.classList.remove('wiki-jump-highlight'))

@@ -15,7 +15,7 @@
 -->
 <template>
   <div class="wiki-editor">
-    <div ref="proseRef" class="wiki-prose" @click="onClick" />
+    <div ref="proseRef" class="wiki-prose wiki-prose--read" @click="onClick" />
   </div>
 </template>
 
@@ -109,3 +109,52 @@ const onClick = async (event: MouseEvent) => {
   })
 }
 </script>
+
+<style>
+/*
+ * Global, not scoped: the blocks below are built as plain DOM (see
+ * utils/wikiReader), so they never carry a scope attribute. The editor's own
+ * stylesheet (BlockEditor.vue) is global for the same reason and does the
+ * actual styling — this file only adds what applies to reading.
+ */
+
+/*
+ * Skip the layout and paint of blocks that are outside the viewport.
+ *
+ * Building the DOM is only half of what opening a long page costs; the other
+ * half is laying out and painting it, and a page of tables is tens of
+ * thousands of cells the reader will never scroll to. `content-visibility`
+ * defers all of that per block until the block comes near the viewport, which
+ * turns the cost from "the whole page" into "one screenful".
+ *
+ * The `auto` in `contain-intrinsic-size` is what makes it usable: the browser
+ * remembers each block's real size once it has been rendered, so the scrollbar
+ * settles instead of jumping as the reader scrolls. The lengths are only the
+ * first guess for a block that has never been on screen — deliberately per
+ * block type, so a table is not estimated like a line of text.
+ *
+ * Only in reading mode: inside the editor the same property would break the
+ * caret and ProseMirror's position math, both of which need real layout.
+ */
+.wiki-editor .wiki-prose--read > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3rem;
+}
+.wiki-editor .wiki-prose--read > .tableWrapper,
+.wiki-editor .wiki-prose--read > figure,
+.wiki-editor .wiki-prose--read > pre,
+.wiki-editor .wiki-prose--read > ul,
+.wiki-editor .wiki-prose--read > ol {
+  contain-intrinsic-size: auto 20rem;
+}
+/*
+ * Headings are the scroll targets of the table of contents and of deep links,
+ * and they are cheap, so they keep real layout: their position is then only as
+ * approximate as the blocks above them.
+ */
+.wiki-editor .wiki-prose--read > h1,
+.wiki-editor .wiki-prose--read > h2,
+.wiki-editor .wiki-prose--read > h3 {
+  content-visibility: visible;
+}
+</style>
