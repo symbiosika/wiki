@@ -148,6 +148,26 @@
               <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
               <IconContentCopy v-else class="h-3.5 w-3.5" />
             </button>
+            <!--
+              split into subpages: only offered on a page that is long enough
+              for its size to be the problem, which is exactly where a reader
+              runs into it. Structural and not undone by one click, so it asks
+              first.
+            -->
+            <button
+              v-if="editable && splittable"
+              type="button"
+              class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
+              :title="$t('Wiki.split.hint')"
+              :disabled="splitting"
+              @click="confirmSplit"
+            >
+              <IconSpinner v-if="splitting" class="h-3.5 w-3.5 animate-spin" />
+              <IconSplit v-else class="h-3.5 w-3.5" />
+              <span class="hidden whitespace-nowrap lg:inline">{{
+                $t('Wiki.split.button')
+              }}</span>
+            </button>
             <button
               type="button"
               class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
@@ -589,7 +609,9 @@ import IconPencil from '~icons/mdi/pencil-outline'
 import IconInfo from '~icons/mdi/information-outline'
 import IconGlobe from '~icons/mdi/earth'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
+import IconSplit from '~icons/mdi/file-tree-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
 import WikiTableOfContents from '@/components/wiki/WikiTableOfContents.vue'
 import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
@@ -608,6 +630,7 @@ const assistant = useDocumentAssistant()
 const readOnly = useReadOnly()
 const route = useRoute()
 const toast = useToast()
+const confirm = useConfirm()
 const { t, te, locale } = useI18n()
 
 const tenantId = computed(() => String(route.params.tenantId))
@@ -739,6 +762,60 @@ onBeforeUnmount(() => {
   if (copiedTimer) clearTimeout(copiedTimer)
   if (attrSaveTimer) clearTimeout(attrSaveTimer)
 })
+
+// ----- split into subpages ---------------------------------------------------
+
+/**
+ * A page is only worth splitting once its size is what makes it hard to use.
+ * Below that the tree costs more than it saves, so the action is not offered
+ * at all; the server decides whether the content actually has sections.
+ */
+const SPLIT_THRESHOLD_CHARS = 60_000
+
+const splitting = ref(false)
+
+const splittable = computed(
+  () =>
+    (wiki.state.blocks ?? []).reduce(
+      (total, block) => total + (block.content?.length ?? 0),
+      0,
+    ) > SPLIT_THRESHOLD_CHARS,
+)
+
+const confirmSplit = () => {
+  confirm.require({
+    header: t('Wiki.split.confirmHeader'),
+    message: t('Wiki.split.confirmMessage'),
+    acceptProps: { label: t('Wiki.split.accept') },
+    rejectProps: { label: t('Common.cancel') },
+    accept: splitPage,
+  })
+}
+
+const splitPage = async () => {
+  if (!page.value || splitting.value) return
+  splitting.value = true
+  try {
+    editorRef.value?.flush()
+    const result = await wiki.splitPage(tenantId.value, page.value.id)
+    reloadKey.value += 1
+    toast.add({
+      severity: 'success',
+      summary: t('Wiki.split.doneTitle'),
+      detail: t('Wiki.split.done', { count: result.created.length }),
+      life: 5000,
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: error instanceof Error ? error.message : t('Wiki.split.error'),
+      life: 6000,
+    })
+  } finally {
+    splitting.value = false
+  }
+}
 
 // ----- PDF export -----------------------------------------------------------
 

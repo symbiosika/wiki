@@ -89,6 +89,16 @@
     "error": "PDF-Export fehlgeschlagen. Bitte erneut versuchen.",
     "pageOf": "{current} von {total}"
   },
+  "split": {
+    "button": "Aufteilen",
+    "hint": "Diese Seite in Unterseiten aufteilen — je Abschnitt eine Seite",
+    "confirmHeader": "Seite in Unterseiten aufteilen",
+    "confirmMessage": "Jeder Abschnitt dieser Seite wird zu einer eigenen Unterseite. Auf dieser Seite bleiben die Einleitung und eine Liste der Verweise. Das lässt sich nur über die Versionsgeschichte zurücknehmen.",
+    "accept": "Aufteilen",
+    "doneTitle": "Seite aufgeteilt",
+    "done": "{count} Unterseiten erstellt.",
+    "error": "Die Seite konnte nicht aufgeteilt werden."
+  },
   "copyMarkdown": {
     "hint": "Als Markdown kopieren (für KI-Agenten & Co.)",
     "error": "Kopieren fehlgeschlagen. Bitte erneut versuchen."

@@ -89,6 +89,16 @@
     "error": "PDF export failed. Please try again.",
     "pageOf": "{current} of {total}"
   },
+  "split": {
+    "button": "Split",
+    "hint": "Split this page into subpages — one page per section",
+    "confirmHeader": "Split page into subpages",
+    "confirmMessage": "Every section of this page becomes a subpage of its own. This page keeps its introduction and a list of references. Undoing it means going back through the version history.",
+    "accept": "Split",
+    "doneTitle": "Page split",
+    "done": "Created {count} subpages.",
+    "error": "The page could not be split."
+  },
   "copyMarkdown": {
     "hint": "Copy as markdown (for AI agents & co.)",
     "error": "Copy failed. Please try again."
