@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import { Editor, EditorContent } from '@tiptap/vue-3'
+import { generateJSON } from '@tiptap/core'
 import type { Editor as CoreEditor, Range } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
@@ -37,6 +38,11 @@ import { TableKit } from '@tiptap/extension-table'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage, embedImageDescriptions } from './wikiImage'
+import {
+  BLOCK_ID_ATTRIBUTE,
+  BLOCK_ID_TYPES,
+  assignMissingBlockIds,
+} from './blockIds'
 import { WikiLink, embedWikiLinkMarkers, type WikiLinkAttrs } from './wikiLink'
 import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
@@ -216,58 +222,56 @@ const flush = () => {
 const editor = shallowRef<Editor | undefined>(undefined)
 
 onMounted(() => {
+  const extensions = [
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3] },
+      link: {
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: 'https',
+      },
+    }),
+    Placeholder.configure({
+      placeholder: ({ node }) => {
+        if (node.type.name === 'heading') {
+          return t('Editor.placeholderHeading')
+        }
+        return t('Editor.placeholder')
+      },
+    }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    // GFM tables (e.g. from PDF/markdown import). Without this the table
+    // node isn't in the schema and TipTap silently drops any <table> it is
+    // asked to load — losing the whole table (and its cell content) on the
+    // next save. See utils/wikiBlocks.ts for the markdown → HTML conversion.
+    TableKit.configure({ table: { resizable: true } }),
+    WikiImage.configure({
+      descriptionLabel: t('Editor.image.descriptionLabel'),
+    }),
+    WikiLink.configure({ onNavigate: openReference }),
+    WikiLinkSuggestion.configure({ search: searchReferences }),
+    UniqueID.configure({
+      attributeName: BLOCK_ID_ATTRIBUTE,
+      types: [...BLOCK_ID_TYPES],
+    }),
+    SlashCommands.configure({
+      onImage: canUploadImages.value ? openImagePicker : undefined,
+      onReference: openReferencePicker,
+    }),
+  ]
+
+  // Parse the blocks into the document JSON here and give every block node its
+  // id before the editor exists. Left to UniqueID, the ids would be assigned in
+  // one transaction on create whose cost grows with the square of the number of
+  // nodes — on a long imported page that is the whole load time (see blockIds).
+  const content = generateJSON(blocksToEditorHtml(props.blocks), extensions)
+  assignMissingBlockIds(content)
+
   editor.value = new Editor({
     editable: props.editable,
-    content: blocksToEditorHtml(props.blocks),
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        link: {
-          openOnClick: false,
-          autolink: true,
-          defaultProtocol: 'https',
-        },
-      }),
-      Placeholder.configure({
-        placeholder: ({ node }) => {
-          if (node.type.name === 'heading') {
-            return t('Editor.placeholderHeading')
-          }
-          return t('Editor.placeholder')
-        },
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      // GFM tables (e.g. from PDF/markdown import). Without this the table
-      // node isn't in the schema and TipTap silently drops any <table> it is
-      // asked to load — losing the whole table (and its cell content) on the
-      // next save. See utils/wikiBlocks.ts for the markdown → HTML conversion.
-      TableKit.configure({ table: { resizable: true } }),
-      WikiImage.configure({
-        descriptionLabel: t('Editor.image.descriptionLabel'),
-      }),
-      WikiLink.configure({ onNavigate: openReference }),
-      WikiLinkSuggestion.configure({ search: searchReferences }),
-      UniqueID.configure({
-        attributeName: 'block-id',
-        types: [
-          'paragraph',
-          'heading',
-          'blockquote',
-          'codeBlock',
-          'bulletList',
-          'orderedList',
-          'taskList',
-          'horizontalRule',
-          'image',
-          'table',
-        ],
-      }),
-      SlashCommands.configure({
-        onImage: canUploadImages.value ? openImagePicker : undefined,
-        onReference: openReferencePicker,
-      }),
-    ],
+    content,
+    extensions,
     editorProps: {
       attributes: {
         class: 'wiki-prose focus:outline-none',
