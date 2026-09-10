@@ -49,15 +49,21 @@ export interface WikiImportOptions {
    */
   notifyOnCompletion?: boolean
   /**
-   * Parser pass-through options (extra services). Only meaningful for file
-   * imports whose type the configured parsing service supports; unsupported
-   * flags are ignored by the backend. Discover the available ones via
-   * {@link useWiki().fetchParserCapabilities}.
+   * Ask the parsing service for the images embedded in the document, so they
+   * are stored and referenced from the page. Typed on its own because the
+   * backend acts on the answer rather than just forwarding it.
    */
   extractImages?: boolean
-  parseImagesInDoc?: boolean
-  ocr?: boolean
-  detectTables?: boolean
+  /**
+   * Extra options for the parsing service (`ocr`, `detect_tables`,
+   * `preferred_language`, …), keyed by the service's own wire names and
+   * forwarded as-is. Each is only honoured where the configured service
+   * advertises it for the file's modality; anything else is dropped by the
+   * backend. Discover what is on offer via
+   * {@link useWiki().fetchParserCapabilities} — there is no option list here
+   * to keep in lockstep with the service.
+   */
+  serviceOptions?: Record<string, string | number | boolean>
 }
 
 /** A knowledge-ingest job returned by the import endpoints. */
@@ -334,11 +340,13 @@ export const useWiki = defineStore('wiki', () => {
     if (options.postProcessorNames && options.postProcessorNames.length > 0) {
       form.append('usePostProcessors', options.postProcessorNames.join(','))
     }
-    // Parser pass-through options — only appended when enabled (default off).
+    // Parser options — only appended when set (default off). Everything
+    // beyond image extraction travels as one JSON map under the service's own
+    // option names; the backend gates it against the file's modality.
     if (options.extractImages) form.append('extractImages', 'true')
-    if (options.parseImagesInDoc) form.append('parseImagesInDoc', 'true')
-    if (options.ocr) form.append('ocr', 'true')
-    if (options.detectTables) form.append('detectTables', 'true')
+    if (options.serviceOptions && Object.keys(options.serviceOptions).length) {
+      form.append('serviceOptions', JSON.stringify(options.serviceOptions))
+    }
 
     // Returns the created ingest job; the tree is refreshed once the job
     // finishes (see the notifications store), not here.

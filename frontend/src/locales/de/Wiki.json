@@ -42,7 +42,10 @@
     "pathPlaceholder": "z. B. Handbücher/2024",
     "pathColHint": "Zusätzlich zum Ablageort. Mit / verschachteln – fehlende Ebenen werden angelegt.",
     "removeFile": "Datei entfernen",
-    "fileTypes": "Markdown, HTML, Text, PDF, Word",
+    "skippedUnsupported": "{count} Datei(en) übersprungen",
+    "skippedUnsupportedDetail": "Diese Dateitypen kann der konfigurierte Parsing-Dienst nicht lesen.",
+    "fileTypes": "Unterstützt: {types}",
+    "fileTypesMore": "{types} und {count} weitere",
     "titleLabel": "Titel (optional)",
     "titlePlaceholder": "Standard: Datei- bzw. Seitenname",
     "scopeLabel": "Ablageort",
@@ -60,6 +63,12 @@
       "ocr": "OCR (Text aus Scans/Bildern erkennen)",
       "parseImagesInDoc": "Bilder im Dokument analysieren",
       "detectTables": "Tabellen erkennen"
+    },
+    "flagUnavailable": {
+      "document": "Bei Office-, Tabellen- und Textdateien nicht nötig – die Struktur wird direkt gelesen.",
+      "audio": "Für Audiodateien nicht verfügbar.",
+      "video": "Für Videodateien nicht verfügbar.",
+      "other": "Für {modality}-Dateien nicht verfügbar."
     },
     "postProcessingLabel": "KI-Nachbearbeitung",
     "postProcessingNone": "Keine",
