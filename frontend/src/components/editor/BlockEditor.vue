@@ -35,6 +35,7 @@ import { Placeholder } from '@tiptap/extensions'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { TableKit } from '@tiptap/extension-table'
+import { WikiTableCell, WikiTableHeader } from './wikiTable'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage, embedImageDescriptions } from './wikiImage'
@@ -245,7 +246,16 @@ onMounted(() => {
     // node isn't in the schema and TipTap silently drops any <table> it is
     // asked to load — losing the whole table (and its cell content) on the
     // next save. See utils/wikiBlocks.ts for the markdown → HTML conversion.
-    TableKit.configure({ table: { resizable: true } }),
+    // The cells come from ./wikiTable instead of the kit: same nodes, but they
+    // do not write a `colspan="1" rowspan="1"` onto every cell that spans
+    // nothing (see there for what that costs on a page of tables).
+    TableKit.configure({
+      table: { resizable: true },
+      tableCell: false,
+      tableHeader: false,
+    }),
+    WikiTableCell,
+    WikiTableHeader,
     WikiImage.configure({
       descriptionLabel: t('Editor.image.descriptionLabel'),
     }),

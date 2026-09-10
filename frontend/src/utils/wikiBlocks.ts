@@ -41,7 +41,8 @@ const embedTaskLists = (root: DocumentFragment | HTMLElement): void => {
       (item) =>
         Array.from(item.children).find(
           (child) =>
-            child.nodeName === 'INPUT' && child.getAttribute('type') === 'checkbox',
+            child.nodeName === 'INPUT' &&
+            child.getAttribute('type') === 'checkbox',
         ) ?? null,
     )
     // only a list whose every item carries a checkbox is a task list
@@ -51,7 +52,10 @@ const embedTaskLists = (root: DocumentFragment | HTMLElement): void => {
     items.forEach((item, index) => {
       const box = checkboxes[index]!
       item.setAttribute('data-type', 'taskItem')
-      item.setAttribute('data-checked', box.hasAttribute('checked') ? 'true' : 'false')
+      item.setAttribute(
+        'data-checked',
+        box.hasAttribute('checked') ? 'true' : 'false',
+      )
       box.remove()
       // TaskItem's content is `paragraph+`, so the text needs a block wrapper
       if (!item.firstElementChild || item.firstElementChild.nodeName !== 'P') {
@@ -113,6 +117,13 @@ export const blocksToEditorHtml = (blocks: WikiBlock[]): string => {
  *
  * Each top-level element becomes one `html` block. Ids are taken from the
  * `data-block-id` attribute that the UniqueID extension maintains.
+ *
+ * Only the top-level id is a block id. UniqueID maintains the attribute on
+ * every node of its configured types, which includes the paragraphs inside
+ * table cells — on an imported spreadsheet page that is one uuid per cell, and
+ * nothing reads them: a block id addresses a BLOCK, and the ids are handed out
+ * fresh on every load anyway. They are stripped here so they never reach the
+ * database, the history, the API or the materialized page text.
  */
 export const editorHtmlToBlocks = (html: string): WikiBlock[] => {
   const elements = parseFragment(html)
@@ -123,6 +134,11 @@ export const editorHtmlToBlocks = (html: string): WikiBlock[] => {
     if (id && seen.has(id)) id = undefined
     if (id) seen.add(id)
     el.removeAttribute(BLOCK_ID_ATTR)
+    for (const nested of Array.from(
+      el.querySelectorAll(`[${BLOCK_ID_ATTR}]`),
+    )) {
+      nested.removeAttribute(BLOCK_ID_ATTR)
+    }
     return {
       id,
       type: 'html' as const,
