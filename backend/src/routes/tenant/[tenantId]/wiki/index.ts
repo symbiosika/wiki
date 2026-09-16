@@ -22,7 +22,6 @@ import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL } from "../../../../lib/http/image-cache-headers";
 import { setWikiImageDescription } from "../../../../lib/wiki/set-image-description";
-import { splitPageIntoSubpages } from "../../../../lib/wiki/split";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -176,68 +175,6 @@ export default function defineWikiRoutes(
           {
             success: false,
             error: error instanceof Error ? error.message : "Failed to move page",
-          },
-          400
-        );
-      }
-    }
-  );
-
-  /**
-   * POST /tenant/:tenantId/wiki/:pageId/split
-   *
-   * Split a long page into one subpage per section: everything above the first
-   * section stays here (plus an index of references to the new pages), each
-   * section becomes a child page in document order.
-   *
-   * This is the structural answer to a document that was imported in one
-   * piece. A page of a few hundred kilobytes of tables is opened, embedded and
-   * saved as a whole, and past a certain size a browser cannot show it at all;
-   * as a tree of sections, each page is a page again. The split level is
-   * derived from the content — see lib/wiki/split.
-   */
-  app.post(
-    `${baseRoute}/:pageId/split`,
-    authAndSetUsersInfo,
-    checkUserPermission,
-    describeRoute({
-      tags: ["wiki"],
-      summary: "Split a wiki page into one subpage per section",
-      responses: {
-        200: {
-          description: "The created subpages",
-          content: {
-            "application/json": {
-              schema: resolver(v.any()),
-            },
-          },
-        },
-      },
-    }),
-    validateScope("knowledge:write"),
-    validator(
-      "param",
-      v.object({
-        tenantId: v.pipe(v.string(), v.uuid()),
-        pageId: v.pipe(v.string(), v.uuid()),
-      })
-    ),
-    isTenantMember,
-    async (c) => {
-      const { tenantId, pageId } = c.req.valid("param");
-      const userId = c.get("usersId");
-      try {
-        const result = await splitPageIntoSubpages(pageId, {
-          tenantId,
-          userId,
-        });
-        return c.json({ success: true, data: result });
-      } catch (error) {
-        return c.json(
-          {
-            success: false,
-            error:
-              error instanceof Error ? error.message : "Failed to split page",
           },
           400
         );

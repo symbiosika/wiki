@@ -66,14 +66,6 @@ export interface WikiImportOptions {
   serviceOptions?: Record<string, string | number | boolean>
 }
 
-/** What splitting a page into subpages created (see `splitPage`). */
-export interface WikiSplitResult {
-  pageId: string
-  /** heading level the page was split at */
-  level: number
-  created: { id: string; title: string }[]
-}
-
 /** A knowledge-ingest job returned by the import endpoints. */
 export type IngestJob = Job<KnowledgeIngestResult>
 
@@ -695,26 +687,6 @@ export const useWiki = defineStore('wiki', () => {
     }
   }
 
-  // ----- split into subpages --------------------------------------------------
-
-  /**
-   * Turn a long page into a parent page plus one subpage per section (the
-   * server picks the heading level, see backend lib/wiki/split). Reloads the
-   * page and the tree, since both changed: the page keeps only its
-   * introduction and an index of references, and the tree gained children.
-   */
-  const splitPage = async (
-    tenantId: string,
-    pageId: string,
-  ): Promise<WikiSplitResult> => {
-    const result = await fetcher.post<WikiSplitResult>(
-      `${api(tenantId)}/wiki/${pageId}/split`,
-      {},
-    )
-    await Promise.all([loadPage(tenantId, pageId), loadTree(tenantId)])
-    return result
-  }
-
   // ----- search -------------------------------------------------------------
 
   const search = async (
@@ -771,7 +743,6 @@ export const useWiki = defineStore('wiki', () => {
     findChildPageByTitle,
     importFile,
     importUrl,
-    splitPage,
     fetchParserCapabilities,
     uploadImage,
     saveTitle,
