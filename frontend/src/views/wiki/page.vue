@@ -260,9 +260,27 @@
           NOTE: bound directly to the store state (not a local copy set after
           await): the render flush runs before the awaiting caller resumes,
           so a local copy would still be stale when the editor mounts.
+
+          Reading a page renders the blocks as plain DOM; only editing builds a
+          ProseMirror document. That is the difference between opening a long
+          imported page and freezing the browser on it, and it costs nothing in
+          the common case: a reader has no use for the editor.
+
+          The switch is `wantsEdit`, not `editable`: whether the edit lock has
+          been granted yet decides whether the editor is WRITABLE, and waiting
+          for it here would show the reader for a moment and then rebuild the
+          same page as an editor.
         -->
+        <WikiPageReader
+          v-if="!wantsEdit"
+          :key="`read:${page.id}:${reloadKey}`"
+          :blocks="wiki.state.blocks"
+          :tenant-id="tenantId"
+          @toc="toc = $event"
+        />
         <BlockEditor
-          :key="`${page.id}:${reloadKey}`"
+          v-else
+          :key="`edit:${page.id}:${reloadKey}`"
           ref="editorRef"
           :blocks="wiki.state.blocks"
           :editable="editable"
@@ -807,7 +825,7 @@ onBeforeUnmount(() => {
 
 const JUMP_HIGHLIGHT_MS = 2200
 let jumpHighlightTimer: ReturnType<typeof setTimeout> | null = null
-// increments on every scheduleJump so a stale retry loop bows out
+// increments on every new jump so a stale retry or re-centring loop bows out
 let jumpToken = 0
 
 /** The rendered editor root (ProseMirror content), if mounted. */
@@ -845,8 +863,41 @@ const findMatchEl = (text: string): HTMLElement | null => {
   return null
 }
 
+/** How far off centre the target may end up before it is scrolled again. */
+const JUMP_DRIFT_TOLERANCE_PX = 120
+/** Attempts to re-centre the target while the real block sizes settle. */
+const JUMP_SETTLE_ATTEMPTS = 5
+const JUMP_SETTLE_INTERVAL_MS = 150
+
+/**
+ * Nudge a scrolled-to element back to the centre while the page settles.
+ *
+ * In reading mode the blocks below the fold have no layout yet
+ * (`content-visibility`, see WikiPageReader), so they report an estimated
+ * height until they are first rendered and the first scroll can land next to
+ * the target instead of on it. Each re-render corrects the estimate, so this
+ * re-centres a few times over about a second and then stops — long enough for
+ * the sizes to be real, short enough not to fight a reader who scrolls away.
+ */
+const settleJump = (el: HTMLElement, token: number) => {
+  let attempts = 0
+  const tick = () => {
+    if (token !== jumpToken || attempts++ >= JUMP_SETTLE_ATTEMPTS) return
+    const rect = el.getBoundingClientRect()
+    const offCentre = Math.abs(
+      rect.top + rect.height / 2 - window.innerHeight / 2,
+    )
+    if (offCentre > JUMP_DRIFT_TOLERANCE_PX) {
+      el.scrollIntoView({ behavior: 'auto', block: 'center' })
+    }
+    setTimeout(tick, JUMP_SETTLE_INTERVAL_MS)
+  }
+  setTimeout(tick, JUMP_SETTLE_INTERVAL_MS * 2)
+}
+
 const scrollAndHighlight = (el: HTMLElement) => {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  settleJump(el, ++jumpToken)
   document
     .querySelectorAll('.wiki-jump-highlight')
     .forEach((node) => node.classList.remove('wiki-jump-highlight'))

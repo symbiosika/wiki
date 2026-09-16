@@ -127,8 +127,17 @@ export const embedImageDescriptions = (
   }
 }
 
-/** The collapsed caption shown under an image that has a description. */
-const buildCaption = (description: string, label: string): HTMLElement => {
+/**
+ * The collapsed caption shown under an image that has a description.
+ *
+ * Exported because the read-only page renderer builds the same figure without
+ * an editor (see components/wiki/WikiPageReader.vue), and the two captions have
+ * to be the same element for the editor stylesheet to style both.
+ */
+export const buildImageCaption = (
+  description: string,
+  label: string,
+): HTMLElement => {
   const details = document.createElement('details')
   details.className = 'wiki-image-description'
   // not part of the document: ProseMirror must not try to edit or map it
@@ -196,7 +205,9 @@ export const WikiImage = Image.extend<WikiImageOptions>({
         node.attrs.description as string | null,
       )
       if (description) {
-        figure.append(buildCaption(description, this.options.descriptionLabel))
+        figure.append(
+          buildImageCaption(description, this.options.descriptionLabel),
+        )
       }
 
       return {
