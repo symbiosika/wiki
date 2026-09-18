@@ -66,7 +66,7 @@
                 :key="index"
                 class="break-words"
               >
-                {{ warningText(warning) }}
+                {{ warning.text }}
               </li>
             </ul>
           </div>
@@ -188,14 +188,6 @@ watch(
 
 const warningsFor = (m: UserMessage): ParserWarningView[] =>
   ingestWarnings.value[m.id] ?? []
-
-/**
- * A translated warning. Without a phrasing for the code it falls back to what
- * the service sent — its own sentence, or the bare code. A code we cannot
- * phrase still shows, and still in the colour its severity asked for.
- */
-const warningText = (warning: ParserWarningView): string =>
-  warning.key ? t(warning.key, warning.params) : warning.raw
 
 /** True when this import is missing content, not merely reporting notes. */
 const isIncomplete = (m: UserMessage): boolean =>
