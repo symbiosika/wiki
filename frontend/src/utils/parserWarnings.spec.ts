@@ -240,4 +240,17 @@ describe('locales', () => {
         .join(',')
     expect(keys(de)).toBe(keys(en))
   })
+
+  it('uses the same placeholders in every language', () => {
+    // The util reads a sentence's placeholders off the English phrasing. A
+    // German sentence asking for a value English does not would be rendered
+    // with a literal "{x}" in it — this is the only thing keeping that honest.
+    const placeholders = (text: string) =>
+      [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
+    const german = de.warnings as Record<string, string>
+    const english = en.warnings as Record<string, string>
+    for (const [code, text] of Object.entries(english)) {
+      expect(placeholders(german[code] ?? ''), code).toEqual(placeholders(text))
+    }
+  })
 })

@@ -25,11 +25,23 @@
  * as a defect — and would classify the codes of *one* service while every
  * other service's warnings fall through as unknown.
  *
- * What stays here is phrasing: the sentence a code reads as, in the viewer's
- * language. A code this file has no sentence for still renders — as the
- * service's own `message`, in the colour its `severity` asked for. A gap in the
- * table below therefore costs a nicer wording, never a wrong colour.
+ * What stays here is phrasing: the sentence a code reads as, **in the viewer's
+ * language**. That cannot come from the service — `parserWarnings` is stored
+ * once per job, not per reader, so the service would have to know at parse time
+ * which language someone will read the result in, and switching the UI language
+ * would mean re-parsing the document. Its English `message` is the fallback,
+ * not the main text.
+ *
+ * The phrasings themselves live in `locales/<lang>/Notifications.json` and
+ * nowhere else — not even the list of placeholders a sentence takes is repeated
+ * here; it is read off the sentence. Adding a code means adding a translation.
+ *
+ * A code with no phrasing still renders — as the service's own `message`, in
+ * the colour its `severity` asked for. A gap therefore costs a nicer wording,
+ * never a wrong colour.
  */
+
+import en from '@/locales/en/Notifications.json'
 
 /** Does this warning mean content is missing, or is it just a note? */
 export type ParserWarningSeverity = 'note' | 'incomplete'
@@ -67,189 +79,77 @@ export interface ParserWarningView {
 }
 
 /**
- * How a code's sentence reads, and what fills its placeholders.
+ * What the **legacy string format** needs to give up its values.
  *
- * `params` names the placeholders the phrasing in `Notifications.warnings`
- * uses. The service supplies them (spec §5 `params`); the detail modes below
- * only apply to the **legacy string format**, where the values are packed into
- * `<code>:<detail>` and have to be recovered.
+ * Nothing here describes a sentence: which placeholders a code's phrasing uses
+ * is read off the phrasing itself (see {@link placeholdersOf}), so adding a
+ * code means adding a translation and nothing else. What cannot be read off a
+ * sentence is how `<code>:<detail>` packed the values before the service sent
+ * them as `params` — a detail that is a list, a page label, or two fields that
+ * a translator is free to reorder. Only those codes appear below.
  *
- * Note what is NOT here any more: severity. That comes from the service.
+ * Everything in here dies with the last stored job that carries a string.
  */
-type WarningSpec = {
-  code: string
+type LegacyDetail = {
   /**
-   * Placeholder names of this code's phrasing, in the order a legacy detail
-   * packs them. Omitted or empty means the sentence takes no values (any
-   * detail the code carries is ignored rather than dropping the sentence).
+   * Field names in the order the detail packs them. Only needed for a
+   * two-field detail: the sentence's placeholder order is the translator's to
+   * change, so it cannot be trusted to match the wire.
    */
-  params?: string[]
-  /** Legacy detail: split from the right (a filename may not contain `:`). */
+  fields?: [string, string]
+  /** Split from the right — a filename may not contain `:`, a count never does. */
   fromRight?: boolean
   /**
-   * Legacy detail: a comma-separated list whose single param is its entry
-   * count. The service sends raw ids there (`img-p156-1,img-p178-2,…`), and a
-   * wall of ids is what made a harmless note look like a defect report.
+   * The detail is a comma-separated list, and the sentence's single
+   * placeholder takes its entry count. The service sent raw ids there
+   * (`img-p156-1,img-p178-2,…`), and a wall of ids is what made a harmless
+   * note look like a defect report.
    */
   countList?: boolean
-  /** Legacy detail: strip a leading `page `/`pages ` label. */
+  /** Strip a leading `page `/`pages ` label — it belongs in the sentence. */
   stripLabel?: boolean
 }
 
-/**
- * The codes this file has a sentence for.
- *
- * Kept in the service's own order of subject (tables, images, text, mail,
- * office, media) so a new code is easy to slot in next to its siblings. A code
- * missing from here is not a bug — it renders as the service's own `message`.
- */
-const KNOWN_WARNINGS: WarningSpec[] = [
-  { code: 'table_columns_widened', params: ['count'] },
-  { code: 'table_columns_realigned', params: ['count'] },
-  {
-    code: 'table_merged',
-    params: ['pages'],
-    stripLabel: true,
-  },
-  { code: 'vision_skipped_duplicate', params: ['count'] },
-  {
-    code: 'vision_suppressed',
-    params: ['count'],
-    countList: true,
-  },
-  { code: 'vision_suppression_vetoed' },
-  { code: 'vision_skipped_tiny' },
-  { code: 'document_annotation_unavailable' },
-  {
-    code: 'polish_rejected',
-    params: ['pages'],
-    stripLabel: true,
-  },
-  {
-    code: 'polish_failed',
-    params: ['pages'],
-    stripLabel: true,
-  },
-  {
-    code: 'polish_skipped_deadline',
-    params: ['pages'],
-    stripLabel: true,
-  },
-  { code: 'language_sections_removed', params: ['detail'] },
-  { code: 'language_columns_reduced', params: ['detail'] },
-  { code: 'mail_body_from_html' },
-  { code: 'low_confidence', params: ['pages'], stripLabel: true },
-  { code: 'text_delimiter', params: ['delimiter'] },
-  { code: 'context_truncated' },
-  { code: 'context_ignored' },
-  {
-    code: 'preferred_language_unsupported',
-    params: ['value'],
-  },
-  { code: 'vision_skipped_cap', params: ['count'] },
-  { code: 'vision_skipped_deadline' },
-  {
-    code: 'vision_stopped_deadline',
-    params: ['count'],
-  },
-  { code: 'vision_stopped_budget', params: ['count'] },
-  {
-    code: 'vision_stopped_error_quota',
-    params: ['count'],
-  },
-  { code: 'vision_skipped_invalid', params: ['count'] },
-  {
-    code: 'vision_failed',
-    params: ['count'],
-    countList: true,
-  },
-  { code: 'vision_description_truncated' },
-  {
-    code: 'diagram_analysis_capped',
-    params: ['count'],
-  },
-  { code: 'diagram_analysis_truncated' },
-  { code: 'diagram_analysis_failed' },
-  { code: 'diagram_json_invalid' },
-  { code: 'diagram_json_dropped' },
-  {
-    code: 'table_summary_skipped',
-    params: ['count'],
-    countList: true,
-  },
-  { code: 'table_summary_failed' },
-  { code: 'table_rows_truncated' },
-  { code: 'table_rows_dropped' },
-  { code: 'table_layer_truncated', params: ['count'] },
-  {
-    code: 'table_mode_degraded',
-    params: ['page'],
-    stripLabel: true,
-  },
-  { code: 'table_html_unparsed' },
-  { code: 'table_unanchored' },
-  { code: 'table_block_unresolved' },
-  {
-    code: 'extraction_incomplete',
-    params: ['done', 'total'],
-  },
-  {
-    code: 'transcription_incomplete',
-    params: ['done', 'total'],
-  },
-  { code: 'transcription_segment_failed' },
-  {
-    code: 'media_duration_over_budget',
-    params: ['duration', 'budget'],
-  },
-  { code: 'media_transcode_failed' },
-  {
-    code: 'image_frames_ignored',
-    params: ['file', 'count'],
-    fromRight: true,
-  },
-  { code: 'image_prep_failed', params: ['file'] },
-  { code: 'text_truncated' },
-  { code: 'text_rows_truncated', params: ['count'] },
-  { code: 'text_columns_truncated', params: ['count'] },
-  {
-    code: 'text_encoding_assumed',
-    params: ['encoding'],
-  },
-  {
-    code: 'office_sheet_rows_truncated',
-    params: ['sheets'],
-  },
-  {
-    code: 'office_hidden_sheets_skipped',
-    params: ['count'],
-  },
-  { code: 'office_images_skipped', params: ['count'] },
-  {
-    code: 'office_slide_unreadable',
-    params: ['number'],
-  },
-  {
-    code: 'office_formula_values_missing',
-    params: ['sheets'],
-  },
-  {
-    code: 'xlsx_formula_without_value',
-    params: ['sheet'],
-  },
-  {
-    code: 'mail_attachments_truncated',
-    params: ['count'],
-  },
-  {
-    code: 'mail_attachments_unsupported',
-    params: ['file'],
-  },
-  { code: 'mail_attachment_failed', params: ['file'] },
-  { code: 'mail_body_truncated' },
-]
+const LEGACY_DETAILS: Record<string, LegacyDetail> = {
+  // two fields, packed as "80/120" or "a:b"
+  transcription_incomplete: { fields: ['done', 'total'] },
+  extraction_incomplete: { fields: ['done', 'total'] },
+  media_duration_over_budget: { fields: ['duration', 'budget'] },
+  image_frames_ignored: { fields: ['file', 'count'], fromRight: true },
+  // a list of ids, shown as a count
+  vision_suppressed: { countList: true },
+  vision_failed: { countList: true },
+  table_summary_skipped: { countList: true },
+  // "pages 28-29" / "page 7"
+  table_merged: { stripLabel: true },
+  table_mode_degraded: { stripLabel: true },
+  low_confidence: { stripLabel: true },
+  polish_rejected: { stripLabel: true },
+  polish_failed: { stripLabel: true },
+  polish_skipped_deadline: { stripLabel: true },
+}
 
-const SPECS = new Map(KNOWN_WARNINGS.map((spec) => [spec.code, spec]))
+/**
+ * The placeholders a code's sentence uses, e.g. `table_columns_widened` →
+ * `['count']` from „{count} Tabellenzeilen: …".
+ *
+ * Read from the phrasing rather than listed a second time in here: a list
+ * beside the translations is one more thing to keep in step, and the sentence
+ * already says what it needs. `en` is the reference — a test keeps every
+ * locale's placeholders identical to it.
+ *
+ * A code with no phrasing at all yields `undefined`: there is nothing to fill,
+ * and the caller falls back to what the service sent.
+ */
+const PLACEHOLDERS = new Map<string, string[]>(
+  Object.entries(en.warnings as Record<string, string>).map(([code, text]) => [
+    code,
+    [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] as string),
+  ]),
+)
+
+const placeholdersOf = (code: string): string[] | undefined =>
+  PLACEHOLDERS.get(code)
 
 /** Split `detail` into exactly `count` parts, or `null` when it doesn't fit. */
 const splitDetail = (
@@ -277,32 +177,37 @@ const stripPageLabel = (detail: string): string =>
  * rendered with holes in it.
  */
 const paramsFromDetail = (
-  spec: WarningSpec,
+  code: string,
   detail: string,
 ): Record<string, string> | null => {
-  const names = spec.params ?? []
-  if (names.length === 0) return {}
+  const names = placeholdersOf(code)
+  if (!names || names.length === 0) return {}
 
-  if (spec.countList) {
+  const legacy = LEGACY_DETAILS[code] ?? {}
+
+  if (legacy.countList) {
     const entries = detail.split(',').filter((entry) => entry.trim() !== '')
     if (entries.length === 0) return null
     return { [names[0] as string]: String(entries.length) }
   }
 
-  const source = spec.stripLabel ? stripPageLabel(detail) : detail
-  const parts = splitDetail(source, names.length, !!spec.fromRight)
+  // Two fields come from the table: a translator may reorder the sentence's
+  // placeholders, the wire format does not move.
+  const fields = legacy.fields ?? names
+  const source = legacy.stripLabel ? stripPageLabel(detail) : detail
+  const parts = splitDetail(source, fields.length, !!legacy.fromRight)
   if (!parts) return null
 
   const params: Record<string, string> = {}
-  names.forEach((name, index) => {
+  fields.forEach((name, index) => {
     params[name] = parts[index] ?? ''
   })
   return params
 }
 
 /** Are all the placeholders of this code's sentence filled? */
-const covers = (spec: WarningSpec, params: Record<string, string>): boolean =>
-  (spec.params ?? []).every((name) => (params[name] ?? '') !== '')
+const covers = (code: string, params: Record<string, string>): boolean =>
+  (placeholdersOf(code) ?? []).every((name) => (params[name] ?? '') !== '')
 
 /**
  * Turn one stored warning into something renderable.
@@ -325,8 +230,7 @@ export const describeParserWarning = (
     const code = at > 0 ? trimmed.slice(0, at) : trimmed
     const detail = at > 0 ? trimmed.slice(at + 1) : ''
 
-    const spec = SPECS.get(code)
-    const params = spec ? paramsFromDetail(spec, detail) : null
+    const params = placeholdersOf(code) ? paramsFromDetail(code, detail) : null
     return params
       ? {
           key: `Notifications.warnings.${code}`,
@@ -346,11 +250,10 @@ export const describeParserWarning = (
   const severity: ParserWarningSeverity =
     warning.severity === 'note' ? 'note' : 'incomplete'
 
-  const spec = code === '' ? undefined : SPECS.get(code)
-  if (!spec) return { params: {}, raw, severity }
+  if (code === '' || !placeholdersOf(code)) return { params: {}, raw, severity }
 
   const supplied = warning.params ?? {}
-  if (covers(spec, supplied)) {
+  if (covers(code, supplied)) {
     return {
       key: `Notifications.warnings.${code}`,
       params: supplied,
@@ -363,7 +266,7 @@ export const describeParserWarning = (
   // packed into `raw` the old way.
   const at = raw.indexOf(':')
   const fallback = paramsFromDetail(
-    spec,
+    code,
     raw.slice(0, at) === code && at > 0 ? raw.slice(at + 1) : '',
   )
   return fallback
