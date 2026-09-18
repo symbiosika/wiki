@@ -14,11 +14,6 @@
   },
   "warnings": {
     "title": "Not fully imported:",
-    "transcription_incomplete": "Transcript incomplete: only {done} of {total} minutes were transcribed.",
-    "image_frames_ignored": "Multi-page image {file}: {count} further page(s) were not read.",
-    "mail_attachments_unsupported": "Attachment {file} could not be read — its content is missing.",
-    "text_encoding_assumed": "Character encoding guessed ({encoding}) — special characters may be wrong.",
-    "xlsx_formula_without_value": "Sheet {sheet}: formula cells without a stored value were imported empty.",
-    "media_duration_over_budget": "Recording longer than the service's time budget: {duration} of {budget} processed."
+    "titleNotes": "Processing notes:"
   }
 }

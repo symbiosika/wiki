@@ -44,21 +44,29 @@
             {{ m.meta.error }}
           </p>
           <!--
-            What the parsing service could not take over. Without this a
-            partial import looks exactly like a complete one.
+            What the parsing service reported. Amber only when content is
+            actually missing — a repaired table or a deduplicated logo is a
+            note about a complete import, and colouring it like a defect is
+            what taught customers to distrust a good result. Which of the two
+            it is, the service says; see `@/utils/parserWarnings`.
           -->
           <div
             v-if="warningsFor(m).length"
-            class="mt-1 text-xs text-amber-700 dark:text-amber-400"
+            class="mt-1 text-xs"
+            :class="
+              isIncomplete(m)
+                ? 'text-amber-700 dark:text-amber-400'
+                : 'text-surface-500 dark:text-surface-400'
+            "
           >
-            <p class="font-medium">{{ $t('Notifications.warnings.title') }}</p>
+            <p class="font-medium">{{ $t(warningsTitleFor(m)) }}</p>
             <ul class="mt-0.5 list-disc pl-4">
               <li
                 v-for="(warning, index) in warningsFor(m)"
                 :key="index"
                 class="break-words"
               >
-                {{ warningText(warning) }}
+                {{ warning.text }}
               </li>
             </ul>
           </div>
@@ -118,6 +126,7 @@ import type { IngestJob } from '@/stores/wiki'
 import type { MessageType, UserMessage } from '@/types/notifications'
 import {
   describeParserWarnings,
+  hasIncompleteWarning,
   type ParserWarningView,
 } from '@/utils/parserWarnings'
 
@@ -180,19 +189,24 @@ watch(
 const warningsFor = (m: UserMessage): ParserWarningView[] =>
   ingestWarnings.value[m.id] ?? []
 
-/** A translated warning, or the raw code when we have no phrasing for it. */
-const warningText = (warning: ParserWarningView): string =>
-  warning.key ? t(warning.key, warning.params) : warning.raw
+/** True when this import is missing content, not merely reporting notes. */
+const isIncomplete = (m: UserMessage): boolean =>
+  hasIncompleteWarning(warningsFor(m))
 
 /**
- * How the message should read. A successful import that reported warnings is
- * not a plain success — it is incomplete, and saying so is the whole point of
- * carrying the warnings this far.
+ * How the message should read. An import that lost content is not a plain
+ * success, and saying so is the whole point of carrying the warnings this far.
+ * One that only reported notes IS a plain success — its notes stay visible,
+ * but they do not turn the message amber.
  */
 const severityOf = (m: UserMessage): MessageType =>
-  m.messageType === 'success' && warningsFor(m).length > 0
-    ? 'warning'
-    : m.messageType
+  m.messageType === 'success' && isIncomplete(m) ? 'warning' : m.messageType
+
+/** Heading above the list: a loss is announced, a note is just labelled. */
+const warningsTitleFor = (m: UserMessage): string =>
+  isIncomplete(m)
+    ? 'Notifications.warnings.title'
+    : 'Notifications.warnings.titleNotes'
 
 /** Full date + time in the viewer's local timezone (UTC-aware). */
 const formatDateTime = (value: string | null | undefined) =>
@@ -208,7 +222,7 @@ const canOpen = (m: UserMessage) =>
 const displayText = (m: UserMessage) => {
   if (m.meta?.jobType === 'knowledge:ingest') {
     if (m.messageType !== 'success') return t('Notifications.ingest.failed')
-    return warningsFor(m).length > 0
+    return isIncomplete(m)
       ? t('Notifications.ingest.successWithWarnings')
       : t('Notifications.ingest.success')
   }

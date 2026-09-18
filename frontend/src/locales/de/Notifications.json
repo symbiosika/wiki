@@ -14,11 +14,6 @@
   },
   "warnings": {
     "title": "Nicht vollständig übernommen:",
-    "transcription_incomplete": "Transkript unvollständig: nur {done} von {total} Minuten übertragen.",
-    "image_frames_ignored": "Mehrseitiges Bild {file}: {count} weitere Seite(n) wurden nicht gelesen.",
-    "mail_attachments_unsupported": "Anhang {file} konnte nicht gelesen werden – sein Inhalt fehlt.",
-    "text_encoding_assumed": "Zeichenkodierung geraten ({encoding}) – Umlaute können falsch sein.",
-    "xlsx_formula_without_value": "Tabellenblatt {sheet}: Formelzellen ohne gespeicherten Wert wurden leer übernommen.",
-    "media_duration_over_budget": "Aufnahme länger als das Zeitbudget des Dienstes: {duration} von {budget} verarbeitet."
+    "titleNotes": "Verarbeitungshinweise:"
   }
 }

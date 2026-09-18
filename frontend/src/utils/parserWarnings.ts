@@ -1,98 +1,99 @@
 /**
- * The `warnings[]` a parsing service reports for a result it deliberately
- * returned incomplete (a truncated transcript, skipped scan pages, an
- * unreadable mail attachment). They travel from the service through
- * `PdfParserResult.warnings` into `job.result.parserWarnings`.
+ * The `warnings[]` a parsing service reports about a finished import. They
+ * travel from the service through `PdfParserResult.warnings` into
+ * `job.result.parserWarnings`.
  *
- * The codes are machine-readable (`<name>:<detail>`), so the known ones become
- * a readable sentence. An unknown code is shown verbatim rather than dropped —
- * an import with warnings succeeded, but it is not complete, and that
- * difference has to stay visible.
+ * Not every warning means something is missing. A service reports two very
+ * different things through the same channel:
+ *
+ *   - **notes** — a repair it made (a table column the OCR dropped and the
+ *     parser reconstructed), a decision it took (decorative graphics left out),
+ *     or an option that did not apply here. The document arrived complete.
+ *   - **incomplete** — content that did not make it: images without a
+ *     description because a cap was reached, truncated rows, an unreadable
+ *     attachment.
+ *
+ * Showing both as "not fully imported" in amber taught customers to distrust a
+ * perfectly good import — a 750-page catalogue whose only notes were a repaired
+ * table and deduplicated logos read like a failure.
+ *
+ * Both the wording and the classification come from the service (spec §5
+ * `warnings[]`). Nothing here knows what `vision_suppressed` means, and nothing
+ * here should: the codes are a given service's own vocabulary, so any list of
+ * them in the frontend is a second copy of that service's knowledge — one that
+ * needs a release of its own whenever the service learns a new code, and that
+ * says nothing about the warnings of any other service.
+ *
+ * So the message is passed through as the service wrote it, and `severity` —
+ * the one thing the display needs — decides the colour.
  */
+
+/** Does this warning mean content is missing, or is it just a note? */
+export type ParserWarningSeverity = 'note' | 'incomplete'
+
+/**
+ * One warning as it arrives in `job.result.parserWarnings`.
+ *
+ * A **string** is the old wire format — a service that has not adopted the
+ * object form, and every job finished before it did. It cannot express a note,
+ * so it counts as `incomplete`.
+ */
+export type StoredParserWarning =
+  | string
+  | {
+      code?: string
+      severity?: string
+      params?: Record<string, string>
+      message?: string
+      raw?: string
+    }
 
 /** One warning, ready to render. */
 export interface ParserWarningView {
-  /**
-   * i18n key under `Notifications.warnings`, or `undefined` when the code is
-   * unknown — then {@link raw} is what to show.
-   */
-  key?: string
-  /** Interpolation values for {@link key}. */
-  params: Record<string, string>
-  /** The warning exactly as the service sent it. */
-  raw: string
+  /** What to show: the service's sentence, or its code when it sent none. */
+  text: string
+  /** Whether this one means something is actually missing. */
+  severity: ParserWarningSeverity
 }
 
 /**
- * The codes we can phrase, mapped to the detail fields they carry.
- * `detail` names the `<detail>` segments in order; a code whose detail does
- * not match falls back to the raw text, so a changed format never renders a
- * sentence with holes in it.
+ * Turn one stored warning into something renderable.
+ *
+ * A legacy string carries no classification and counts as `incomplete`: a
+ * warning nobody classified must not be waved through as harmless just because
+ * it happens to be about something harmless. It is shown as it arrived.
  */
-const KNOWN_WARNINGS: {
-  code: string
-  params: string[]
-  /** Split the detail from the right (a filename may not contain `:`, a count never does). */
-  fromRight?: boolean
-}[] = [
-  // "transcription_incomplete:80/120" — 80 of 120 minutes transcribed
-  { code: 'transcription_incomplete', params: ['done', 'total'] },
-  // "image_frames_ignored:fax.tiff:2" — 2 further frames of a multi-page scan
-  { code: 'image_frames_ignored', params: ['file', 'count'], fromRight: true },
-  // "mail_attachments_unsupported:Archiv.zip"
-  { code: 'mail_attachments_unsupported', params: ['file'] },
-  // "text_encoding_assumed:cp1252"
-  { code: 'text_encoding_assumed', params: ['encoding'] },
-  // "xlsx_formula_without_value:Blatt2"
-  { code: 'xlsx_formula_without_value', params: ['sheet'] },
-  // "media_duration_over_budget:5400s:1800s"
-  { code: 'media_duration_over_budget', params: ['duration', 'budget'] },
-]
+export const describeParserWarning = (
+  warning: StoredParserWarning,
+): ParserWarningView => {
+  if (typeof warning === 'string') {
+    return { text: warning.trim(), severity: 'incomplete' }
+  }
 
-/** Split `detail` into exactly `count` parts, or `null` when it doesn't fit. */
-const splitDetail = (
-  detail: string,
-  count: number,
-  fromRight: boolean,
-): string[] | null => {
-  if (count === 1) return detail === '' ? null : [detail]
-  // "80/120" and "a:b" are both in use as two-part details.
-  const separator = detail.includes('/') && !detail.includes(':') ? '/' : ':'
-  const at = fromRight
-    ? detail.lastIndexOf(separator)
-    : detail.indexOf(separator)
-  if (count !== 2 || at <= 0 || at === detail.length - 1) return null
-  return [detail.slice(0, at), detail.slice(at + 1)]
-}
+  // Only the two documented values mean anything; anything else errs towards
+  // visible rather than silent.
+  const severity: ParserWarningSeverity =
+    warning.severity === 'note' ? 'note' : 'incomplete'
 
-/**
- * Turn one raw warning into something renderable. Unknown codes — and known
- * codes whose detail no longer parses — come back with no `key`, to be shown
- * as they arrived.
- */
-export const describeParserWarning = (raw: string): ParserWarningView => {
-  const trimmed = raw.trim()
-  const at = trimmed.indexOf(':')
-  const code = at > 0 ? trimmed.slice(0, at) : trimmed
-  const detail = at > 0 ? trimmed.slice(at + 1) : ''
+  // `message` is what a reader is meant to see. Without one there is still the
+  // code — unlovely, but better than dropping a warning on the floor.
+  const text =
+    (warning.message ?? '').trim() ||
+    (warning.raw ?? '').trim() ||
+    (warning.code ?? '').trim()
 
-  const known = KNOWN_WARNINGS.find((w) => w.code === code)
-  if (!known) return { params: {}, raw: trimmed }
-
-  const parts = splitDetail(detail, known.params.length, !!known.fromRight)
-  if (!parts) return { params: {}, raw: trimmed }
-
-  const params: Record<string, string> = {}
-  known.params.forEach((name, index) => {
-    params[name] = parts[index] ?? ''
-  })
-  return { key: `Notifications.warnings.${code}`, params, raw: trimmed }
+  return { text, severity }
 }
 
 /** {@link describeParserWarning} for a whole list, empty entries dropped. */
 export const describeParserWarnings = (
-  warnings: string[] | undefined,
+  warnings: StoredParserWarning[] | undefined,
 ): ParserWarningView[] =>
   (warnings ?? [])
-    .filter((w) => w.trim() !== '')
+    .filter((w) => w !== null && w !== undefined)
     .map((w) => describeParserWarning(w))
+    .filter((view) => view.text !== '')
+
+/** True when at least one warning means content is missing. */
+export const hasIncompleteWarning = (views: ParserWarningView[]): boolean =>
+  views.some((view) => view.severity === 'incomplete')
