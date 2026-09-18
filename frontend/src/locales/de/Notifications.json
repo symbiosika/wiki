@@ -56,7 +56,7 @@
     "table_unanchored": "Eine Tabelle konnte keiner Stelle im Text zugeordnet werden.",
     "table_block_unresolved": "Eine Tabelle konnte keiner Stelle im Text zugeordnet werden.",
     "extraction_incomplete": "Felder wurden nur teilweise gesucht: {done} von {total} Textabschnitten wurden übersprungen.",
-    "low_confidence": "Die Texterkennung war unsicher auf Seite(n) {pages} — bitte stichprobenartig prüfen.",
+    "low_confidence": "Die Texterkennung meldet für Seite(n) {pages} eine niedrigere Sicherheit.",
     "transcription_incomplete": "Transkript unvollständig: nur {done} von {total} Abschnitten übertragen.",
     "transcription_segment_failed": "Ein Abschnitt der Aufnahme konnte nicht transkribiert werden.",
     "media_duration_over_budget": "Aufnahme länger als das Zeitbudget: {duration} von {budget} verarbeitet.",

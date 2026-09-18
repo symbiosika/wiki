@@ -98,6 +98,8 @@ describe('severity', () => {
       'vision_suppression_vetoed:img-p19-1',
       'document_annotation_unavailable',
       'polish_rejected:pages 3,8-12',
+      // the provider's confidence does not say WHERE something is wrong
+      'low_confidence:pages 3,4',
     ]) {
       expect(describeParserWarning(raw).severity, raw).toBe('note')
     }
@@ -110,7 +112,6 @@ describe('severity', () => {
       'extraction_incomplete:3/46',
       'text_truncated',
       'office_slide_unreadable:4',
-      'low_confidence:pages 3,4',
     ]) {
       expect(describeParserWarning(raw).severity, raw).toBe('incomplete')
     }

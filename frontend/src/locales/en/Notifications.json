@@ -56,7 +56,7 @@
     "table_unanchored": "A table could not be matched to a place in the text.",
     "table_block_unresolved": "A table could not be matched to a place in the text.",
     "extraction_incomplete": "Fields were searched only in part: {done} of {total} text sections were skipped.",
-    "low_confidence": "Text recognition was uncertain on page(s) {pages} — please spot-check.",
+    "low_confidence": "Text recognition reports a lower confidence for page(s) {pages}.",
     "transcription_incomplete": "Transcript incomplete: only {done} of {total} sections were transcribed.",
     "transcription_segment_failed": "A section of the recording could not be transcribed.",
     "media_duration_over_budget": "Recording longer than the time budget: {duration} of {budget} processed.",

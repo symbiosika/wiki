@@ -114,6 +114,12 @@ const KNOWN_WARNINGS: WarningSpec[] = [
   { code: 'language_sections_removed', severity: 'note', params: ['detail'] },
   { code: 'language_columns_reduced', severity: 'note', params: ['detail'] },
   { code: 'mail_body_from_html', severity: 'note' },
+  // Gemessen am Provider: die Zuversicht korreliert nicht mit der
+  // Richtigkeit. Ein ruinierter Scan, dessen Tabellen erfundenen Text
+  // enthalten, bewertet genau diese Tabellen mit 0.85 bis 0.997 und nur
+  // die Seitenzahl in der Fusszeile niedrig. Die Zahl sagt also nicht, WO
+  // etwas falsch ist -- und darf deshalb nicht zur Pruefung auffordern.
+  { code: 'low_confidence', severity: 'note', params: ['pages'], stripLabel: true },
   { code: 'text_delimiter', severity: 'note', params: ['delimiter'] },
   { code: 'context_truncated', severity: 'note' },
   { code: 'context_ignored', severity: 'note' },
@@ -177,12 +183,6 @@ const KNOWN_WARNINGS: WarningSpec[] = [
     code: 'extraction_incomplete',
     severity: 'incomplete',
     params: ['done', 'total'],
-  },
-  {
-    code: 'low_confidence',
-    severity: 'incomplete',
-    params: ['pages'],
-    stripLabel: true,
   },
   {
     code: 'transcription_incomplete',
