@@ -1,4 +1,5 @@
 import type { WikiPage } from '@/types/wiki'
+import type { StoredParserWarning } from '@/utils/parserWarnings'
 
 /** Status of a background job (framework `jobs.status`). */
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'
@@ -28,13 +29,13 @@ export interface KnowledgeIngestResult {
   knowledgeText?: WikiPage
   blocks?: unknown[]
   /**
-   * Non-fatal notes the parsing service reported for the imported file: a
-   * truncated transcript, skipped scan pages, an unreadable mail attachment.
-   * The service returns a partial result on purpose — an import that carries
-   * these succeeded, but it is not complete. Machine-readable codes
-   * (`<name>:<detail>`); see `@/utils/parserWarnings`.
+   * Non-fatal notes the parsing service reported for the imported file. Each
+   * carries a machine-readable `code` and the service's own `severity`, which
+   * says whether content is missing (`incomplete`) or the document arrived
+   * complete and merely has something to report (`note`). Plain strings are the
+   * old wire format and count as `incomplete`; see `@/utils/parserWarnings`.
    */
-  parserWarnings?: string[]
+  parserWarnings?: StoredParserWarning[]
   /** present for RAG knowledge entries (from-url, upload-and-extract, …) */
   id?: string
   ok?: boolean

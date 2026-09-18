@@ -47,7 +47,8 @@
             What the parsing service reported. Amber only when content is
             actually missing — a repaired table or a deduplicated logo is a
             note about a complete import, and colouring it like a defect is
-            what taught customers to distrust a good result.
+            what taught customers to distrust a good result. Which of the two
+            it is, the service says; see `@/utils/parserWarnings`.
           -->
           <div
             v-if="warningsFor(m).length"
@@ -188,7 +189,11 @@ watch(
 const warningsFor = (m: UserMessage): ParserWarningView[] =>
   ingestWarnings.value[m.id] ?? []
 
-/** A translated warning, or the raw code when we have no phrasing for it. */
+/**
+ * A translated warning. Without a phrasing for the code it falls back to what
+ * the service sent — its own sentence, or the bare code. A code we cannot
+ * phrase still shows, and still in the colour its severity asked for.
+ */
 const warningText = (warning: ParserWarningView): string =>
   warning.key ? t(warning.key, warning.params) : warning.raw
 

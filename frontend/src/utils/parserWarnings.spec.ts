@@ -3,148 +3,90 @@ import {
   describeParserWarning,
   describeParserWarnings,
   hasIncompleteWarning,
-  KNOWN_WARNING_CODES,
 } from './parserWarnings'
 import de from '@/locales/de/Notifications.json'
 import en from '@/locales/en/Notifications.json'
 
-describe('describeParserWarning', () => {
-  it('phrases an incomplete transcription', () => {
-    expect(describeParserWarning('transcription_incomplete:80/120')).toEqual({
-      key: 'Notifications.warnings.transcription_incomplete',
-      params: { done: '80', total: '120' },
-      raw: 'transcription_incomplete:80/120',
-      severity: 'incomplete',
-    })
-  })
-
-  it('phrases skipped frames of a multi-page scan', () => {
-    expect(describeParserWarning('image_frames_ignored:fax.tiff:2')).toEqual({
-      key: 'Notifications.warnings.image_frames_ignored',
-      params: { file: 'fax.tiff', count: '2' },
-      raw: 'image_frames_ignored:fax.tiff:2',
-      severity: 'incomplete',
-    })
-  })
-
-  it('phrases an unreadable mail attachment', () => {
-    expect(
-      describeParserWarning('mail_attachments_unsupported:Archiv.zip'),
-    ).toEqual({
-      key: 'Notifications.warnings.mail_attachments_unsupported',
-      params: { file: 'Archiv.zip' },
-      raw: 'mail_attachments_unsupported:Archiv.zip',
-      severity: 'incomplete',
-    })
-  })
-
-  it('phrases a guessed text encoding', () => {
-    expect(describeParserWarning('text_encoding_assumed:cp1252')).toEqual({
-      key: 'Notifications.warnings.text_encoding_assumed',
-      params: { encoding: 'cp1252' },
-      raw: 'text_encoding_assumed:cp1252',
-      severity: 'incomplete',
-    })
-  })
-
-  it('phrases a recording over the service budget', () => {
-    expect(
-      describeParserWarning('media_duration_over_budget:5400s:1800s'),
-    ).toEqual({
-      key: 'Notifications.warnings.media_duration_over_budget',
-      params: { duration: '5400s', budget: '1800s' },
-      raw: 'media_duration_over_budget:5400s:1800s',
-      severity: 'incomplete',
-    })
-  })
-
-  it('shows an unknown code verbatim and treats it as incomplete', () => {
-    // a code nobody phrased yet must not be waved through as harmless
-    const view = describeParserWarning('brand_new_code:42')
-    expect(view.key).toBeUndefined()
-    expect(view.raw).toBe('brand_new_code:42')
-    expect(view.severity).toBe('incomplete')
-  })
-
-  it('shows a known code with an unexpected detail verbatim', () => {
-    // a changed detail format must not render a sentence with holes in it
-    expect(
-      describeParserWarning('transcription_incomplete').key,
-    ).toBeUndefined()
-    expect(
-      describeParserWarning('image_frames_ignored:fax.tiff').key,
-    ).toBeUndefined()
-    expect(describeParserWarning('text_encoding_assumed:').key).toBeUndefined()
-  })
-
-  it('keeps the severity of a known code whose detail no longer parses', () => {
-    // the phrasing is lost, the judgement is not
-    expect(describeParserWarning('transcription_incomplete').severity).toBe(
-      'incomplete',
-    )
-    expect(describeParserWarning('table_columns_widened').severity).toBe('note')
-  })
-})
-
 describe('severity', () => {
-  it('reads a repaired table and deduplicated images as notes', () => {
-    // the customer case: a complete 750-page import that looked like a failure
-    for (const raw of [
-      'table_columns_widened:8',
-      'table_columns_realigned:3',
-      'table_merged:pages 28-29',
-      'vision_skipped_duplicate:66',
-      'vision_suppressed:img-p156-1,img-p178-2,img-p179-1',
-      'vision_suppression_vetoed:img-p19-1',
-      'document_annotation_unavailable',
-      'polish_rejected:pages 3,8-12',
-      // the provider's confidence does not say WHERE something is wrong
-      'low_confidence:pages 3,4',
-    ]) {
-      expect(describeParserWarning(raw).severity, raw).toBe('note')
+  it('is the service\'s, not this file\'s', () => {
+    // The same code could mean either; only the parser knows which.
+    expect(
+      describeParserWarning({ code: 'table_columns_widened', severity: 'note' })
+        .severity,
+    ).toBe('note')
+    expect(
+      describeParserWarning({
+        code: 'table_columns_widened',
+        severity: 'incomplete',
+      }).severity,
+    ).toBe('incomplete')
+  })
+
+  it('reads anything but "note" as incomplete', () => {
+    // a classification we do not understand must not be waved through
+    for (const severity of ['incomplete', 'info', 'NOTE', '', undefined]) {
+      expect(
+        describeParserWarning({ code: 'some_code', severity }).severity,
+        String(severity),
+      ).toBe('incomplete')
     }
   })
 
-  it('reads missing content as incomplete', () => {
-    for (const raw of [
-      'vision_skipped_cap:254',
-      'table_summary_skipped:tbl_a,tbl_b',
-      'extraction_incomplete:3/46',
-      'text_truncated',
-      'office_slide_unreadable:4',
-    ]) {
-      expect(describeParserWarning(raw).severity, raw).toBe('incomplete')
-    }
+  it('reads a code it has no phrasing for, in the severity it was given', () => {
+    // the point of moving severity to the service: a code this file has never
+    // seen still reads correctly, without a frontend release
+    const view = describeParserWarning({
+      code: 'brand_new_code',
+      severity: 'note',
+      message: 'Something harmless happened.',
+    })
+    expect(view.key).toBeUndefined()
+    expect(view.raw).toBe('Something harmless happened.')
+    expect(view.severity).toBe('note')
   })
 })
 
-describe('detail handling', () => {
-  it('counts a list instead of printing the ids', () => {
-    // "vision_suppressed:img-p156-1,img-p178-2,…" — the id wall is the problem
+describe('phrasing', () => {
+  it('fills a sentence from the params the service supplied', () => {
     expect(
-      describeParserWarning(
-        'vision_suppressed:img-p156-1,img-p178-2,img-p179-1',
-      ).params,
-    ).toEqual({ count: '3' })
-    expect(
-      describeParserWarning('table_summary_skipped:tbl_a,tbl_b').params,
-    ).toEqual({ count: '2' })
-  })
-
-  it('strips the page label the service prefixes', () => {
-    expect(describeParserWarning('table_merged:pages 28-29').params).toEqual({
-      pages: '28-29',
-    })
-    expect(describeParserWarning('table_mode_degraded:page 7').params).toEqual({
-      page: '7',
-    })
-    expect(describeParserWarning('low_confidence:pages 3,4,5').params).toEqual({
-      pages: '3,4,5',
+      describeParserWarning({
+        code: 'vision_suppressed',
+        severity: 'note',
+        params: { count: '66' },
+      }),
+    ).toEqual({
+      key: 'Notifications.warnings.vision_suppressed',
+      params: { count: '66' },
+      raw: 'vision_suppressed',
+      severity: 'note',
     })
   })
 
-  it('phrases a code without a detail', () => {
-    expect(describeParserWarning('text_truncated')).toEqual({
+  it('falls back to the service message when a placeholder is unfilled', () => {
+    // half a sentence is worse than the service's own
+    const view = describeParserWarning({
+      code: 'vision_suppressed',
+      severity: 'note',
+      message: '66 decorative graphics were left out.',
+    })
+    expect(view.key).toBeUndefined()
+    expect(view.raw).toBe('66 decorative graphics were left out.')
+    expect(view.severity).toBe('note')
+  })
+
+  it('shows the bare code when the service sent no message either', () => {
+    const view = describeParserWarning({
+      code: 'vision_suppressed',
+      severity: 'note',
+    })
+    expect(view.key).toBeUndefined()
+    expect(view.raw).toBe('vision_suppressed')
+  })
+
+  it('phrases a code whose sentence takes no values', () => {
+    expect(
+      describeParserWarning({ code: 'text_truncated', severity: 'incomplete' }),
+    ).toEqual({
       key: 'Notifications.warnings.text_truncated',
       params: {},
       raw: 'text_truncated',
@@ -152,44 +94,112 @@ describe('detail handling', () => {
     })
   })
 
-  it('phrases a code that carries an id it does not need', () => {
-    // one warning per image; the id says nothing to a customer
-    const view = describeParserWarning('vision_suppression_vetoed:img-p19-1')
+  it('ignores params a sentence does not use', () => {
+    const view = describeParserWarning({
+      code: 'vision_suppression_vetoed',
+      severity: 'note',
+      params: { id: 'img-p19-1' },
+    })
     expect(view.key).toBe('Notifications.warnings.vision_suppression_vetoed')
-    expect(view.params).toEqual({})
+    expect(view.params).toEqual({ id: 'img-p19-1' })
+  })
+})
+
+describe('the legacy string format', () => {
+  it('counts as incomplete, whatever it is about', () => {
+    // a string cannot carry a severity, and an unclassified warning stays
+    // visible rather than being guessed at
+    for (const raw of [
+      'transcription_incomplete:80/120',
+      'table_columns_widened:8',
+      'required field "hersteller" not found',
+    ]) {
+      expect(describeParserWarning(raw).severity, raw).toBe('incomplete')
+    }
   })
 
-  it('does not phrase an empty list', () => {
+  it('still phrases the codes it knows', () => {
+    expect(describeParserWarning('transcription_incomplete:80/120')).toEqual({
+      key: 'Notifications.warnings.transcription_incomplete',
+      params: { done: '80', total: '120' },
+      raw: 'transcription_incomplete:80/120',
+      severity: 'incomplete',
+    })
+    expect(
+      describeParserWarning('image_frames_ignored:fax.tiff:2').params,
+    ).toEqual({ file: 'fax.tiff', count: '2' })
+  })
+
+  it('counts a packed id list instead of printing the ids', () => {
+    // "vision_suppressed:img-p156-1,img-p178-2,…" — the id wall is the problem
+    expect(
+      describeParserWarning('vision_suppressed:img-p156-1,img-p178-2,img-p179-1')
+        .params,
+    ).toEqual({ count: '3' })
+  })
+
+  it('strips the page label the old format prefixes', () => {
+    expect(describeParserWarning('table_merged:pages 28-29').params).toEqual({
+      pages: '28-29',
+    })
+    expect(describeParserWarning('table_mode_degraded:page 7').params).toEqual({
+      page: '7',
+    })
+  })
+
+  it('shows an unknown code verbatim instead of dropping it', () => {
+    const view = describeParserWarning('required field "hersteller" not found')
+    expect(view.key).toBeUndefined()
+    expect(view.raw).toBe('required field "hersteller" not found')
+  })
+
+  it('drops the sentence when the detail no longer fits it', () => {
+    // a phrasing with holes in it is worse than the raw text
+    expect(describeParserWarning('image_frames_ignored:fax.tiff').key).toBe(
+      undefined,
+    )
+    expect(describeParserWarning('text_encoding_assumed:').key).toBeUndefined()
     expect(describeParserWarning('vision_suppressed:').key).toBeUndefined()
+  })
+
+  it('keeps the severity when the detail no longer parses', () => {
+    expect(describeParserWarning('transcription_incomplete').severity).toBe(
+      'incomplete',
+    )
   })
 })
 
 describe('describeParserWarnings', () => {
-  it('keeps the order and drops empty entries', () => {
+  it('reads a mixed list — the service upgraded mid-flight', () => {
+    // a job finished before the service shipped the object form sits next to
+    // one finished after it
     const views = describeParserWarnings([
-      'text_encoding_assumed:cp1252',
-      '   ',
-      'brand_new_code:42',
+      'transcription_incomplete:80/120',
+      { code: 'table_columns_widened', severity: 'note', params: { count: '8' } },
     ])
-    expect(views).toHaveLength(2)
-    expect(views[0]?.key).toBe('Notifications.warnings.text_encoding_assumed')
-    expect(views[1]?.raw).toBe('brand_new_code:42')
+    expect(views.map((v) => v.severity)).toEqual(['incomplete', 'note'])
   })
 
-  it('handles a result without warnings', () => {
+  it('drops empty entries', () => {
+    expect(describeParserWarnings(['', '   '])).toEqual([])
     expect(describeParserWarnings(undefined)).toEqual([])
     expect(describeParserWarnings([])).toEqual([])
+  })
+
+  it('drops an entry with nothing to show', () => {
+    expect(describeParserWarnings([{ severity: 'note' }])).toEqual([])
   })
 })
 
 describe('hasIncompleteWarning', () => {
   it('is false for a list of notes only', () => {
+    // the customer case: a complete 750-page import that looked like a failure
     expect(
       hasIncompleteWarning(
         describeParserWarnings([
-          'table_columns_widened:8',
-          'vision_skipped_duplicate:66',
-          'vision_suppressed:img-p156-1,img-p178-2',
+          { code: 'table_columns_widened', severity: 'note', params: { count: '8' } },
+          { code: 'vision_skipped_duplicate', severity: 'note', params: { count: '66' } },
+          { code: 'vision_suppressed', severity: 'note', params: { count: '5' } },
         ]),
       ),
     ).toBe(false)
@@ -199,8 +209,8 @@ describe('hasIncompleteWarning', () => {
     expect(
       hasIncompleteWarning(
         describeParserWarnings([
-          'table_columns_widened:8',
-          'vision_skipped_cap:254',
+          { code: 'table_columns_widened', severity: 'note', params: { count: '8' } },
+          { code: 'vision_skipped_cap', severity: 'incomplete', params: { count: '254' } },
         ]),
       ),
     ).toBe(true)
@@ -215,29 +225,19 @@ describe('locales', () => {
   it.each([
     ['de', de],
     ['en', en],
-  ])('phrases every known code in %s', (_lang, messages) => {
+  ])('carries both headings in %s', (_lang, messages) => {
     const warnings = messages.warnings as Record<string, string>
-    const missing = KNOWN_WARNING_CODES.filter((code) => !warnings[code])
-    expect(missing).toEqual([])
+    expect(warnings.title).toBeTruthy()
+    expect(warnings.titleNotes).toBeTruthy()
   })
 
-  it.each([
-    ['de', de],
-    ['en', en],
-  ])('has no phrasing without a code in %s', (_lang, messages) => {
-    const warnings = messages.warnings as Record<string, string>
-    const headings = ['title', 'titleNotes']
-    const orphans = Object.keys(warnings).filter(
-      (key) => !headings.includes(key) && !KNOWN_WARNING_CODES.includes(key),
-    )
-    expect(orphans).toEqual([])
-  })
-
-  it('carries both headings', () => {
-    for (const messages of [de, en]) {
-      const warnings = messages.warnings as Record<string, string>
-      expect(warnings.title).toBeTruthy()
-      expect(warnings.titleNotes).toBeTruthy()
-    }
+  it('phrases the same codes in both languages', () => {
+    // German and English must not drift apart; neither is checked against the
+    // service, because a code we cannot phrase is a fallback, not a bug
+    const keys = (messages: unknown) =>
+      Object.keys((messages as { warnings: Record<string, string> }).warnings)
+        .sort()
+        .join(',')
+    expect(keys(de)).toBe(keys(en))
   })
 })
