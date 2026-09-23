@@ -62,15 +62,21 @@ describe("wiki page images", () => {
     await initTests();
   });
 
-  afterAll(() => {
-    Promise.all([
-      createdPages.length > 0
-        ? getDb().delete(knowledgeText).where(inArray(knowledgeText.id, createdPages))
-        : Promise.resolve(),
-      createdFiles.length > 0
-        ? getDb().delete(files).where(inArray(files.id, createdFiles))
-        : Promise.resolve(),
-    ]).catch(() => {});
+  // Awaited and sequential: a fire-and-forget cleanup outlives this file and
+  // its queries interleave with the next file's initTests() on the shared
+  // single test connection ("bind message supplies 2 parameters, but prepared
+  // statement requires 7"), which failed every test of move.test.ts in CI.
+  afterAll(async () => {
+    try {
+      if (createdPages.length > 0) {
+        await getDb().delete(knowledgeText).where(inArray(knowledgeText.id, createdPages));
+      }
+      if (createdFiles.length > 0) {
+        await getDb().delete(files).where(inArray(files.id, createdFiles));
+      }
+    } catch (error) {
+      console.warn("afterAll cleanup failed:", error);
+    }
   });
 
   test("serves an image uploaded through the block editor (knowledge bucket)", async () => {
