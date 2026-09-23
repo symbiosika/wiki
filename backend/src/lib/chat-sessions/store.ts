@@ -87,6 +87,15 @@ const messageText = (message: StoredChatMessage): string =>
     .map((part) => part.text)
     .join(" ");
 
+/** Whether a message carries anything beyond step markers. */
+const hasContent = (message: StoredChatMessage): boolean =>
+  (message.parts ?? []).some(
+    (part) =>
+      typeof part === "object" &&
+      part !== null &&
+      (part as { type?: unknown }).type !== "step-start",
+  );
+
 /**
  * Clip long strings inside a message's parts before storing it.
  *
@@ -286,8 +295,12 @@ export const saveMessages = async (
   const session = await getSession(ctx, sessionId);
   if (!session) return;
 
-  // keep only the tail when a conversation grows very long
-  const kept = messages.slice(-MAX_MESSAGES_PER_SESSION);
+  // keep only the tail when a conversation grows very long; an answer that
+  // never produced anything (the model call failed) is not stored, otherwise
+  // the reopened conversation shows an empty bubble where the answer belongs
+  const kept = messages
+    .filter((message) => message?.role !== "assistant" || hasContent(message))
+    .slice(-MAX_MESSAGES_PER_SESSION);
   const db = getDb();
 
   const messageIdAt = (message: StoredChatMessage, index: number): string =>

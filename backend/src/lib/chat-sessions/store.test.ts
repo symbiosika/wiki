@@ -123,6 +123,19 @@ describe("Chat sessions store", () => {
     ]);
   });
 
+  test("an answer that produced nothing is not stored", async () => {
+    const session = await createSession(ctxA);
+    // what the stream hands to onFinish when the model call failed
+    await saveMessages(ctxA, session.id, [
+      userMessage("e1", "Hallo"),
+      { id: "e2", role: "assistant", parts: [] },
+      { id: "e3", role: "assistant", parts: [{ type: "step-start" }] },
+    ]);
+
+    const loaded = await getSessionWithMessages(ctxA, session.id);
+    expect(loaded!.messages.map((m) => m.id)).toEqual(["e1"]);
+  });
+
   test("messages dropped from the history are removed", async () => {
     const session = await createSession(ctxA);
     await saveMessages(ctxA, session.id, [
