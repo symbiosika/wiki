@@ -30,6 +30,8 @@ import {
   streamText,
   convertToModelMessages,
   createIdGenerator,
+  APICallError,
+  RetryError,
   type UIMessage,
 } from "ai";
 import { assertOpenRouterConfigured } from "../../../../ai";
@@ -51,6 +53,30 @@ import {
   MAX_TITLE_CHARS,
   type StoredChatMessage,
 } from "../../../../lib/chat-sessions/store";
+
+/**
+ * Retries for a model call that fails with a retryable error (429, 5xx).
+ * OpenRouter's Mistral pool is shared and regularly answers 429 for a few
+ * seconds; the SDK default (2 retries, ~6 s) is often not enough to get past
+ * that, which the user saw as an error on the first question.
+ */
+const CHAT_MAX_RETRIES = 4;
+
+/** Stream error text the frontend recognises as "model busy, try again". */
+export const RATE_LIMITED_ERROR = "rate_limited";
+
+/**
+ * Message sent to the client when the stream fails. A rate limit gets a
+ * stable code so the frontend can say what happened instead of a generic
+ * error; everything else keeps its message.
+ */
+export const describeStreamError = (error: unknown): string => {
+  const last = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(last) && last.statusCode === 429) {
+    return RATE_LIMITED_ERROR;
+  }
+  return error instanceof Error ? error.message : "Streaming failed";
+};
 
 /**
  * Request schema. Messages are AI-SDK UIMessages: their `parts` carry text as
@@ -149,6 +175,7 @@ export default function defineChatRoutes(
         const result = streamText({
           ...buildWikiAgentConfig({ tenantId, userId, mode, orgSystemPrompt }),
           messages: await convertToModelMessages(messages as UIMessage[]),
+          maxRetries: CHAT_MAX_RETRIES,
           onError: (error) => {
             console.error(`[Chat] stream error mode=${mode}`, error);
           },
@@ -180,8 +207,7 @@ export default function defineChatRoutes(
                 },
               }
             : {}),
-          onError: (error) =>
-            error instanceof Error ? error.message : "Streaming failed",
+          onError: describeStreamError,
         });
       } catch (error) {
         console.error("Failed to stream chat", error);

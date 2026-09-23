@@ -68,6 +68,7 @@ declare module 'vue' {
     WikiAiChat: typeof import('./components/wiki/WikiAiChat.vue')['default']
     WikiImportDialog: typeof import('./components/wiki/WikiImportDialog.vue')['default']
     WikiLinkMenu: typeof import('./components/editor/WikiLinkMenu.vue')['default']
+    WikiPageReader: typeof import('./components/wiki/WikiPageReader.vue')['default']
     WikiReferences: typeof import('./components/wiki/WikiReferences.vue')['default']
     WikiSidebar: typeof import('./components/wiki/WikiSidebar.vue')['default']
     WikiSidebarSection: typeof import('./components/wiki/WikiSidebarSection.vue')['default']
