@@ -219,9 +219,28 @@ export const useWiki = defineStore('wiki', () => {
       )
       state.value.page = page
       state.value.blocks = blocks
+      syncTreeWithPage(tenantId, page)
     } finally {
       state.value.pageLoading = false
     }
+  }
+
+  /**
+   * The tree is loaded once and then only patched by this tab's own edits, so
+   * writes from elsewhere — the MCP server (an AI renaming or moving pages),
+   * the in-app assistant, another user — leave it stale. A freshly loaded page
+   * is the authoritative state: patch its row in place, and reload the whole
+   * tree when the page moved or is missing (structure changed, not just text).
+   */
+  const syncTreeWithPage = (tenantId: string, page: WikiPage) => {
+    if (state.value.treeLoading) return
+    const node = findTreeNode(page.id)
+    if (!node || node.parentId !== page.parentId) {
+      loadTree(tenantId).catch(() => {})
+      return
+    }
+    if (node.title !== page.title) node.title = page.title
+    if (node.pageType !== page.pageType) node.pageType = page.pageType
   }
 
   const closePage = () => {

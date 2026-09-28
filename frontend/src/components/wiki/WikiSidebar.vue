@@ -424,6 +424,21 @@ watch(
   { immediate: true },
 )
 
+// Pages are also renamed, moved and created from outside this tab — typically
+// by an AI working through the MCP server while the user is in another window.
+// Refresh the tree when the tab comes back into view so it never lags behind.
+const refreshTreeOnVisible = () => {
+  if (document.visibilityState === 'visible' && tenantId.value) {
+    wiki.loadTree(tenantId.value).catch(() => {})
+  }
+}
+onMounted(() =>
+  document.addEventListener('visibilitychange', refreshTreeOnVisible),
+)
+onUnmounted(() =>
+  document.removeEventListener('visibilitychange', refreshTreeOnVisible),
+)
+
 /** cropped organisation logo for the current tenant (null when none set) */
 const logoUrl = computed(() => app.tenantLogoUrl(tenantId.value))
 // Resolved through the fetcher so the logo also loads with a bearer session
