@@ -47,7 +47,7 @@ Want to see the change in the real app instead of only in tests? See
 ## 2. Git & PR workflow — read this before every push
 
 **`develop` is the one and only base branch.**
-`main` is production (deployed by CI), `develop` is staging. Feature work is
+`main` is production, `develop` is staging. Feature work is
 never based on, and never merged into, another feature branch.
 
 Rules, in order of how often they get broken:
@@ -82,8 +82,9 @@ Rules, in order of how often they get broken:
 6. **Only create a PR when the user asks for one.** The user often opens PRs
    themselves — pushing the branch is usually the deliverable.
 
-CI (`.github/workflows/build.yml`) builds Docker images for every PR and
-deploys on push to `develop` (staging) / `main` (production).
+CI (`.github/workflows/build.yml`) builds and pushes Docker images for every
+PR and every push (tag `develop` / `latest` for the two base branches). It
+does NOT deploy — rolling out an image happens outside this repo.
 
 ---
 
