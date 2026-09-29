@@ -244,6 +244,10 @@ jobs:
           username: ${{ secrets.SYMBIOSIKA_AZURECR_IO_USER }}
           password: ${{ secrets.SYMBIOSIKA_AZURECR_IO_TOKEN }}
 
+      - name: Build timestamp
+        id: build-time
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push main app image
         uses: docker/build-push-action@v6
         with:
@@ -253,6 +257,10 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ needs.detect-changes.outputs.image_tag }}
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ github.sha }}
+          # reported by GET /health (backend/src/version.ts)
+          build-args: |
+            APP_COMMIT=${{ github.sha }}
+            APP_BUILT_AT=${{ steps.build-time.outputs.at }}
           cache-from: type=gha,scope=${{ github.event.repository.name }}-app
           cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-app
 
