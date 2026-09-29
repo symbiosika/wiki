@@ -8,6 +8,42 @@
       {{ $t('Chat.config.tabDescription', { tenant: tenantName }) }}
     </p>
 
+    <div
+      v-if="aiStatus"
+      class="mb-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+      data-testid="ai-status"
+    >
+      <h2
+        class="mb-3 text-sm font-medium text-surface-700 dark:text-surface-300"
+      >
+        {{ $t('Chat.config.aiStatus.title') }}
+      </h2>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt class="text-surface-500 dark:text-surface-400">
+          {{ $t('Chat.config.aiStatus.apiKey') }}
+        </dt>
+        <dd class="flex items-center gap-1.5">
+          <template v-if="aiStatus.apiKeyConfigured">
+            <IconCheck class="text-green-600 dark:text-green-400" />
+            {{ $t('Chat.config.aiStatus.keySet') }}
+          </template>
+          <template v-else>
+            <IconAlert class="text-red-600 dark:text-red-400" />
+            <span class="text-red-600 dark:text-red-400">
+              {{ $t('Chat.config.aiStatus.keyMissing') }}
+            </span>
+          </template>
+        </dd>
+        <dt class="text-surface-500 dark:text-surface-400">
+          {{ $t('Chat.config.aiStatus.model') }}
+        </dt>
+        <dd class="break-all font-mono">{{ aiStatus.modelId }}</dd>
+      </dl>
+      <p class="mt-3 text-xs text-surface-400 dark:text-surface-500">
+        {{ $t('Chat.config.aiStatus.hint') }}
+      </p>
+    </div>
+
     <div class="flex flex-col gap-1">
       <label
         for="chat-system-prompt"
@@ -54,7 +90,13 @@
 
 <script setup lang="ts">
 import { useToast } from 'primevue/usetoast'
-import { useChatConfig, MAX_SYSTEM_PROMPT_CHARS } from '@/stores/chatConfig'
+import IconCheck from '~icons/mdi/check-circle'
+import IconAlert from '~icons/mdi/alert-circle'
+import {
+  useChatConfig,
+  MAX_SYSTEM_PROMPT_CHARS,
+  type AiStatus,
+} from '@/stores/chatConfig'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -68,11 +110,21 @@ const tenantName = computed(() => app.currentTenant?.name ?? '')
 
 const systemPrompt = ref('')
 const savedSystemPrompt = ref('')
+const aiStatus = ref<AiStatus | null>(null)
 
 onMounted(async () => {
   await app.waitForInit()
-  await loadChatConfig()
+  await Promise.all([loadChatConfig(), loadAiStatus()])
 })
+
+// Informational only: if it fails the box is simply not shown.
+const loadAiStatus = async () => {
+  try {
+    aiStatus.value = await chatConfig.loadAiStatus(tenantId.value)
+  } catch {
+    aiStatus.value = null
+  }
+}
 
 const loadChatConfig = async () => {
   try {

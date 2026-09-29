@@ -36,7 +36,15 @@
     "save": "Save",
     "saved": "System prompt saved.",
     "loadError": "Failed to load the system prompt.",
-    "saveError": "Failed to save the system prompt."
+    "saveError": "Failed to save the system prompt.",
+    "aiStatus": {
+      "title": "AI connection (OpenRouter)",
+      "apiKey": "API key",
+      "keySet": "set",
+      "keyMissing": "not set – chat and AI tests will not work",
+      "model": "Active model",
+      "hint": "Configured on the server via OPENROUTER_API_KEY and OPENROUTER_MODEL. The model is used by the chat and the AI tests; a test suite can only override the judge model."
+    }
   },
   "tools": {
     "search_wiki": "Search the wiki",

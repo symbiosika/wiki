@@ -36,7 +36,15 @@
     "save": "Speichern",
     "saved": "System-Prompt gespeichert.",
     "loadError": "System-Prompt konnte nicht geladen werden.",
-    "saveError": "System-Prompt konnte nicht gespeichert werden."
+    "saveError": "System-Prompt konnte nicht gespeichert werden.",
+    "aiStatus": {
+      "title": "KI-Verbindung (OpenRouter)",
+      "apiKey": "API-Key",
+      "keySet": "gesetzt",
+      "keyMissing": "nicht gesetzt – Chat und KI-Tests funktionieren nicht",
+      "model": "Aktives Modell",
+      "hint": "Wird serverseitig über OPENROUTER_API_KEY und OPENROUTER_MODEL festgelegt. Das Modell gilt für den Chat und die KI-Tests; eine Test-Suite kann nur das Judge-Modell überschreiben."
+    }
   },
   "tools": {
     "search_wiki": "Wiki durchsuchen",
