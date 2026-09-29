@@ -267,7 +267,8 @@ jobs:
   #     COOLIFY_BASE_URL, COOLIFY_UUID_PROD, COOLIFY_UUID_STAGING,
   #     COOLIFY_DEPLOY_TOKEN
   # If they are not set, the job self-skips with a clear log line instead of
-  # failing — so the build stays green until deploys are configured.
+  # failing — so the build stays green until deploys are configured. A
+  # trigger Coolify rejects shows up as a failed (continue-on-error) step.
   # ---------------------------------------------------------------------------
   deploy-prod:
     needs: [build-docker-app]
@@ -285,11 +286,14 @@ jobs:
             echo "Coolify production deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_PROD / COOLIFY_DEPLOY_TOKEN missing) — skipping."
             exit 0
           fi
-          curl -sS -X GET \
-            --max-time 2 --retry 2 --retry-all-errors \
+          # POST: Coolify rejects GET on /deploy ("This endpoint has changed
+          # to a POST request."). --fail-with-body marks a rejected trigger as
+          # a failed step (continue-on-error keeps the build green) instead
+          # of passing it off as a deploy.
+          curl -sS -X POST --fail-with-body \
+            --max-time 15 --retry 2 --retry-all-errors \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
-            || true
+            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false"
 
   deploy-staging:
     needs: [build-docker-app]
@@ -307,8 +311,11 @@ jobs:
             echo "Coolify staging deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_STAGING / COOLIFY_DEPLOY_TOKEN missing) — skipping."
             exit 0
           fi
-          curl -sS -X GET \
-            --max-time 2 --retry 2 --retry-all-errors \
+          # POST: Coolify rejects GET on /deploy ("This endpoint has changed
+          # to a POST request."). --fail-with-body marks a rejected trigger as
+          # a failed step (continue-on-error keeps the build green) instead
+          # of passing it off as a deploy.
+          curl -sS -X POST --fail-with-body \
+            --max-time 15 --retry 2 --retry-all-errors \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
-            || true
+            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false"
