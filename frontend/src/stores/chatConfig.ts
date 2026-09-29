@@ -13,6 +13,13 @@ export interface ChatAgentConfig {
   systemPrompt: string
 }
 
+/** AI connection status from the backend. The key itself is never sent. */
+export interface AiStatus {
+  provider: string
+  apiKeyConfigured: boolean
+  modelId: string
+}
+
 /** Keep in sync with MAX_SYSTEM_PROMPT_CHARS on the backend. */
 export const MAX_SYSTEM_PROMPT_CHARS = 8000
 
@@ -45,5 +52,8 @@ export const useChatConfig = defineStore('chatConfig', () => {
     }
   }
 
-  return { loading, saving, loadConfig, saveConfig }
+  const loadAiStatus = (tenantId: string): Promise<AiStatus> =>
+    fetcher.get<AiStatus>(`/api/v1/tenant/${tenantId}/chat/ai-status`)
+
+  return { loading, saving, loadConfig, saveConfig, loadAiStatus }
 })

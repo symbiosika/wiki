@@ -14,6 +14,7 @@ import {
 import { deleteOrganisationSpecificData } from "@framework/lib/specific-data";
 import defineChatRoutes from "./index";
 import { CHAT_AGENT_CONFIG_KEY } from "../../../../lib/chat-config/store";
+import { AI_MODEL_ID } from "../../../../ai";
 
 let app: SymbiosikaFrameworkHonoApp;
 let token: string;
@@ -99,5 +100,25 @@ describe("Chat-agent config routes", () => {
     const b = await testFetcher.get(app, `/tenant/${org2}/chat/config`, token2);
     expect(a.jsonResponse.systemPrompt).toBe("org1 prompt");
     expect(b.jsonResponse.systemPrompt).toBe("org2 prompt");
+  });
+
+  test("ai-status reports key presence and the active model, never the key", async () => {
+    const res = await testFetcher.get(app, `/tenant/${org}/chat/ai-status`, token);
+    expect(res.status).toBe(200);
+    expect(res.jsonResponse).toEqual({
+      provider: "openrouter",
+      apiKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY),
+      modelId: AI_MODEL_ID,
+    });
+    if (process.env.OPENROUTER_API_KEY) {
+      expect(JSON.stringify(res.jsonResponse)).not.toContain(
+        process.env.OPENROUTER_API_KEY,
+      );
+    }
+  });
+
+  test("ai-status is org-scoped: a foreign member gets 403", async () => {
+    const res = await testFetcher.get(app, `/tenant/${org}/chat/ai-status`, token2);
+    expect(res.status).toBe(403);
   });
 });

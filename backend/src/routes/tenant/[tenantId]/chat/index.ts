@@ -34,7 +34,7 @@ import {
   RetryError,
   type UIMessage,
 } from "ai";
-import { assertOpenRouterConfigured } from "../../../../ai";
+import { assertOpenRouterConfigured, getAiStatus } from "../../../../ai";
 import { buildWikiAgentConfig } from "../../../../ai/wiki-agent";
 import type { WikiChatMode } from "../../../../ai/tools/wiki";
 import {
@@ -274,6 +274,25 @@ export default function defineChatRoutes(
       const config = await setChatAgentConfig(tenantId, { systemPrompt });
       return c.json(config);
     },
+  );
+
+  /**
+   * GET /tenant/:tenantId/chat/ai-status
+   * Whether the OpenRouter key is set and which model is active, so the
+   * Verwaltung page can show it. The key itself is never returned.
+   */
+  app.get(
+    `${baseRoute}/ai-status`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["chat"],
+      summary: "Get the AI connection status (key configured, active model)",
+      responses: { 200: { description: "The AI connection status" } },
+    }),
+    validator("param", v.object({ tenantId: v.string() })),
+    isTenantMember,
+    async (c) => c.json(getAiStatus()),
   );
 
   // ---- chat sessions -------------------------------------------------------
