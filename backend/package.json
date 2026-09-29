@@ -1,6 +1,6 @@
 {
   "name": "template-fullstack-app-backend",
-  "version": "0.9.181",
+  "version": "0.9.182",
   "module": "index.ts",
   "type": "module",
   "private": true,

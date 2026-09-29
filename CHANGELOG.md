@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.9.182] - 2026-09-29
+
+- AI tests: failed questions now record and log the real cause of an AI
+  error — which stage failed (agent or judge), HTTP status, upstream provider
+  and its raw error message — instead of only "Failed after 3 attempts. Last
+  error: Provider returned error".
+
 ## [0.9.181] - 2026-09-29
 
 - Versioning: the app carries a semver version (`backend/package.json`).
