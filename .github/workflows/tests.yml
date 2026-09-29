@@ -85,3 +85,21 @@ jobs:
         working-directory: frontend
         run: bun run test
 
+  # ---------------------------------------------------------------------------
+  # VERSION – a PR that changes the app must raise backend/package.json's
+  # version and add a CHANGELOG.md entry (AGENTS.md → "Versioning"). The
+  # version is what GET /health and the MCP server report.
+  # ---------------------------------------------------------------------------
+  version:
+    name: Version bump
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        run: .github/scripts/check-version-bump.sh "origin/${{ github.base_ref }}"

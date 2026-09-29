@@ -29,6 +29,14 @@ FROM base AS release-ci
 # Copy built artifacts
 COPY dist ./
 
+# Which build this image is — reported by GET /health next to the version
+# from backend/package.json (see backend/src/version.ts). Set by CI; declared
+# after the COPY so a new commit only invalidates this cheap layer.
+ARG APP_COMMIT=""
+ARG APP_BUILT_AT=""
+ENV APP_COMMIT=$APP_COMMIT \
+    APP_BUILT_AT=$APP_BUILT_AT
+
 # The entrypoint optionally injects Infisical secrets, then runs the CMD
 # (migrations + app start). Without an Infisical token it runs the CMD directly
 # with the injected environment.

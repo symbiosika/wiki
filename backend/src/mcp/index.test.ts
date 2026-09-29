@@ -15,6 +15,7 @@ import { initTests, TEST_ORGANISATION_1 } from "@framework/test/init.test";
 import { getDb } from "@framework/lib/db/db-connection";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { defineMcpRoutes } from "@framework/lib/mcp";
+import { APP_VERSION } from "../version";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
 import defineKnowledgeTextsRoutes from "@framework/routes/tenant/[tenantId]/knowledge/texts";
 import defineWikiRoutes from "../routes/tenant/[tenantId]/wiki";
@@ -176,7 +177,7 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
     expect(status).toBe(200);
     expect(json.result.protocolVersion).toBe("2025-06-18");
     expect(json.result.serverInfo.name).toBe("symbiosika-wiki-mcp");
-    expect(json.result.serverInfo.version).toBe("0.3.0");
+    expect(json.result.serverInfo.version).toBe(APP_VERSION);
     expect(json.result.instructions).toContain("Company Wiki");
     expect(json.result.capabilities.resources).toBeDefined();
   });

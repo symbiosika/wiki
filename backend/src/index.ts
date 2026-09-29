@@ -23,6 +23,7 @@ import {
 } from "./lib/wiki/public-flag";
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
 import { withImageCacheHeaders } from "./lib/http/image-cache-headers";
+import { withVersionedHealth } from "./lib/http/health-version";
 import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
 import { wikiMcpServer } from "./mcp";
 
@@ -207,8 +208,10 @@ const guardedFetch = (request: Request, ...rest: unknown[]) =>
 // the ones the guard above refuses and the ones that arrive before the
 // framework has registered any route (it waits for the database). That is the
 // vantage point a "Bad Gateway" investigation needs; see ./lib/diagnostics.
+// `/health` additionally reports which build is running (version, commit,
+// build time) — see ./lib/http/health-version.
 export default {
   ...server,
-  fetch: withDiagnostics(guardedFetch),
+  fetch: withDiagnostics(withVersionedHealth(guardedFetch)),
   websocket,
 };
