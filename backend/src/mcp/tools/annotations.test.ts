@@ -10,6 +10,7 @@ import { discoveryTools } from "./discovery";
 import { readTools } from "./read";
 import { writeTools } from "./write";
 import { collectionTools } from "./collections";
+import { aiTestTools } from "./ai-tests";
 import { appUiTools } from "./app-ui";
 
 /** The only tools that change the wiki, with their expected hints. */
@@ -25,6 +26,15 @@ const WRITE_TOOLS: Record<string, { destructive: boolean; idempotent: boolean }>
   create_collection_record: { destructive: false, idempotent: false },
   update_collection_record: { destructive: true, idempotent: true },
   delete_collection_record: { destructive: true, idempotent: true },
+  create_ai_test_suite: { destructive: false, idempotent: false },
+  update_ai_test_suite: { destructive: true, idempotent: true },
+  delete_ai_test_suite: { destructive: true, idempotent: true },
+  add_ai_test_questions: { destructive: false, idempotent: false },
+  update_ai_test_question: { destructive: true, idempotent: true },
+  delete_ai_test_questions: { destructive: true, idempotent: true },
+  start_ai_test_run: { destructive: false, idempotent: false },
+  cancel_ai_test_run: { destructive: true, idempotent: true },
+  delete_ai_test_run: { destructive: true, idempotent: true },
 };
 
 const tools = [
@@ -33,6 +43,7 @@ const tools = [
   ...readTools,
   ...writeTools,
   ...collectionTools,
+  ...aiTestTools,
   ...appUiTools,
 ];
 
