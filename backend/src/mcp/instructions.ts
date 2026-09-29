@@ -82,4 +82,15 @@ private personal page; set teamId or organisation:true deliberately. Curate
 with update_page facets (pageType/status from get_wiki_config, validUntil,
 supersedesId). Confirm with the user before delete_page or before publishing
 personal notes org-wide.
+
+AI tests (evaluating the wiki's own chat agent): a suite is a question set;
+a run puts every active question to the agent and a judge scores the answers.
+Build with create_ai_test_suite + add_ai_test_questions (give expectedPageIds
+from real search results and 2–5 expectedFacts where you can; include
+not-in-wiki questions). start_ai_test_run, then get_ai_test_run with
+waitSeconds until it is no longer running. Evaluate from get_ai_test_run
+(\`weakest\`, verdicts filter, detail=full for one question's tool trajectory)
+and compare_ai_test_runs for regressions; report pass rate, the failing
+questions and WHY (hard gates, unbacked claims, missed facts). Runs cost
+tokens — do not start them in a loop without the user's go.
 `.trim();

@@ -124,15 +124,22 @@ const withQuery = (
   return qs ? `${path}?${qs}` : path;
 };
 
+/** Outcome of a raw API call (see `requestApi`). */
+export type ApiResponse =
+  | { ok: true; data: unknown }
+  | { ok: false; message: string };
+
 /**
- * Run an API call against the app and return a ready-made ToolResult. On
- * non-2xx the status code + server message becomes the error text.
+ * Run an API call against the app and return the unwrapped JSON — for tools
+ * that combine several calls (read-modify-write, polling) before building
+ * their result. On non-2xx the status code + server message becomes
+ * `message`, exactly the text `callApi` reports.
  */
-export async function callApi(
+export async function requestApi(
   ctx: McpRequestContext,
   path: string,
-  opts: CallOptions = {},
-): Promise<ToolResult> {
+  opts: Omit<CallOptions, "transform"> = {},
+): Promise<ApiResponse> {
   const headers: Record<string, string> = {};
   let body: string | undefined;
   if (opts.json !== undefined) {
@@ -148,7 +155,10 @@ export async function callApi(
       body,
     });
   } catch (err) {
-    return fail(`Network error during API call: ${(err as Error).message}`);
+    return {
+      ok: false,
+      message: `Network error during API call: ${(err as Error).message}`,
+    };
   }
 
   const raw = await res.text();
@@ -164,7 +174,7 @@ export async function callApi(
       parsed && typeof parsed === "object"
         ? ((parsed as any).error ?? (parsed as any).message ?? raw)
         : raw;
-    return fail(`API ${res.status} ${res.statusText}: ${detail}`);
+    return { ok: false, message: `API ${res.status} ${res.statusText}: ${detail}` };
   }
 
   // The wiki API wraps most responses in { success, data }; unwrap for clarity.
@@ -178,5 +188,19 @@ export async function callApi(
     parsed = (parsed as any).data;
   }
 
-  return ok(opts.transform ? opts.transform(parsed) : parsed);
+  return { ok: true, data: parsed };
+}
+
+/**
+ * Run an API call against the app and return a ready-made ToolResult. On
+ * non-2xx the status code + server message becomes the error text.
+ */
+export async function callApi(
+  ctx: McpRequestContext,
+  path: string,
+  opts: CallOptions = {},
+): Promise<ToolResult> {
+  const res = await requestApi(ctx, path, opts);
+  if (!res.ok) return fail(res.message);
+  return ok(opts.transform ? opts.transform(res.data) : res.data);
 }
