@@ -28,6 +28,7 @@ import { readTools } from "./tools/read";
 import { writeTools } from "./tools/write";
 import { collectionTools } from "./tools/collections";
 import { aiTestTools } from "./tools/ai-tests";
+import { chatAgentTools } from "./tools/chat-agent";
 import { appUiTools, appResources } from "./tools/app-ui";
 
 /**
@@ -62,6 +63,7 @@ export const wikiMcpServer: McpServerDefinition = {
     ...writeTools,
     ...collectionTools,
     ...aiTestTools,
+    ...chatAgentTools,
     ...appUiTools,
   ],
   resources: appResources,

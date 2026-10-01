@@ -11,6 +11,7 @@ import { readTools } from "./read";
 import { writeTools } from "./write";
 import { collectionTools } from "./collections";
 import { aiTestTools } from "./ai-tests";
+import { chatAgentTools } from "./chat-agent";
 import { appUiTools } from "./app-ui";
 
 /** The only tools that change the wiki, with their expected hints. */
@@ -35,6 +36,7 @@ const WRITE_TOOLS: Record<string, { destructive: boolean; idempotent: boolean }>
   start_ai_test_run: { destructive: false, idempotent: false },
   cancel_ai_test_run: { destructive: true, idempotent: true },
   delete_ai_test_run: { destructive: true, idempotent: true },
+  update_chat_agent_config: { destructive: true, idempotent: true },
 };
 
 const tools = [
@@ -44,6 +46,7 @@ const tools = [
   ...writeTools,
   ...collectionTools,
   ...aiTestTools,
+  ...chatAgentTools,
   ...appUiTools,
 ];
 
