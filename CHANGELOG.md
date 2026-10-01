@@ -4,6 +4,12 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.11.1] - 2026-10-01
+
+- Chat agent: the custom system prompt may now be up to 25,000 characters
+  (was 8,000) — in Verwaltung → Chat-Agent, the chat settings and the MCP
+  tool `update_chat_agent_config`.
+
 ## [0.11.0] - 2026-10-01
 
 - MCP: new tools `get_chat_agent_config` and `update_chat_agent_config` read
