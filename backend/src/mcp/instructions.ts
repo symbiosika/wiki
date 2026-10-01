@@ -93,4 +93,9 @@ waitSeconds until it is no longer running. Evaluate from get_ai_test_run
 and compare_ai_test_runs for regressions; report pass rate, the failing
 questions and WHY (hard gates, unbacked claims, missed facts). Runs cost
 tokens — do not start them in a loop without the user's go.
+
+The chat agent's custom system prompt (org-wide, appended to its built-in
+prompt): get_chat_agent_config reads it, update_chat_agent_config replaces
+the whole text (empty clears it). Show the user the new text and get their
+confirmation before saving.
 `.trim();

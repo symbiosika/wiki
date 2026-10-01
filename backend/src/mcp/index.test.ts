@@ -82,6 +82,9 @@ const EXPECTED_TOOLS = [
   "compare_ai_test_runs",
   "cancel_ai_test_run",
   "delete_ai_test_run",
+  // chat agent
+  "get_chat_agent_config",
+  "update_chat_agent_config",
   // app UI
   "view_page",
   "view_image",
