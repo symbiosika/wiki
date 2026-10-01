@@ -21,7 +21,7 @@ export interface AiStatus {
 }
 
 /** Keep in sync with MAX_SYSTEM_PROMPT_CHARS on the backend. */
-export const MAX_SYSTEM_PROMPT_CHARS = 8000
+export const MAX_SYSTEM_PROMPT_CHARS = 25000
 
 const api = (tenantId: string) => `/api/v1/tenant/${tenantId}/chat/config`
 

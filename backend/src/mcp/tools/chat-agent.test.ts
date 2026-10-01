@@ -87,7 +87,7 @@ describe("chat-agent MCP tools", () => {
 
   test("rejects a prompt over the character cap", async () => {
     const res = await callTool("update_chat_agent_config", {
-      systemPrompt: "x".repeat(8_001),
+      systemPrompt: "x".repeat(25_001),
     });
     expect(res.isError).toBe(true);
   });
