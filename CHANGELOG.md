@@ -4,6 +4,16 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.12.0] - 2026-10-05
+
+- Framework update: registration domains — users signing up with an e-mail
+  address of a configured domain skip the invitation code and join the
+  tenant automatically (migration `0043_registration_domains`).
+- Framework update: pre-register verifications now run on every sign-up path
+  (magic link, OAuth2, Hanko).
+- Framework update: new S3 storage backend next to db and local, plus
+  temporary share URLs for stored files on every backend.
+
 ## [0.11.1] - 2026-10-01
 
 - Chat agent: the custom system prompt may now be up to 25,000 characters
