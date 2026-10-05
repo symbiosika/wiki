@@ -28,6 +28,10 @@ export interface SlashCommandOptions {
   onImage?: (ctx: { editor: Editor; range: Range }) => void
   /** invoked by the "page reference" command; opens the "[[" picker */
   onReference?: (ctx: { editor: Editor; range: Range }) => void
+  /** invoked by the "button" command; opens the host's button dialog */
+  onButton?: (ctx: { editor: Editor; range: Range }) => void
+  /** invoked by the "download" command; opens the host's file picker */
+  onDownload?: (ctx: { editor: Editor; range: Range }) => void
 }
 
 export const getSlashCommandItems = (
@@ -189,6 +193,37 @@ export const getSlashCommandItems = (
     })
   }
 
+  if (options.onButton) {
+    items.push({
+      key: 'button',
+      title: t('Editor.slash.button'),
+      description: t('Editor.slash.buttonDescription'),
+      icon: '▭',
+      keywords: ['button', 'knopf', 'schaltfläche', 'cta', 'link'],
+      command: ({ editor, range }) => options.onButton!({ editor, range }),
+    })
+  }
+
+  // needs an upload target, like the image command
+  if (options.onDownload) {
+    items.push({
+      key: 'download',
+      title: t('Editor.slash.download'),
+      description: t('Editor.slash.downloadDescription'),
+      icon: '⤓',
+      keywords: [
+        'download',
+        'file',
+        'datei',
+        'anhang',
+        'attachment',
+        'pdf',
+        'upload',
+      ],
+      command: ({ editor, range }) => options.onDownload!({ editor, range }),
+    })
+  }
+
   const q = query.toLowerCase().trim()
   if (!q) return items
   return items.filter(
@@ -221,12 +256,16 @@ export const SlashCommands = Extension.create<SlashCommandOptions>({
     return {
       onImage: undefined,
       onReference: undefined,
+      onButton: undefined,
+      onDownload: undefined,
     }
   },
 
   addProseMirrorPlugins() {
     const onImage = this.options.onImage
     const onReference = this.options.onReference
+    const onButton = this.options.onButton
+    const onDownload = this.options.onDownload
     return [
       Suggestion<SlashCommandItem>({
         editor: this.editor,
@@ -237,7 +276,12 @@ export const SlashCommands = Extension.create<SlashCommandOptions>({
           props.command({ editor, range })
         },
         items: ({ query }) =>
-          getSlashCommandItems(query, { onImage, onReference }),
+          getSlashCommandItems(query, {
+            onImage,
+            onReference,
+            onButton,
+            onDownload,
+          }),
         render: () => {
           let renderer: VueRenderer | null = null
 

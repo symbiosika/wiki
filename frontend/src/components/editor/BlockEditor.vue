@@ -23,6 +23,19 @@
       class="hidden"
       @change="onImageInputChange"
     />
+    <!-- hidden picker for the "/download" slash command -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      class="hidden"
+      @change="onFileInputChange"
+    />
+    <ButtonDialog
+      v-model:visible="buttonDialog.visible"
+      :initial="buttonDialog.initial"
+      @save="saveButton"
+      @remove="removeButton"
+    />
   </div>
 </template>
 
@@ -39,6 +52,15 @@ import { WikiTableCell, WikiTableHeader } from './wikiTable'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
 import { WikiImage, embedImageDescriptions } from './wikiImage'
+import { WikiButton, type WikiButtonAttrs } from './wikiButton'
+import {
+  MAX_DOWNLOAD_SIZE_BYTES,
+  WikiDownload,
+  downloadFileName,
+  formatFileSize,
+  type WikiDownloadAttrs,
+} from './wikiDownload'
+import ButtonDialog from './ButtonDialog.vue'
 import {
   BLOCK_ID_ATTRIBUTE,
   BLOCK_ID_TYPES,
@@ -72,7 +94,7 @@ const emit = defineEmits<{
   toc: [headings: WikiTocEntry[]]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const wiki = useWiki()
 const router = useRouter()
@@ -172,6 +194,155 @@ const uploadAndInsertImage = async (file: File) => {
   }
 }
 
+// ----- button block ------------------------------------------------------------
+
+/**
+ * The button dialog: `pos` is the node being edited, or null when the dialog
+ * inserts a new button at the cursor ("/button").
+ */
+const buttonDialog = reactive<{
+  visible: boolean
+  initial: WikiButtonAttrs | null
+  pos: number | null
+}>({ visible: false, initial: null, pos: null })
+
+const openButtonInsert = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).run()
+  Object.assign(buttonDialog, { visible: true, initial: null, pos: null })
+}
+
+const openButtonEdit = ({
+  pos,
+  attrs,
+}: {
+  pos: number
+  attrs: WikiButtonAttrs
+}) => {
+  Object.assign(buttonDialog, { visible: true, initial: { ...attrs }, pos })
+}
+
+const saveButton = (attrs: WikiButtonAttrs) => {
+  const ed = editor.value
+  if (!ed) return
+  const pos = buttonDialog.pos
+  if (pos === null) {
+    ed.chain().focus().insertWikiButton(attrs).run()
+    return
+  }
+  ed.chain()
+    .command(({ tr }) => {
+      const node = tr.doc.nodeAt(pos)
+      if (node?.type.name !== 'wikiButton') return false
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs })
+      return true
+    })
+    .run()
+}
+
+const removeButton = () => {
+  const ed = editor.value
+  const pos = buttonDialog.pos
+  if (!ed || pos === null) return
+  ed.chain()
+    .command(({ tr }) => {
+      const node = tr.doc.nodeAt(pos)
+      if (node?.type.name !== 'wikiButton') return false
+      tr.delete(pos, pos + node.nodeSize)
+      return true
+    })
+    .focus()
+    .run()
+}
+
+// ----- download block ----------------------------------------------------------
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+/** Opened by the "/download" slash command. */
+const openFilePicker = ({
+  editor: ed,
+  range,
+}: {
+  editor: CoreEditor
+  range: Range
+}) => {
+  ed.chain().focus().deleteRange(range).run()
+  fileInputRef.value?.click()
+}
+
+const onFileInputChange = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // allow re-selecting the same file later
+  if (file) void uploadAndInsertDownload(file)
+}
+
+/** Upload a file and insert a download card for it at the cursor. */
+const uploadAndInsertDownload = async (file: File) => {
+  if (!editor.value || !props.tenantId || !props.pageId) return
+  if (file.size > MAX_DOWNLOAD_SIZE_BYTES) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Common.error'),
+      detail: t('Editor.download.tooLarge', {
+        max: formatFileSize(MAX_DOWNLOAD_SIZE_BYTES, locale.value),
+      }),
+      life: 5000,
+    })
+    return
+  }
+  const progress = {
+    severity: 'info' as const,
+    summary: t('Editor.download.uploading'),
+    detail: file.name,
+  }
+  toast.add(progress)
+  try {
+    const result = await wiki.uploadFile(props.tenantId, props.pageId, file)
+    editor.value
+      .chain()
+      .focus()
+      .insertWikiDownload({
+        src: result.path,
+        name: result.name,
+        size: result.size,
+        mime: result.mimeType,
+      })
+      .run()
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Editor.download.uploadError'),
+      life: 5000,
+    })
+  } finally {
+    toast.remove(progress)
+  }
+}
+
+/** Save a download block's file — through the page-scoped route. */
+const downloadAttachment = async (attrs: WikiDownloadAttrs) => {
+  const fileName = downloadFileName(attrs.src)
+  if (!props.tenantId || !props.pageId || !fileName) return
+  try {
+    await wiki.downloadFile(props.tenantId, props.pageId, fileName, attrs.name)
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Editor.download.downloadError'),
+      life: 5000,
+    })
+  }
+}
+
 const DEBOUNCE_MS = 700
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingChanges = false
@@ -259,6 +430,14 @@ onMounted(() => {
     WikiImage.configure({
       descriptionLabel: t('Editor.image.descriptionLabel'),
     }),
+    WikiButton.configure({
+      onEdit: openButtonEdit,
+      editHint: t('Editor.button.editHint'),
+    }),
+    WikiDownload.configure({
+      onDownload: downloadAttachment,
+      labels: { download: t('Editor.download.download'), locale: locale.value },
+    }),
     WikiLink.configure({ onNavigate: openReference }),
     WikiLinkSuggestion.configure({ search: searchReferences }),
     UniqueID.configure({
@@ -268,6 +447,8 @@ onMounted(() => {
     SlashCommands.configure({
       onImage: canUploadImages.value ? openImagePicker : undefined,
       onReference: openReferencePicker,
+      onButton: openButtonInsert,
+      onDownload: canUploadImages.value ? openFilePicker : undefined,
     }),
   ]
 
@@ -316,12 +497,14 @@ onMounted(() => {
       },
       handleDrop: (_view, event) => {
         if (!canUploadImages.value) return false
-        const file = Array.from(event.dataTransfer?.files ?? []).find((f) =>
-          f.type.startsWith('image/'),
-        )
-        if (!file) return false
+        const dropped = Array.from(event.dataTransfer?.files ?? [])
+        if (dropped.length === 0) return false
         event.preventDefault()
-        uploadAndInsertImage(file)
+        // a picture is embedded, any other file becomes a download card
+        for (const file of dropped) {
+          if (file.type.startsWith('image/')) uploadAndInsertImage(file)
+          else void uploadAndInsertDownload(file)
+        }
         return true
       },
     },
@@ -585,6 +768,65 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 .wiki-editor .wiki-prose img[data-align='right'] {
   margin-left: auto;
   margin-right: 0;
+}
+
+/* --- button block (wikiButton): a link styled by its wrapper's attributes --- */
+.wiki-editor div[data-type='wiki-button'] {
+  @apply my-3 flex;
+}
+.wiki-editor div[data-type='wiki-button'][data-align='center'] {
+  @apply justify-center;
+}
+.wiki-editor div[data-type='wiki-button'][data-align='right'] {
+  @apply justify-end;
+}
+.wiki-editor div[data-type='wiki-button'] > a {
+  @apply inline-flex cursor-pointer items-center rounded-lg border px-4 py-2 text-sm font-semibold no-underline transition-colors;
+}
+.wiki-editor div[data-type='wiki-button'] > a,
+.wiki-editor div[data-type='wiki-button'][data-variant='primary'] > a {
+  @apply border-primary bg-primary text-primary-contrast hover:bg-primary-emphasis hover:border-primary-emphasis;
+}
+.wiki-editor div[data-type='wiki-button'][data-variant='secondary'] > a {
+  @apply border-surface-200 bg-surface-100 text-surface-800 hover:bg-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
+}
+.wiki-editor div[data-type='wiki-button'][data-variant='outline'] > a {
+  @apply border-primary bg-transparent text-primary hover:bg-primary-50 dark:hover:bg-primary-950;
+}
+.wiki-editor div[data-type='wiki-button'].ProseMirror-selectednode > a {
+  @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* --- download block (wikiDownload): a file card --- */
+.wiki-editor .wiki-download {
+  @apply my-3 flex max-w-xl items-center gap-3 rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-900;
+}
+.wiki-editor .wiki-download.ProseMirror-selectednode {
+  @apply outline outline-2 outline-offset-2 outline-primary;
+}
+.wiki-editor .wiki-download__preview {
+  @apply flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-surface-800;
+}
+.wiki-editor .wiki-download--image .wiki-download__preview {
+  @apply h-20 w-28;
+}
+.wiki-editor .wiki-prose .wiki-download__preview img {
+  @apply m-0 h-full w-full rounded-none object-cover;
+}
+.wiki-editor .wiki-download__badge {
+  @apply text-xs font-bold tracking-wide text-primary;
+}
+.wiki-editor .wiki-download__meta {
+  @apply min-w-0 flex-1;
+}
+.wiki-editor .wiki-download__name {
+  @apply truncate text-sm font-semibold text-surface-900 dark:text-surface-0;
+}
+.wiki-editor .wiki-download__info {
+  @apply text-xs text-surface-500 dark:text-surface-400;
+}
+.wiki-editor .wiki-download__button {
+  @apply shrink-0 cursor-pointer rounded-lg border border-primary px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-contrast;
 }
 
 /* Placeholder */

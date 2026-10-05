@@ -611,6 +611,18 @@ function confirmDeleteSelected() {
             >
               {{ data.data[field.key] }}
             </a>
+            <!-- button: a web address shown as a button with a fixed label -->
+            <a
+              v-else-if="field.type === 'button' && data.data[field.key]"
+              :href="String(data.data[field.key])"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-primary-contrast no-underline hover:bg-primary-emphasis"
+              :title="String(data.data[field.key])"
+              @click.stop
+            >
+              {{ $t('Collections.buttonLabel') }}
+            </a>
             <a
               v-else-if="field.type === 'email' && data.data[field.key]"
               :href="`mailto:${data.data[field.key]}`"

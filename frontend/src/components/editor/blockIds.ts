@@ -46,6 +46,8 @@ export const BLOCK_ID_TYPES = [
   'horizontalRule',
   'image',
   'table',
+  'wikiButton',
+  'wikiDownload',
 ] as const
 
 /**

@@ -16,6 +16,7 @@ export const COLLECTION_FIELD_TYPES = [
   'multiSelect',
   'url',
   'email',
+  'button',
 ] as const
 
 export type CollectionFieldType = (typeof COLLECTION_FIELD_TYPES)[number]
@@ -94,7 +95,12 @@ export function filterKindFor(type: CollectionFieldType): FilterKind {
 
 /** True for types that never deserve a wide column. */
 export function isNarrowType(type: CollectionFieldType): boolean {
-  return type === 'checkbox' || type === 'number' || type === 'date'
+  return (
+    type === 'checkbox' ||
+    type === 'number' ||
+    type === 'date' ||
+    type === 'button'
+  )
 }
 
 /**
@@ -234,7 +240,8 @@ export function checkValue(
         : 'date'
     case 'email':
       return EMAIL_RE.test(text) ? null : 'email'
-    case 'url': {
+    case 'url':
+    case 'button': {
       // a bare "example.com" is what people actually type, and the server
       // turns it into a URL — so accept it here too
       const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`

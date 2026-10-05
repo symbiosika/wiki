@@ -28,12 +28,21 @@ import {
   buildImageCaption,
   normalizeImageDescription,
 } from '@/components/editor/wikiImage'
+import {
+  DOWNLOAD_TYPE,
+  buildDownloadCard,
+  readDownloadAttrs,
+} from '@/components/editor/wikiDownload'
 
 const BLOCK_ID_ATTR = 'data-block-id'
 
 export interface WikiReaderOptions {
   /** Label for the folded image-description caption (needs i18n). */
   imageDescriptionLabel: string
+  /** Label of a download card's button (needs i18n). */
+  downloadLabel?: string
+  /** Locale for file sizes. */
+  locale?: string
 }
 
 /**
@@ -114,6 +123,32 @@ const renderImages = (root: DocumentFragment, label: string): void => {
 }
 
 /**
+ * Replace every stored download block with the card the editor's node view
+ * builds (see components/editor/wikiDownload). The block id moves onto the
+ * card, which takes the block's place among the top-level children.
+ *
+ * Runs after `renderImages`, so the card's own preview image is not wrapped
+ * in an image figure.
+ */
+const renderDownloads = (
+  root: DocumentFragment,
+  options: WikiReaderOptions,
+): void => {
+  for (const block of Array.from(
+    root.querySelectorAll(`div[data-type="${DOWNLOAD_TYPE}"]`),
+  )) {
+    const card = buildDownloadCard(readDownloadAttrs(block), {
+      download: options.downloadLabel ?? 'Download',
+      locale: options.locale ?? 'de',
+    })
+    card.removeAttribute('contenteditable')
+    const blockId = block.getAttribute(BLOCK_ID_ATTR)
+    if (blockId) card.setAttribute(BLOCK_ID_ATTR, blockId)
+    block.replaceWith(card)
+  }
+}
+
+/**
  * Give every table the scroll container ProseMirror's table view provides
  * (`.tableWrapper`), so a wide table scrolls instead of stretching the page.
  * The block id moves to the wrapper: it identifies the page's top-level block,
@@ -174,6 +209,7 @@ export const renderBlocksForReading = (
   renderWikiLinks(template.content)
   renderTaskLists(template.content)
   renderImages(template.content, options.imageDescriptionLabel)
+  renderDownloads(template.content, options)
   wrapTables(template.content)
   ensureHeadingIds(template.content)
 

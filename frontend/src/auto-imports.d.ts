@@ -13,6 +13,8 @@ declare global {
   const DARK_CLASS: typeof import('./utils/theme').DARK_CLASS
   const EffectScope: typeof import('vue').EffectScope
   const FetcherError: typeof import('./utils/fetcher').FetcherError
+  const IN_HOUSE_EXTENSIONS: typeof import('./utils/parserCapabilities').IN_HOUSE_EXTENSIONS
+  const IN_HOUSE_MIME_TYPES: typeof import('./utils/parserCapabilities').IN_HOUSE_MIME_TYPES
   const MAX_SYSTEM_PROMPT_CHARS: typeof import('./stores/chatConfig').MAX_SYSTEM_PROMPT_CHARS
   const PAGE_TYPE_COLORS: typeof import('./utils/pageTypeStyle').PAGE_TYPE_COLORS
   const SIDEBAR_MAX_WIDTH: typeof import('./stores/layout').SIDEBAR_MAX_WIDTH
@@ -20,6 +22,8 @@ declare global {
   const THEME_KEY: typeof import('./utils/theme').THEME_KEY
   const WIKI_ICONS: typeof import('./utils/wikiIcons').WIKI_ICONS
   const WIKI_ICON_NAMES: typeof import('./utils/wikiIcons').WIKI_ICON_NAMES
+  const acceptedExtensions: typeof import('./utils/parserCapabilities').acceptedExtensions
+  const acceptedMimeTypes: typeof import('./utils/parserCapabilities').acceptedMimeTypes
   const applyBrandColors: typeof import('./utils/brandColor').applyBrandColors
   const applyTheme: typeof import('./utils/theme').applyTheme
   const authenticatedImageUrl: typeof import('./utils/fetcher').authenticatedImageUrl
@@ -33,12 +37,15 @@ declare global {
   const choiceClasses: typeof import('./utils/collections').choiceClasses
   const clearAuthMarkerCookie: typeof import('./utils/authCookie').clearAuthMarkerCookie
   const clearBrandColors: typeof import('./utils/brandColor').clearBrandColors
+  const collectReaderHeadings: typeof import('./utils/wikiReader').collectReaderHeadings
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const csvFileName: typeof import('./utils/collectionExport').csvFileName
   const customRef: typeof import('vue').customRef
   const defineAsyncComponent: typeof import('vue').defineAsyncComponent
   const defineComponent: typeof import('vue').defineComponent
+  const describeParserWarning: typeof import('./utils/parserWarnings').describeParserWarning
+  const describeParserWarnings: typeof import('./utils/parserWarnings').describeParserWarnings
   const displayValue: typeof import('./utils/collections').displayValue
   const editorHtmlToBlocks: typeof import('./utils/wikiBlocks').editorHtmlToBlocks
   const effectScope: typeof import('vue').effectScope
@@ -46,7 +53,10 @@ declare global {
   const escapeCsvCell: typeof import('./utils/collectionExport').escapeCsvCell
   const exportWikiPageToPdf: typeof import('./utils/wikiPdf').exportWikiPageToPdf
   const fetcher: typeof import('./utils/fetcher').fetcher
+  const fileAcceptAttribute: typeof import('./utils/parserCapabilities').fileAcceptAttribute
+  const fileExtension: typeof import('./utils/parserCapabilities').fileExtension
   const filterKindFor: typeof import('./utils/collections').filterKindFor
+  const findModality: typeof import('./utils/parserCapabilities').findModality
   const findPageTitle: typeof import('./utils/wikiTreeOptions').findPageTitle
   const flagsFromScope: typeof import('./utils/wikiTreeOptions').flagsFromScope
   const floatTo16BitPCM: typeof import('./utils/pcm').floatTo16BitPCM
@@ -63,9 +73,14 @@ declare global {
   const getTeamsAuthToken: typeof import('./utils/teamsSession').getTeamsAuthToken
   const h: typeof import('vue').h
   const hasAuthCookie: typeof import('./utils/authCookie').hasAuthCookie
+  const hasFeature: typeof import('./utils/parserCapabilities').hasFeature
+  const hasIncompleteWarning: typeof import('./utils/parserWarnings').hasIncompleteWarning
   const inject: typeof import('vue').inject
+  const isAcceptedFile: typeof import('./utils/parserCapabilities').isAcceptedFile
+  const isAdvertisedAnywhere: typeof import('./utils/parserCapabilities').isAdvertisedAnywhere
   const isEmojiIcon: typeof import('./utils/wikiIcons').isEmojiIcon
   const isEmptyValue: typeof import('./utils/collections').isEmptyValue
+  const isInHouseFile: typeof import('./utils/parserCapabilities').isInHouseFile
   const isNarrowType: typeof import('./utils/collections').isNarrowType
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
@@ -73,11 +88,13 @@ declare global {
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
   const isTeamsHost: typeof import('./utils/teamsSession').isTeamsHost
+  const isUninformativeMime: typeof import('./utils/parserCapabilities').isUninformativeMime
   const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
   const markRaw: typeof import('vue').markRaw
   const matchesSearch: typeof import('./utils/collections').matchesSearch
   const nextTick: typeof import('vue').nextTick
+  const normalizeExtension: typeof import('./utils/parserCapabilities').normalizeExtension
   const normalizeHex: typeof import('./utils/brandColor').normalizeHex
   const onActivated: typeof import('vue').onActivated
   const onBeforeMount: typeof import('vue').onBeforeMount
@@ -110,12 +127,14 @@ declare global {
   const ref: typeof import('vue').ref
   const refreshTeamsSession: typeof import('./utils/teamsSession').refreshTeamsSession
   const registerToastServiceGlobal: typeof import('./stores/toast').registerToastServiceGlobal
+  const renderBlocksForReading: typeof import('./utils/wikiReader').renderBlocksForReading
   const renderMarkdown: typeof import('./utils/markdown').renderMarkdown
   const renderMarkdownInline: typeof import('./utils/markdown').renderMarkdownInline
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveDark: typeof import('./utils/theme').resolveDark
   const resolvePageTypeStyle: typeof import('./utils/pageTypeStyle').resolvePageTypeStyle
   const resolveWikiIcon: typeof import('./utils/wikiIcons').resolveWikiIcon
+  const sanitizeFragment: typeof import('./utils/markdown').sanitizeFragment
   const scopeFromFlags: typeof import('./utils/wikiTreeOptions').scopeFromFlags
   const scopeLabel: typeof import('./utils/wikiTreeOptions').scopeLabel
   const sessionLabel: typeof import('./types/chatSession').sessionLabel
@@ -135,6 +154,7 @@ declare global {
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
+  const toWireName: typeof import('./utils/parserCapabilities').toWireName
   const triggerRef: typeof import('vue').triggerRef
   const unref: typeof import('vue').unref
   const urlLineToText: typeof import('./utils/urlImportLines').urlLineToText
@@ -189,7 +209,7 @@ declare global {
   export type { ApiToken, CreateApiTokenInput } from './stores/apiTokens'
   import('./stores/apiTokens')
   // @ts-ignore
-  export type { ChatAgentConfig } from './stores/chatConfig'
+  export type { ChatAgentConfig, AiStatus } from './stores/chatConfig'
   import('./stores/chatConfig')
   // @ts-ignore
   export type { AssistantMessage, AssistResult } from './stores/documentAssistant'
@@ -204,7 +224,7 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
-  export type { WikiImportOptions, IngestJob, WikiImageUpload } from './stores/wiki'
+  export type { WikiImportOptions, IngestJob, WikiImageUpload, WikiFileUpload } from './stores/wiki'
   import('./stores/wiki')
   // @ts-ignore
   export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
@@ -225,7 +245,7 @@ declare global {
   export type { UrlImportRunStatus, UrlImportUrlStatus, UrlImportJob, UrlImportJobUrl, UrlImportRunResultItem, UrlImportRun, UrlImportJobDetail, UrlImportJobInput } from './types/urlImport'
   import('./types/urlImport')
   // @ts-ignore
-  export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, FoundUser } from './types/usermanagement'
+  export type { KnowledgeAccessLevel, Team, TeamMember, TenantMember, TenantInvitation, TenantInvitationAdminView, FoundUser } from './types/usermanagement'
   import('./types/usermanagement')
   // @ts-ignore
   export type { WikiTreeNode, WikiDragState, WikiMovePayload, WikiTeamSection, WikiTree, WikiPage, KnowledgeAttributeDefinition, WikiKnowledgeConfig, WikiPageTypeStyle, AgentInstructions, WikiParserFeatures, WikiParserModality, WikiParserCapabilities, WikiTocEntry, WikiBlock, WikiScope, WikiSearchResult, WikiSearchMode, WikiOutgoingLink, WikiBacklink, WikiRelatedPage } from './types/wiki'
@@ -243,6 +263,12 @@ declare global {
   export type { PageTypeColor, ResolvedPageTypeStyle } from './utils/pageTypeStyle'
   import('./utils/pageTypeStyle')
   // @ts-ignore
+  export type { FileLike } from './utils/parserCapabilities'
+  import('./utils/parserCapabilities')
+  // @ts-ignore
+  export type { ParserWarningSeverity, StoredParserWarning, ParserWarningView } from './utils/parserWarnings'
+  import('./utils/parserWarnings')
+  // @ts-ignore
   export type { TeamsStatus, TeamsFailure, TeamsTheme } from './utils/teamsSession'
   import('./utils/teamsSession')
   // @ts-ignore
@@ -257,6 +283,9 @@ declare global {
   // @ts-ignore
   export type { WikiPdfBranding, WikiPdfExportOptions } from './utils/wikiPdf'
   import('./utils/wikiPdf')
+  // @ts-ignore
+  export type { WikiReaderOptions } from './utils/wikiReader'
+  import('./utils/wikiReader')
   // @ts-ignore
   export type { PageOption } from './utils/wikiTreeOptions'
   import('./utils/wikiTreeOptions')

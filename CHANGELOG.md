@@ -4,6 +4,21 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.13.0] - 2026-10-05
+
+- Editor: new block "Button" (`/button`) — a link shown as a button with its
+  own label, three styles (primary, secondary, outline) and alignment.
+  Click a button while editing to change or remove it.
+- Editor: new block "Download" (`/download`, or drop any non-image file onto
+  the page) — uploads a file (max. 25 MB) and shows it as a card with name,
+  type and size; pictures get a preview. Downloads go through new page-scoped
+  routes (`POST/GET /tenant/:tenantId/wiki/:pageId/files…`, public:
+  `/public/wiki/:tenantId/pages/:pageId/files/:file`) and are always served
+  as attachments.
+- Collections: new column type "Button" — stores a web address, shown as a
+  "Hier klicken" button.
+- MCP: files of download blocks are no longer listed as `embeddedImages`.
+
 ## [0.12.0] - 2026-10-05
 
 - Framework update: registration domains — users signing up with an e-mail

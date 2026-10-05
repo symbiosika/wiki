@@ -8,6 +8,7 @@ import {
   filterKindFor,
   checkValue,
   checkRecordData,
+  isNarrowType,
   type CollectionField,
   type CollectionRecord,
 } from './collections'
@@ -194,5 +195,29 @@ describe('checkRecordData', () => {
   it('ignores untouched columns in patch mode, as the server does', () => {
     expect(checkRecordData(fields, { nr: '3' }, 'patch')).toEqual({})
     expect(checkRecordData(fields, { name: '' }, 'patch')).toEqual({ name: 'required' })
+  })
+})
+
+describe('button columns', () => {
+  const button = {
+    id: 'b',
+    collectionId: 'c',
+    key: 'anmeldung',
+    label: 'Anmeldung',
+    type: 'button' as const,
+    options: {},
+    required: false,
+    position: 0,
+    hidden: false,
+  }
+
+  it('validates like a url column', () => {
+    expect(checkValue(button, 'example.com/form')).toBeNull()
+    expect(checkValue(button, 'javascript:alert(1)')).toBe('url')
+    expect(checkValue(button, '')).toBeNull()
+  })
+
+  it('is a narrow column', () => {
+    expect(isNarrowType('button')).toBe(true)
   })
 })

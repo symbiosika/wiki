@@ -28,6 +28,8 @@ import {
   needsAuthenticatedFetch,
   resolveImageSrc,
 } from '@/components/editor/authenticatedImageSrc'
+import { downloadFileName } from '@/components/editor/wikiDownload'
+import { useToast } from 'primevue/usetoast'
 import { useWiki } from '@/stores/wiki'
 import type { WikiBlock, WikiTocEntry } from '@/types/wiki'
 
@@ -35,6 +37,8 @@ const props = defineProps<{
   blocks: WikiBlock[]
   /** enables navigation of page references (needs the tenant to resolve by title) */
   tenantId?: string
+  /** enables the download blocks' buttons (files are read page-scoped) */
+  pageId?: string
 }>()
 
 const emit = defineEmits<{
@@ -42,7 +46,8 @@ const emit = defineEmits<{
   toc: [headings: WikiTocEntry[]]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const toast = useToast()
 const wiki = useWiki()
 const router = useRouter()
 
@@ -72,6 +77,8 @@ const render = () => {
   root.replaceChildren(
     renderBlocksForReading(props.blocks, {
       imageDescriptionLabel: t('Editor.image.descriptionLabel'),
+      downloadLabel: t('Editor.download.download'),
+      locale: locale.value,
     }),
   )
   resolveImages(root)
@@ -87,6 +94,15 @@ watch(() => props.blocks, render)
  * Phantom references (no id yet) are resolved by title, as in the editor.
  */
 const onClick = async (event: MouseEvent) => {
+  const download = (event.target as HTMLElement | null)?.closest?.(
+    '[data-download-src]',
+  ) as HTMLElement | null
+  if (download) {
+    event.preventDefault()
+    await downloadAttachment(download)
+    return
+  }
+
   const chip = (event.target as HTMLElement | null)?.closest?.(
     '[data-wiki-link]',
   ) as HTMLElement | null
@@ -107,6 +123,29 @@ const onClick = async (event: MouseEvent) => {
     name: 'WikiPage',
     params: { tenantId: props.tenantId, pageId },
   })
+}
+
+/** Save a download block's file — page-scoped, so it works in Teams too. */
+const downloadAttachment = async (button: HTMLElement) => {
+  const fileName = downloadFileName(
+    button.getAttribute('data-download-src') ?? '',
+  )
+  if (!props.tenantId || !props.pageId || !fileName) return
+  try {
+    await wiki.downloadFile(
+      props.tenantId,
+      props.pageId,
+      fileName,
+      button.getAttribute('data-download-name') || fileName,
+    )
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('Editor.download.downloadError'),
+      life: 5000,
+    })
+  }
 }
 </script>
 

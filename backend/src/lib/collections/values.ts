@@ -141,7 +141,8 @@ export function coerceValue(
       return value;
     }
 
-    case "url": {
+    case "url":
+    case "button": {
       const value = String(raw).trim();
       // a bare "example.com" is what people actually type — make it a URL
       const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(value)

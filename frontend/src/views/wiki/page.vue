@@ -276,6 +276,7 @@
           :key="`read:${page.id}:${reloadKey}`"
           :blocks="wiki.state.blocks"
           :tenant-id="tenantId"
+          :page-id="page.id"
           @toc="toc = $event"
         />
         <BlockEditor
