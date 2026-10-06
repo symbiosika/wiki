@@ -37,6 +37,12 @@
       @save="saveButton"
       @remove="removeButton"
     />
+    <DownloadDialog
+      v-model:visible="downloadDialog.visible"
+      :file-name="downloadDialog.fileName"
+      :initial-title="downloadDialog.title"
+      @save="renameDownload"
+    />
   </div>
 </template>
 
@@ -62,6 +68,7 @@ import {
   type WikiDownloadAttrs,
 } from './wikiDownload'
 import ButtonDialog from './ButtonDialog.vue'
+import DownloadDialog from './DownloadDialog.vue'
 import {
   BLOCK_ID_ATTRIBUTE,
   BLOCK_ID_TYPES,
@@ -319,6 +326,7 @@ const uploadAndInsertDownload = async (file: File) => {
       .insertWikiDownload({
         src: result.path,
         name: result.name,
+        title: '',
         size: result.size,
         mime: result.mimeType,
       })
@@ -333,6 +341,43 @@ const uploadAndInsertDownload = async (file: File) => {
   } finally {
     toast.remove(progress)
   }
+}
+
+/** The display-name dialog of a download block: `pos` is the node. */
+const downloadDialog = reactive<{
+  visible: boolean
+  pos: number | null
+  fileName: string
+  title: string
+}>({ visible: false, pos: null, fileName: '', title: '' })
+
+const openDownloadRename = ({
+  pos,
+  attrs,
+}: {
+  pos: number
+  attrs: WikiDownloadAttrs
+}) => {
+  Object.assign(downloadDialog, {
+    visible: true,
+    pos,
+    fileName: attrs.name,
+    title: attrs.title ?? '',
+  })
+}
+
+const renameDownload = (title: string) => {
+  const ed = editor.value
+  const pos = downloadDialog.pos
+  if (!ed || pos === null) return
+  ed.chain()
+    .command(({ tr }) => {
+      const node = tr.doc.nodeAt(pos)
+      if (node?.type.name !== 'wikiDownload') return false
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, title })
+      return true
+    })
+    .run()
 }
 
 /** Save a download block's file — through the page-scoped route. */
@@ -449,7 +494,9 @@ onMounted(() => {
     }),
     WikiDownload.configure({
       onDownload: downloadAttachment,
+      onRename: openDownloadRename,
       labels: { download: t('Editor.download.download'), locale: locale.value },
+      renameHint: t('Editor.download.rename'),
     }),
     WikiLink.configure({ onNavigate: openReference }),
     WikiLinkSuggestion.configure({ search: searchReferences }),
@@ -890,6 +937,12 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 }
 .wiki-editor .wiki-download__info {
   @apply text-xs text-surface-500 dark:text-surface-400;
+}
+.wiki-editor .wiki-download__rename {
+  @apply flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary dark:text-surface-400 dark:hover:bg-surface-800;
+}
+.wiki-editor .ProseMirror[contenteditable='false'] .wiki-download__rename {
+  @apply hidden;
 }
 .wiki-editor .wiki-download__button {
   @apply shrink-0 cursor-pointer rounded-lg border border-primary px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-contrast;

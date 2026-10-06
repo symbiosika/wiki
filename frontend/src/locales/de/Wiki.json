@@ -201,5 +201,23 @@
   "expandSidebar": "Seitenleiste einblenden",
   "resizeSidebar": "Breite der Seitenleiste anpassen",
   "expandActions": "Weitere Aktionen einblenden",
-  "collapseActions": "Weitere Aktionen ausblenden"
+  "collapseActions": "Weitere Aktionen ausblenden",
+  "notify": {
+    "menuHint": "Veröffentlichen",
+    "menuItem": "Nutzer per E-Mail benachrichtigen",
+    "title": "Nutzer per E-Mail benachrichtigen",
+    "audienceTeam": "Die E-Mail geht an alle {count} Mitglieder des Teams „{team}“.",
+    "audienceOrganisation": "Organisationsweite Seite: Die E-Mail geht an alle {count} Mitglieder der Organisation.",
+    "audiencePersonal": "Persönliche Seite: Die E-Mail geht nur an dich (z. B. zum Testen).",
+    "noPermission": "Benachrichtigen kann nur, wer diese Seite bearbeiten darf.",
+    "subject": "Betreff",
+    "message": "Nachricht",
+    "linkHint": "Ein Link zur Seite wird automatisch an die E-Mail angehängt.",
+    "defaultSubject": "Neue Wiki-Seite: {title}",
+    "defaultMessage": "Hallo,\n\nes gibt eine neue Seite im Wiki: „{title}“.\n\nViele Grüße",
+    "send": "An {count} Empfänger senden",
+    "sent": "E-Mail an {count} Empfänger versendet",
+    "sendError": "Die E-Mail konnte nicht versendet werden.",
+    "loadError": "Die Empfänger konnten nicht geladen werden."
+  }
 }

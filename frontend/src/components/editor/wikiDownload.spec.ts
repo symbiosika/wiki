@@ -88,6 +88,69 @@ describe('WikiDownload', () => {
     // not wrapped into an image figure
     expect(root.querySelector('figure')).toBeNull()
   })
+
+  test('a display name replaces the file name on the card, not the saved name', () => {
+    const titled = STORED.replace(
+      'data-name="Preisliste 2026.pdf"',
+      'data-name="Preisliste 2026.pdf" data-title="Aktuelle Preise"',
+    )
+    const editor = makeEditor(titled)
+    expect(editor.state.doc.firstChild!.attrs.title).toBe('Aktuelle Preise')
+    const card = editor.view.dom.querySelector('.wiki-download')!
+    expect(card.querySelector('.wiki-download__name')!.textContent).toBe(
+      'Aktuelle Preise',
+    )
+    expect(card.querySelector('.wiki-download__info')!.textContent).toBe(
+      'PDF · 471 KB · Preisliste 2026.pdf',
+    )
+    const [block] = editorHtmlToBlocks(editor.getHTML())
+    expect(block!.content).toContain('data-title="Aktuelle Preise"')
+    // text-only readers see the display name as the link text
+    expect(block!.content).toContain(`<a href="${SRC}">Aktuelle Preise</a>`)
+    editor.destroy()
+
+    const root = document.createElement('div')
+    root.append(
+      renderBlocksForReading([{ type: 'html', content: titled }], {
+        imageDescriptionLabel: 'x',
+      }),
+    )
+    expect(root.querySelector('.wiki-download__name')!.textContent).toBe(
+      'Aktuelle Preise',
+    )
+    // the file still downloads under its own name
+    expect(
+      root.querySelector('[data-download-name]')!.getAttribute('data-download-name'),
+    ).toBe('Preisliste 2026.pdf')
+  })
+
+  test('without a display name nothing extra is stored', () => {
+    const editor = makeEditor(STORED)
+    expect(editor.state.doc.firstChild!.attrs.title).toBe('')
+    expect(editor.getHTML()).not.toContain('data-title')
+    editor.destroy()
+  })
+
+  test('the edit button opens the rename callback with the node position', () => {
+    const calls: { pos: number; title: string }[] = []
+    const editor = new Editor({
+      extensions: [
+        Document,
+        Paragraph,
+        Text,
+        WikiDownload.configure({
+          onRename: ({ pos, attrs }) => calls.push({ pos, title: attrs.name }),
+        }),
+      ],
+      content: STORED,
+    })
+    const rename = editor.view.dom.querySelector<HTMLButtonElement>(
+      '.wiki-download__rename',
+    )!
+    rename.click()
+    expect(calls).toEqual([{ pos: 0, title: 'Preisliste 2026.pdf' }])
+    editor.destroy()
+  })
 })
 
 describe('download helpers', () => {

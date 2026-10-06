@@ -4,6 +4,17 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.15.0] - 2026-10-06
+
+- Download blocks get an editable display name (pencil button on the card in
+  the editor). Default is still the file name; the downloaded file keeps its
+  own name, which the card shows below the display name.
+- New "Publish" menu (rocket icon) on a wiki page with "Notify users by
+  email": sends an editable message plus a link to the page to every member
+  of the page's team, the whole organisation for organisation-wide pages, or
+  just the owner for personal pages. Needs write access to the page
+  (`GET`/`POST /tenant/:tenantId/wiki/:pageId/notify`).
+
 ## [0.14.0] - 2026-10-06
 
 - Framework update: impersonation sessions — an actor (e.g. a support admin)

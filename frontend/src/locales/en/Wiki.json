@@ -201,5 +201,23 @@
   "expandSidebar": "Show sidebar",
   "resizeSidebar": "Resize sidebar",
   "expandActions": "Show more actions",
-  "collapseActions": "Hide more actions"
+  "collapseActions": "Hide more actions",
+  "notify": {
+    "menuHint": "Publish",
+    "menuItem": "Notify users by email",
+    "title": "Notify users by email",
+    "audienceTeam": "The email goes to all {count} members of the team “{team}”.",
+    "audienceOrganisation": "Organisation-wide page: the email goes to all {count} members of the organisation.",
+    "audiencePersonal": "Personal page: the email only goes to you (e.g. for testing).",
+    "noPermission": "Only people who can edit this page can notify its members.",
+    "subject": "Subject",
+    "message": "Message",
+    "linkHint": "A link to the page is always added to the email.",
+    "defaultSubject": "New wiki page: {title}",
+    "defaultMessage": "Hello,\n\nthere is a new page in the wiki: “{title}”.\n\nBest regards",
+    "send": "Send to {count} recipients",
+    "sent": "Email sent to {count} recipients",
+    "sendError": "The email could not be sent.",
+    "loadError": "The recipients could not be loaded."
+  }
 }
