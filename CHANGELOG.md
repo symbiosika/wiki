@@ -4,6 +4,14 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.13.1] - 2026-10-06
+
+- Settings: plain organisation members now only see their own organisations
+  and teams. The member list, organisation details and the tabs Chat-Agent,
+  Dokument-Tags, Agenten-Anweisungen, KI-Nachbearbeitung, OAuth-Apps, Jobs and
+  Validierungsläufe are shown to admins and owners only; members who open one
+  of these pages directly are sent back to their organisation list.
+
 ## [0.13.0] - 2026-10-05
 
 - Editor: new block "Button" (`/button`) — a link shown as a button with its
