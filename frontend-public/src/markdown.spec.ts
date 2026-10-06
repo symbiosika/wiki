@@ -42,6 +42,28 @@ describe('renderMarkdown — sanitizing', () => {
   })
 })
 
+describe('renderMarkdown — download links', () => {
+  it('points a download block at the public per-page file endpoint', () => {
+    const file = '44444444-4444-4444-4444-444444444444.pdf'
+    const html = renderMarkdown(
+      `[Preisliste.pdf](/api/v1/tenant/${TENANT}/files/db/knowledge/${file})`,
+      opts,
+    )
+    expect(html).toContain(
+      `href="/api/v1/public/wiki/${TENANT}/pages/${PAGE}/files/${file}"`,
+    )
+    expect(html).toContain('download=""')
+    expect(html).toContain('Preisliste.pdf')
+    expect(html).not.toContain('/files/db/knowledge/')
+  })
+
+  it('leaves an ordinary link alone', () => {
+    const html = renderMarkdown('[Anmeldung](https://example.com/form)', opts)
+    expect(html).toContain('href="https://example.com/form"')
+    expect(html).not.toContain('download')
+  })
+})
+
 describe('renderMarkdown — image rewriting', () => {
   it('points knowledge images at the public per-page endpoint', () => {
     const file = '33333333-3333-3333-3333-333333333333.png'

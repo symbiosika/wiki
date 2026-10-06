@@ -28,7 +28,11 @@
     "image": "Bild",
     "imageDescription": "Ein Bild hochladen und einfügen",
     "reference": "Seitenreferenz",
-    "referenceDescription": "Auf eine andere Wiki-Seite verlinken"
+    "referenceDescription": "Auf eine andere Wiki-Seite verlinken",
+    "button": "Button",
+    "buttonDescription": "Link als hervorgehobenen Button einfügen",
+    "download": "Download",
+    "downloadDescription": "Datei hochladen und als Download-Karte anbieten"
   },
   "bubble": {
     "link": "Link",
@@ -48,7 +52,8 @@
     "description": "Beschreibung",
     "descriptionLabel": "Bildbeschreibung",
     "descriptionHint": "Beschreiben, was auf dem Bild zu sehen ist — eingeklappt für Leser, lesbar für Suche und KI",
-    "descriptionPlaceholder": "Was ist auf dem Bild zu sehen?"
+    "descriptionPlaceholder": "Was ist auf dem Bild zu sehen?",
+    "descriptionEditHint": "Enter speichert · Esc bricht ab · wird als eine Zeile gespeichert"
   },
   "imageUploadError": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
   "markdown": {
@@ -59,5 +64,40 @@
     "placeholder": "# Überschrift\n\n- Listenpunkt\n- Noch ein Punkt\n\n**Fett** und `Code`…",
     "preview": "Vorschau",
     "insert": "Einfügen"
+  },
+  "button": {
+    "insertTitle": "Button einfügen",
+    "editTitle": "Button bearbeiten",
+    "text": "Beschriftung",
+    "textPlaceholder": "z. B. Jetzt anmelden",
+    "url": "Link (URL)",
+    "urlPlaceholder": "https://…",
+    "style": "Stil",
+    "align": "Ausrichtung",
+    "styles": {
+      "primary": "Primär",
+      "secondary": "Sekundär",
+      "outline": "Umriss"
+    },
+    "invalidUrl": "Bitte eine gültige Web-Adresse eingeben (https://…, mailto: oder /pfad).",
+    "insert": "Einfügen",
+    "save": "Speichern",
+    "remove": "Button entfernen",
+    "editHint": "Klicken zum Bearbeiten",
+    "image": "Vorschaubild (optional)",
+    "imageAdd": "Bild hochladen",
+    "imageReplace": "Bild ersetzen",
+    "imageRemove": "Bild entfernen",
+    "imageHint": "Mit Bild wird der Button zur Karte mit Vorschau, Link und „URL kopieren“ – z. B. für Videos.",
+    "open": "Öffnen",
+    "copyUrl": "URL kopieren",
+    "copied": "Kopiert"
+  },
+  "download": {
+    "download": "Herunterladen",
+    "uploading": "Wird hochgeladen…",
+    "uploadError": "Datei-Upload fehlgeschlagen. Bitte erneut versuchen.",
+    "tooLarge": "Die Datei ist zu groß (maximal {max}).",
+    "downloadError": "Die Datei konnte nicht heruntergeladen werden."
   }
 }

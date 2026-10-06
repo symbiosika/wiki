@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { fetcher } from '@/utils/fetcher'
+import { isTenantAdminRole } from '@/utils/tenantRoles'
 import { nanoid } from 'nanoid'
 import type {
   FoundUser,
@@ -7,6 +8,7 @@ import type {
   Team,
   TeamMember,
   TenantInvitation,
+  TenantInvitationAdminView,
   TenantMember,
 } from '@/types/usermanagement'
 import type { WikiSearchMode } from '@/types/wiki'
@@ -30,6 +32,8 @@ interface User {
 interface Tenant {
   id: string
   name: string
+  /** the signed-in user's role in this organisation */
+  role?: string
 }
 
 /** existence + cache-busting metadata of an organisation's logo */
@@ -137,7 +141,8 @@ export const useApp = defineStore('app', () => {
       '/api/v1/tenant',
       { name: tenantName },
     )
-    state.value.tenants.push(tenant)
+    // the creator of an organisation is its owner
+    state.value.tenants.push({ ...tenant, role: 'owner' })
     return tenant
   }
 
@@ -229,9 +234,10 @@ export const useApp = defineStore('app', () => {
    */
   const getBranding = async (tenantId: string): Promise<BrandColors> => {
     try {
-      const setting = await fetcher.get<{ key: string; valueJson?: BrandColors }>(
-        `/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`,
-      )
+      const setting = await fetcher.get<{
+        key: string
+        valueJson?: BrandColors
+      }>(`/api/v1/tenant/${tenantId}/settings/${BRANDING_SETTING_KEY}`)
       return setting.valueJson ?? {}
     } catch {
       // no branding stored yet (404) or read failed
@@ -304,15 +310,14 @@ export const useApp = defineStore('app', () => {
     )
 
   const getTenants = async () => {
-    const tenants = await fetcher.get<{ tenantId: string; name: string }[]>(
-      '/api/v1/user/tenants',
-    )
-    state.value.tenants = tenants.map(
-      (tenant: { tenantId: string; name: string }) => ({
-        id: tenant.tenantId,
-        name: tenant.name,
-      }),
-    )
+    const tenants = await fetcher.get<
+      { tenantId: string; name: string; role: string }[]
+    >('/api/v1/user/tenants')
+    state.value.tenants = tenants.map((tenant) => ({
+      id: tenant.tenantId,
+      name: tenant.name,
+      role: tenant.role,
+    }))
   }
 
   const setSelectedTenant = async (tenantId: string) => {
@@ -340,7 +345,7 @@ export const useApp = defineStore('app', () => {
       '/api/v1/user/setup',
       { tenantName },
     )
-    state.value.tenants = [tenant]
+    state.value.tenants = [{ ...tenant, role: 'owner' }]
     state.value.selectedTenant = tenant.id
     return tenant
   }
@@ -488,6 +493,27 @@ export const useApp = defineStore('app', () => {
       {},
     )
     await getTenantInvitations()
+  }
+
+  /**
+   * All invitations of one organisation, for its admins. This is the admin
+   * overview of invitations that were sent out - not the invitations the
+   * current user has received (see getTenantInvitations for those).
+   */
+  const getTenantInvitationsAsAdmin = async (tenantId: string) => {
+    return await fetcher.get<TenantInvitationAdminView[]>(
+      `/api/v1/tenant/${tenantId}/invitations`,
+    )
+  }
+
+  /** Withdraw an invitation that was sent out (admins only). */
+  const revokeTenantInvitation = async (
+    tenantId: string,
+    invitationId: string,
+  ) => {
+    await fetcher.delete(
+      `/api/v1/tenant/${tenantId}/invitations/${invitationId}`,
+    )
   }
 
   // ----- teams ---------------------------------------------------------------
@@ -664,6 +690,16 @@ export const useApp = defineStore('app', () => {
   )
   const hasTenants = computed(() => state.value.tenants.length > 0)
 
+  /**
+   * Whether the signed-in user administrates an organisation (owner/admin).
+   * Defaults to the selected one. Drives what the settings area shows; the
+   * backend enforces the actual permissions.
+   */
+  const isTenantAdmin = (tenantId?: string) => {
+    const id = tenantId || state.value.selectedTenant
+    return isTenantAdminRole(state.value.tenants.find((t) => t.id === id)?.role)
+  }
+
   return {
     // State
     state,
@@ -673,6 +709,7 @@ export const useApp = defineStore('app', () => {
     currentUser,
     currentTenant,
     hasTenants,
+    isTenantAdmin,
 
     // Composables (for convenience)
     route,
@@ -712,6 +749,8 @@ export const useApp = defineStore('app', () => {
     getTenantInvitations,
     acceptInvitation,
     declineInvitation,
+    getTenantInvitationsAsAdmin,
+    revokeTenantInvitation,
     getTeams,
     getTeam,
     createTeam,

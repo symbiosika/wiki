@@ -178,3 +178,7 @@ body {
 .prose-doc .wiki-link-missing {
   color: inherit;
 }
+/* A file the page offers for download (the wiki's download block). */
+.prose-doc a.page-download::before {
+  content: '⤓ ';
+}

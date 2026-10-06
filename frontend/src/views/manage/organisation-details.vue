@@ -86,6 +86,66 @@
       </Column>
     </DataTable>
 
+    <!-- invited users that have not joined yet (admins only) -->
+    <section v-if="isAdmin" class="mt-8">
+      <h2
+        class="mb-1 text-lg font-semibold text-surface-900 dark:text-surface-0"
+      >
+        {{ $t('UserTenants.invited.title') }}
+      </h2>
+      <p class="mb-4 text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('UserTenants.invited.hint') }}
+      </p>
+
+      <DataTable v-if="openInvitations.length > 0" :value="openInvitations">
+        <Column field="email" :header="$t('UserTenants.memberEmail')" />
+        <Column field="role" :header="$t('UserTenants.memberRole')">
+          <template #body="{ data }">
+            {{ $t(`UserTenants.roles.${data.role}`, data.role) }}
+          </template>
+        </Column>
+        <Column :header="$t('UserTenants.invited.status')">
+          <template #body="{ data }">
+            <span
+              class="rounded px-1.5 py-0.5 text-[11px] font-medium"
+              :class="
+                data.status === 'declined'
+                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  : 'bg-primary/10 text-primary'
+              "
+            >
+              {{
+                $t(`UserTenants.invited.statuses.${data.status}`, data.status)
+              }}
+            </span>
+          </template>
+        </Column>
+        <Column :header="$t('UserTenants.invited.invitedAt')">
+          <template #body="{ data }">
+            {{ formatDateTime(data.createdAt) }}
+          </template>
+        </Column>
+        <Column header="" style="width: 80px">
+          <template #body="{ data }">
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-red-500 disabled:opacity-40 dark:hover:bg-surface-800"
+                :title="$t('UserTenants.invited.revoke')"
+                :disabled="revokingInvitation === data.id"
+                @click="openRevokeInvitationDialog(data)"
+              >
+                <IconTrash class="h-4 w-4" />
+              </button>
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+      <p v-else class="text-sm text-surface-500 dark:text-surface-400">
+        {{ $t('UserTenants.invited.empty') }}
+      </p>
+    </section>
+
     <!-- organisation logo -->
     <section class="mt-8">
       <h2
@@ -470,6 +530,7 @@ import IconImage from '~icons/mdi/image-outline'
 import type {
   FoundUser,
   KnowledgeAccessLevel,
+  TenantInvitationAdminView,
   TenantMember,
 } from '@/types/usermanagement'
 import { isValidHexColor } from '@/utils/brandColor'
@@ -485,6 +546,24 @@ const app = useApp()
 const tenantId = computed(() => String(route.params.id))
 const tenantName = ref('')
 const members = ref<TenantMember[]>([])
+
+// ----- invitations -----------------------------------------------------------
+
+const invitations = ref<TenantInvitationAdminView[]>([])
+/** id of the invitation currently being withdrawn (disables its button) */
+const revokingInvitation = ref<string | null>(null)
+
+/**
+ * Invitations that still say something: accepted ones are already listed in
+ * the members table above, so only pending and declined ones are shown.
+ */
+const openInvitations = computed(() =>
+  invitations.value.filter((i) => i.status !== 'accepted'),
+)
+
+/** Full date + time in the viewer's local timezone (UTC-aware). */
+const formatDateTime = (value: string | null | undefined) =>
+  parseServerDate(value)?.toLocaleString() ?? '-'
 
 // ----- logo ------------------------------------------------------------------
 
@@ -632,6 +711,7 @@ const loadTenantData = async () => {
     }
     tenantName.value = tenant.name
     members.value = await app.getTenantMembers(tenantId.value)
+    await loadInvitations()
   } catch {
     toast.add({
       severity: 'error',
@@ -1008,6 +1088,66 @@ const confirmInvite = async (email: string) => {
       life: 3000,
     })
   }
+}
+
+// ----- invited users --------------------------------------------------------
+
+/**
+ * Only admins may read the invitation overview (the backend answers 403 for
+ * everyone else), so a plain member is not asked to load it at all.
+ */
+const loadInvitations = async () => {
+  if (!isAdmin.value) {
+    invitations.value = []
+    return
+  }
+  try {
+    invitations.value = await app.getTenantInvitationsAsAdmin(tenantId.value)
+  } catch {
+    invitations.value = []
+    toast.add({
+      severity: 'error',
+      summary: t('Common.error'),
+      detail: t('UserTenants.invitations.errors.fetchFailed'),
+      life: 3000,
+    })
+  }
+}
+
+const openRevokeInvitationDialog = (invitation: TenantInvitationAdminView) => {
+  confirm.require({
+    message: t('UserTenants.invited.revokeConfirm', {
+      email: invitation.email,
+    }),
+    header: t('UserTenants.invited.revokeTitle'),
+    rejectProps: { label: t('Common.cancel') },
+    acceptProps: {
+      label: t('UserTenants.invited.revoke'),
+      severity: 'danger',
+    },
+    accept: async () => {
+      revokingInvitation.value = invitation.id
+      try {
+        await app.revokeTenantInvitation(tenantId.value, invitation.id)
+        await loadInvitations()
+        toast.add({
+          severity: 'success',
+          summary: t('Common.success'),
+          detail: t('UserTenants.invited.revokeSuccess'),
+          life: 3000,
+        })
+      } catch {
+        toast.add({
+          severity: 'error',
+          summary: t('Common.error'),
+          detail: t('UserTenants.invited.errors.revokeFailed'),
+          life: 3000,
+        })
+      } finally {
+        revokingInvitation.value = null
+      }
+    },
+  })
 }
 
 // ----- name -----------------------------------------------------------------

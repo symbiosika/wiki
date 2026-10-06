@@ -9,6 +9,11 @@
   "openError": "Die importierte Seite konnte nicht geöffnet werden.",
   "ingest": {
     "success": "Import abgeschlossen",
-    "failed": "Import fehlgeschlagen"
+    "failed": "Import fehlgeschlagen",
+    "successWithWarnings": "Import abgeschlossen – mit Hinweisen"
+  },
+  "warnings": {
+    "title": "Nicht vollständig übernommen:",
+    "titleNotes": "Verarbeitungshinweise:"
   }
 }

@@ -24,12 +24,12 @@
         :key="m.id"
         class="flex items-start gap-3 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 dark:border-surface-700 dark:bg-surface-900"
       >
-        <!-- severity icon -->
+        <!-- severity icon; a partial import reads as a warning, not a success -->
         <span
           class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-          :class="iconWrapClass(m.messageType)"
+          :class="iconWrapClass(severityOf(m))"
         >
-          <component :is="iconFor(m.messageType)" class="h-4 w-4" />
+          <component :is="iconFor(severityOf(m))" class="h-4 w-4" />
         </span>
 
         <!-- text -->
@@ -43,6 +43,33 @@
           >
             {{ m.meta.error }}
           </p>
+          <!--
+            What the parsing service reported. Amber only when content is
+            actually missing — a repaired table or a deduplicated logo is a
+            note about a complete import, and colouring it like a defect is
+            what taught customers to distrust a good result. Which of the two
+            it is, the service says; see `@/utils/parserWarnings`.
+          -->
+          <div
+            v-if="warningsFor(m).length"
+            class="mt-1 text-xs"
+            :class="
+              isIncomplete(m)
+                ? 'text-amber-700 dark:text-amber-400'
+                : 'text-surface-500 dark:text-surface-400'
+            "
+          >
+            <p class="font-medium">{{ $t(warningsTitleFor(m)) }}</p>
+            <ul class="mt-0.5 list-disc pl-4">
+              <li
+                v-for="(warning, index) in warningsFor(m)"
+                :key="index"
+                class="break-words"
+              >
+                {{ warning.text }}
+              </li>
+            </ul>
+          </div>
           <p class="mt-0.5 text-xs text-surface-400 dark:text-surface-500">
             {{ formatDateTime(m.createdAt) }}
           </p>
@@ -97,6 +124,11 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { fetcher } from '@/utils/fetcher'
 import type { IngestJob } from '@/stores/wiki'
 import type { MessageType, UserMessage } from '@/types/notifications'
+import {
+  describeParserWarnings,
+  hasIncompleteWarning,
+  type ParserWarningView,
+} from '@/utils/parserWarnings'
 
 const route = useRoute()
 const router = useRouter()
@@ -108,8 +140,73 @@ const tenantId = computed(() => String(route.params.tenantId ?? ''))
 const opening = ref<string | null>(null)
 
 onMounted(() => {
-  store.load().catch(() => {})
+  store
+    .load()
+    .then(() => loadIngestWarnings())
+    .catch(() => {})
 })
+
+/**
+ * Parser warnings per message id, read from the finished job's result.
+ *
+ * They only exist on `job.result.parserWarnings`, not on the notification
+ * itself, so the jobs of the completed imports in the list are fetched once —
+ * one after another rather than all at once, so an inbox full of imports does
+ * not fire a burst of requests. Each answer renders as it arrives; a job that
+ * cannot be read just contributes no warnings.
+ */
+const ingestWarnings = ref<Record<string, ParserWarningView[]>>({})
+/** Message ids whose job we already asked about — including the quiet ones. */
+const checkedMessages = new Set<string>()
+
+const loadIngestWarnings = async () => {
+  if (!tenantId.value) return
+  for (const message of store.messages) {
+    const jobId = message.meta?.jobId
+    if (!jobId || !canOpen(message) || checkedMessages.has(message.id)) continue
+    // marked before awaiting, so a second pass never asks for the same job
+    checkedMessages.add(message.id)
+    try {
+      const job = await fetcher.get<IngestJob>(
+        `/api/v1/tenant/${tenantId.value}/jobs/${jobId}`,
+      )
+      const warnings = describeParserWarnings(job.result?.parserWarnings)
+      if (warnings.length) ingestWarnings.value[message.id] = warnings
+    } catch {
+      // a job we cannot read simply shows no warnings
+    }
+  }
+}
+
+// Messages arriving later (poll / another import finishing) get the same look.
+watch(
+  () => store.messages.map((m) => m.id).join(','),
+  () => {
+    loadIngestWarnings().catch(() => {})
+  },
+)
+
+const warningsFor = (m: UserMessage): ParserWarningView[] =>
+  ingestWarnings.value[m.id] ?? []
+
+/** True when this import is missing content, not merely reporting notes. */
+const isIncomplete = (m: UserMessage): boolean =>
+  hasIncompleteWarning(warningsFor(m))
+
+/**
+ * How the message should read. An import that lost content is not a plain
+ * success, and saying so is the whole point of carrying the warnings this far.
+ * One that only reported notes IS a plain success — its notes stay visible,
+ * but they do not turn the message amber.
+ */
+const severityOf = (m: UserMessage): MessageType =>
+  m.messageType === 'success' && isIncomplete(m) ? 'warning' : m.messageType
+
+/** Heading above the list: a loss is announced, a note is just labelled. */
+const warningsTitleFor = (m: UserMessage): string =>
+  isIncomplete(m)
+    ? 'Notifications.warnings.title'
+    : 'Notifications.warnings.titleNotes'
 
 /** Full date + time in the viewer's local timezone (UTC-aware). */
 const formatDateTime = (value: string | null | undefined) =>
@@ -124,9 +221,10 @@ const canOpen = (m: UserMessage) =>
 /** Friendlier label for job-completion messages; fall back to the raw text. */
 const displayText = (m: UserMessage) => {
   if (m.meta?.jobType === 'knowledge:ingest') {
-    return m.messageType === 'success'
-      ? t('Notifications.ingest.success')
-      : t('Notifications.ingest.failed')
+    if (m.messageType !== 'success') return t('Notifications.ingest.failed')
+    return isIncomplete(m)
+      ? t('Notifications.ingest.successWithWarnings')
+      : t('Notifications.ingest.success')
   }
   return m.message
 }

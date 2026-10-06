@@ -9,6 +9,11 @@
   "openError": "Could not open the imported page.",
   "ingest": {
     "success": "Import finished",
-    "failed": "Import failed"
+    "failed": "Import failed",
+    "successWithWarnings": "Import finished — with notes"
+  },
+  "warnings": {
+    "title": "Not fully imported:",
+    "titleNotes": "Processing notes:"
   }
 }

@@ -45,6 +45,22 @@ export interface TenantInvitation {
   role: string
 }
 
+/**
+ * An invitation as seen by an organisation admin (GET
+ * /api/v1/tenant/:tenantId/invitations). Unlike `TenantInvitation` this is
+ * the raw row: it carries no tenant name, but the timestamps an admin needs
+ * to judge how long an invitation has been open.
+ */
+export interface TenantInvitationAdminView {
+  id: string
+  tenantId: string
+  email: string
+  role: string
+  status: 'pending' | 'accepted' | 'declined'
+  createdAt: string
+  updatedAt: string
+}
+
 export interface FoundUser {
   id: string
   email: string

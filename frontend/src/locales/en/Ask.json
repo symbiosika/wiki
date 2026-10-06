@@ -17,6 +17,8 @@
   "loadError": "The conversation could not be loaded.",
   "sessionCreateError": "This conversation will not be saved — you will still get an answer.",
   "error": "Something went wrong. Please try again.",
+  "errorRateLimited": "The AI model is busy right now. Please try again in a moment.",
+  "retry": "Try again",
   "disclaimer": "Answers come from your wiki and can contain mistakes.",
   "suggestions": [
     "How do I request time off?",

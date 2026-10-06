@@ -83,7 +83,8 @@ export const annotateEmbeddedImages = (data: unknown): unknown => {
         : "") +
       (described < images.length
         ? " Image(s) without a `description` can only be judged by looking " +
-          "at them."
+          "at them — once you know what one shows, set_image_description " +
+          "records it for the next reader."
         : ""),
   };
 };

@@ -21,7 +21,7 @@ import {
 export const CHAT_AGENT_CONFIG_KEY = "chat-agent-config";
 
 /** Hard cap on the custom prompt so it can never blow the model context. */
-export const MAX_SYSTEM_PROMPT_CHARS = 8_000;
+export const MAX_SYSTEM_PROMPT_CHARS = 25_000;
 
 export interface ChatAgentConfig {
   /** Extra instructions appended to the assistant's base system prompt. */

@@ -22,6 +22,8 @@ import {
   publicWikiStaticExclusions,
 } from "./lib/wiki/public-flag";
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
+import { withImageCacheHeaders } from "./lib/http/image-cache-headers";
+import { withVersionedHealth } from "./lib/http/health-version";
 import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
 import { wikiMcpServer } from "./mcp";
 
@@ -183,6 +185,16 @@ const server = defineServer({
 // socket events to the handlers registered by `upgradeWebSocket` (see the
 // protocol realtime route). Both halves come from the same shared instance.
 //
+// The images embedded in wiki pages are served by the framework's file route
+// without any cache header, so a browser re-downloads all of them on every
+// page open. They are addressed by a content-unique id and never change, so
+// the wrapper below adds a long-lived private `Cache-Control` to exactly those
+// responses — see ./lib/http/image-cache-headers for why this sits here and
+// not in a Hono middleware.
+const cachingFetch = withImageCacheHeaders(
+  server.fetch as (...args: unknown[]) => Response | Promise<Response>
+);
+
 // `fetch` is wrapped so paths that no file can have (a NUL byte, the classic
 // `…/etc/passwd%00` scanner probe) are answered 400 here instead of throwing
 // deep inside the static handler and being logged as a server error — see
@@ -190,17 +202,16 @@ const server = defineServer({
 const guardedFetch = (request: Request, ...rest: unknown[]) =>
   hasNulByteInPath(request.url)
     ? new Response("Bad Request", { status: 400 })
-    : (server.fetch as (...args: unknown[]) => Response | Promise<Response>)(
-        request,
-        ...rest
-      );
+    : cachingFetch(request, ...rest);
 
 // The diagnostics wrapper goes outermost, so it sees every request — including
 // the ones the guard above refuses and the ones that arrive before the
 // framework has registered any route (it waits for the database). That is the
 // vantage point a "Bad Gateway" investigation needs; see ./lib/diagnostics.
+// `/health` additionally reports which build is running (version, commit,
+// build time) — see ./lib/http/health-version.
 export default {
   ...server,
-  fetch: withDiagnostics(guardedFetch),
+  fetch: withDiagnostics(withVersionedHealth(guardedFetch)),
   websocket,
 };

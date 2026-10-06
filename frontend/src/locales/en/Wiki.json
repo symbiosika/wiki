@@ -42,7 +42,10 @@
     "pathPlaceholder": "e.g. Manuals/2024",
     "pathColHint": "Added on top of the location. Nest with / — missing levels are created.",
     "removeFile": "Remove file",
-    "fileTypes": "Markdown, HTML, text, PDF, Word",
+    "skippedUnsupported": "Skipped {count} file(s)",
+    "skippedUnsupportedDetail": "The configured parsing service cannot read these file types.",
+    "fileTypes": "Supported: {types}",
+    "fileTypesMore": "{types} and {count} more",
     "titleLabel": "Title (optional)",
     "titlePlaceholder": "Defaults to the file or page name",
     "scopeLabel": "Location",
@@ -60,6 +63,12 @@
       "ocr": "OCR (recognise text in scans/images)",
       "parseImagesInDoc": "Analyse images inside the document",
       "detectTables": "Detect tables"
+    },
+    "flagUnavailable": {
+      "document": "Not needed for office, spreadsheet and text files — their structure is read directly.",
+      "audio": "Not available for audio files.",
+      "video": "Not available for video files.",
+      "other": "Not available for {modality} files."
     },
     "postProcessingLabel": "AI post-processing",
     "postProcessingNone": "None",

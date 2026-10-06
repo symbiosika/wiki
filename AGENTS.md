@@ -33,6 +33,7 @@ Before you report a task as complete:
 2. The tests covering your change ran and are **green** — paste/summarise the result.
 3. Types check for every app you touched.
 4. If something is still red or unverified, say so explicitly. Never imply green.
+5. App changed → version raised in `backend/package.json` + `CHANGELOG.md` entry (section 3).
 
 Suites whose describe-name mentions `needs MISTRAL_API_KEY` (or similar) call
 real AI APIs and fail slowly without keys — that is expected, skip them
@@ -46,7 +47,7 @@ Want to see the change in the real app instead of only in tests? See
 ## 2. Git & PR workflow — read this before every push
 
 **`develop` is the one and only base branch.**
-`main` is production (deployed by CI), `develop` is staging. Feature work is
+`main` is production, `develop` is staging. Feature work is
 never based on, and never merged into, another feature branch.
 
 Rules, in order of how often they get broken:
@@ -81,12 +82,46 @@ Rules, in order of how often they get broken:
 6. **Only create a PR when the user asks for one.** The user often opens PRs
    themselves — pushing the branch is usually the deliverable.
 
-CI (`.github/workflows/build.yml`) builds Docker images for every PR and
-deploys on push to `develop` (staging) / `main` (production).
+CI (`.github/workflows/build.yml`) builds and pushes Docker images for every
+PR and every push (tag `develop` / `latest` for the two base branches). It
+does NOT deploy — rolling out an image happens outside this repo.
 
 ---
 
-## 3. Project Structure
+## 3. Versioning — bump it in every PR that changes the app
+
+The app has ONE version: `"version"` in `backend/package.json` (semver
+`MAJOR.MINOR.PATCH`). It is bundled into the build and reported by
+`GET /health` (with the build `commit` and `builtAt` from CI) and as the MCP
+server's `serverInfo.version`. `curl https://<host>/health` is how you check
+which build is live — never assume a merge got deployed.
+
+Rules:
+
+1. **Every PR that changes the app raises the version exactly once**,
+   relative to `develop` (the CI job "Version bump" enforces it). App =
+   `backend/src`, `backend/drizzle-sql`, the framework submodule,
+   `backend/package.json`, `frontend/src`, `frontend-public/src`,
+   `Dockerfile`. Docs, plans, workflows and test-only changes need no bump.
+2. **Which part:**
+   - **PATCH** — bug fixes, internal refactors, copy/style tweaks, dependency
+     bumps without behaviour change.
+   - **MINOR** — new features: endpoints, MCP tools, UI features, new
+     optional fields, additive migrations.
+   - **MAJOR** — breaking changes: removing/renaming an endpoint, MCP tool or
+     tool argument, incompatible response shapes, migrations that need manual
+     steps or drop data.
+   The highest change in the PR wins; reset the lower parts (1.4.2 → 1.5.0).
+3. **Add a `## [x.y.z] - YYYY-MM-DD` entry to `CHANGELOG.md`** with one line
+   per user-visible change (CI checks the heading exists).
+4. **Conflict with `develop`** (someone else bumped first): merge `develop`,
+   then bump again on top of *its* version — never reuse a version that is
+   already on `develop`.
+5. `frontend/package.json`'s version is not used — do not bump it.
+
+---
+
+## 4. Project Structure
 
 Monorepo:
 - `backend/` – Bun + Hono API server. Framework lives in `backend/framework/` (path alias: `@framework/*` → `./framework/src/*`). OAuth2/OIDC authorization server enabled via `oauth2` in `src/index.ts`. The MCP server is embedded here (`backend/src/mcp/`, mounted at `/mcp` via `mcpServers` in `defineServer`): it lets a chat app use the wiki as its "brain" — identity/discovery/read/write tools over the `knowledge/texts` API, authenticated in-process (OAuth2 access tokens with audience check, framework API tokens, session JWTs).
@@ -98,7 +133,7 @@ Hard rules:
 
 ---
 
-## 4. Skills Index
+## 5. Skills Index
 
 Load the matching skill **before** editing, not after something breaks.
 

@@ -10,8 +10,9 @@
 import { z } from "zod";
 import type { McpToolDefinition } from "@framework/types";
 import { defineTool, writeAnnotations } from "./_define";
-import { callApi, tenantPath, resolveTenantId } from "../api";
+import { callApi, fail, tenantPath, resolveTenantId } from "../api";
 import { pageMetadata } from "./_shapes";
+import { parseImageFileId } from "../../lib/wiki/set-image-description";
 
 export const writeTools: McpToolDefinition[] = [
   defineTool(
@@ -248,6 +249,57 @@ export const writeTools: McpToolDefinition[] = [
           },
         },
       ),
+  ),
+
+  defineTool(
+    {
+      name: "set_image_description",
+      title: "Describe an image on a page",
+      description:
+        "Sets what an image embedded in a page SHOWS — the caption the wiki " +
+        "displays under it and the text every text-only reader (search, " +
+        "embeddings, other assistants) gets instead of the picture. This is " +
+        "the way to fill the `description` an image carries in " +
+        "`embeddedImages`; a markdown alt text or title is NOT a description " +
+        "and is never used as one. Pass the image reference exactly as the " +
+        "page lists it (`/files/db/<bucket>/<uuid>.<ext>` or the bare " +
+        "filename) and one line of plain text describing only what is " +
+        "visible. Writing again replaces the description (it never stacks); " +
+        "an empty `description` removes it. Look at the image with " +
+        "`get_page_image` before you describe it — and offer the description " +
+        "to the user rather than inventing one.",
+      inputSchema: z.object({
+        pageId: z.string().describe("The id of the page embedding the image."),
+        image: z
+          .string()
+          .describe(
+            "The image reference from the page content: the " +
+              "`/files/db/<bucket>/<uuid>.<ext>` path or the bare filename.",
+          ),
+        description: z
+          .string()
+          .describe(
+            "One line describing what the picture shows. Empty string " +
+              "removes the existing description.",
+          ),
+      }),
+      annotations: writeAnnotations({ destructive: true, idempotent: true }),
+    },
+    async (args, ctx) => {
+      const fileId = parseImageFileId(args.image);
+      if (!fileId) {
+        return fail(
+          "Invalid image reference: pass the image filename " +
+            "(`<uuid>.<ext>`) or the full `/files/db/…` path from the page " +
+            "content.",
+        );
+      }
+      return callApi(
+        ctx,
+        tenantPath(ctx, `/wiki/${args.pageId}/images/${fileId}/description`),
+        { method: "PUT", json: { description: args.description } },
+      );
+    },
   ),
 
   defineTool(

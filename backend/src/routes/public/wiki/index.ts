@@ -5,6 +5,7 @@
  *   GET /public/wiki/:tenantId/search?q=...                 hybrid search
  *   GET /public/wiki/:tenantId/pages/:pageId                one page
  *   GET /public/wiki/:tenantId/pages/:pageId/images/:file   an embedded image
+ *   GET /public/wiki/:tenantId/pages/:pageId/files/:file    a download (attachment)
  *
  * Mounted through `customHonoApps` (NOT `customHonoAppsWithAuth`), so no
  * authentication middleware runs. Three properties make that safe:
@@ -43,6 +44,7 @@ import {
   resolvePublicOrganisation,
 } from "../../../lib/wiki/public";
 import { getOrganisationLogo } from "../../../lib/organisation-logo/store";
+import { downloadHeaders } from "../../../lib/wiki/page-files";
 import log from "@framework/lib/log";
 
 /** Longest accepted search query — bounds the work an anonymous caller buys. */
@@ -339,6 +341,48 @@ export default function definePublicWikiRoutes(
         });
       } catch (error) {
         return notFound(c, error, `image ${filename}`);
+      }
+    }
+  );
+
+  /**
+   * GET /public/wiki/:tenantId/pages/:pageId/files/:filename
+   *
+   * A file a published page offers for download. Same guard as the image
+   * route above (published AND referenced by the page), served as an
+   * attachment so nothing a visitor downloads is rendered in this origin.
+   */
+  app.get(
+    `${baseRoute}/pages/:pageId/files/:filename`,
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+        filename: v.pipe(v.string(), v.maxLength(300)),
+      })
+    ),
+    describeRoute({
+      tags: ["public-wiki"],
+      summary: "Download a file offered by a published wiki page",
+      responses: {
+        200: { description: "The file, as an attachment" },
+        404: { description: "Not published, or not referenced by the page" },
+      },
+    }),
+    async (c) => {
+      const { tenantId, pageId, filename } = c.req.valid("param");
+      try {
+        const file = await getPublicWikiPageImage(tenantId, pageId, filename);
+        const bytes = await file.arrayBuffer();
+        return new Response(bytes, {
+          headers: {
+            ...downloadHeaders(file, bytes.byteLength),
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      } catch (error) {
+        return notFound(c, error, `file ${filename}`);
       }
     }
   );

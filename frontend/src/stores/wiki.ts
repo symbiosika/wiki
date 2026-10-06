@@ -49,15 +49,21 @@ export interface WikiImportOptions {
    */
   notifyOnCompletion?: boolean
   /**
-   * Parser pass-through options (extra services). Only meaningful for file
-   * imports whose type the configured parsing service supports; unsupported
-   * flags are ignored by the backend. Discover the available ones via
-   * {@link useWiki().fetchParserCapabilities}.
+   * Ask the parsing service for the images embedded in the document, so they
+   * are stored and referenced from the page. Typed on its own because the
+   * backend acts on the answer rather than just forwarding it.
    */
   extractImages?: boolean
-  parseImagesInDoc?: boolean
-  ocr?: boolean
-  detectTables?: boolean
+  /**
+   * Extra options for the parsing service (`ocr`, `detect_tables`,
+   * `preferred_language`, …), keyed by the service's own wire names and
+   * forwarded as-is. Each is only honoured where the configured service
+   * advertises it for the file's modality; anything else is dropped by the
+   * backend. Discover what is on offer via
+   * {@link useWiki().fetchParserCapabilities} — there is no option list here
+   * to keep in lockstep with the service.
+   */
+  serviceOptions?: Record<string, string | number | boolean>
 }
 
 /** A knowledge-ingest job returned by the import endpoints. */
@@ -70,6 +76,18 @@ export interface WikiImageUpload {
   path: string
   /** ready-to-insert markdown snippet */
   markdown: string
+}
+
+/** A file uploaded for a page's download block (backend lib/wiki/page-files). */
+export interface WikiFileUpload {
+  fileId: string
+  /** auth-protected API path to embed in the block */
+  path: string
+  name: string
+  /** bytes */
+  size: number
+  /** the content type it is stored and served with */
+  mimeType: string
 }
 
 /** Translate a scope into the team/organisation fields the backend expects. */
@@ -213,9 +231,28 @@ export const useWiki = defineStore('wiki', () => {
       )
       state.value.page = page
       state.value.blocks = blocks
+      syncTreeWithPage(tenantId, page)
     } finally {
       state.value.pageLoading = false
     }
+  }
+
+  /**
+   * The tree is loaded once and then only patched by this tab's own edits, so
+   * writes from elsewhere — the MCP server (an AI renaming or moving pages),
+   * the in-app assistant, another user — leave it stale. A freshly loaded page
+   * is the authoritative state: patch its row in place, and reload the whole
+   * tree when the page moved or is missing (structure changed, not just text).
+   */
+  const syncTreeWithPage = (tenantId: string, page: WikiPage) => {
+    if (state.value.treeLoading) return
+    const node = findTreeNode(page.id)
+    if (!node || node.parentId !== page.parentId) {
+      loadTree(tenantId).catch(() => {})
+      return
+    }
+    if (node.title !== page.title) node.title = page.title
+    if (node.pageType !== page.pageType) node.pageType = page.pageType
   }
 
   const closePage = () => {
@@ -334,11 +371,13 @@ export const useWiki = defineStore('wiki', () => {
     if (options.postProcessorNames && options.postProcessorNames.length > 0) {
       form.append('usePostProcessors', options.postProcessorNames.join(','))
     }
-    // Parser pass-through options — only appended when enabled (default off).
+    // Parser options — only appended when set (default off). Everything
+    // beyond image extraction travels as one JSON map under the service's own
+    // option names; the backend gates it against the file's modality.
     if (options.extractImages) form.append('extractImages', 'true')
-    if (options.parseImagesInDoc) form.append('parseImagesInDoc', 'true')
-    if (options.ocr) form.append('ocr', 'true')
-    if (options.detectTables) form.append('detectTables', 'true')
+    if (options.serviceOptions && Object.keys(options.serviceOptions).length) {
+      form.append('serviceOptions', JSON.stringify(options.serviceOptions))
+    }
 
     // Returns the created ingest job; the tree is refreshed once the job
     // finishes (see the notifications store), not here.
@@ -404,6 +443,47 @@ export const useWiki = defineStore('wiki', () => {
       `${api(tenantId)}/knowledge/texts/${pageId}/images`,
       form,
     )
+  }
+
+  /** Upload a file for a page's download block. */
+  const uploadFile = async (
+    tenantId: string,
+    pageId: string,
+    file: File,
+  ): Promise<WikiFileUpload> => {
+    const form = new FormData()
+    form.append('file', file)
+    return await fetcher.postFormData<WikiFileUpload>(
+      `${api(tenantId)}/wiki/${pageId}/files`,
+      form,
+    )
+  }
+
+  /**
+   * Fetch a file a page embeds (through the page-scoped route, so it works with
+   * a bearer token too) and hand it to the browser as a download.
+   */
+  const downloadFile = async (
+    tenantId: string,
+    pageId: string,
+    fileName: string,
+    saveAs: string,
+  ): Promise<void> => {
+    const blob = await fetcher.getBlob(
+      `${api(tenantId)}/wiki/${pageId}/files/${encodeURIComponent(fileName)}`,
+    )
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = saveAs
+      document.body.append(link)
+      link.click()
+      link.remove()
+    } finally {
+      // give the browser a moment to start the download before releasing it
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    }
   }
 
   const saveTitle = async (tenantId: string, pageId: string, title: string) => {
@@ -737,6 +817,8 @@ export const useWiki = defineStore('wiki', () => {
     importUrl,
     fetchParserCapabilities,
     uploadImage,
+    uploadFile,
+    downloadFile,
     saveTitle,
     savePageMeta,
     saveAttributes,

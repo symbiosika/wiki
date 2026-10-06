@@ -75,7 +75,7 @@
       </button>
 
       <main class="min-w-0 flex-1 overflow-y-auto">
-        <RouterView />
+        <RouterView v-if="routeAllowed" />
       </main>
     </div>
 
@@ -104,8 +104,11 @@ import ProtocolDialog from '@/components/protocol/ProtocolDialog.vue'
 import WikiImportDialog from '@/components/wiki/WikiImportDialog.vue'
 import WikiAiChat from '@/components/wiki/WikiAiChat.vue'
 import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '@/stores/layout'
+import { isAdminOnlyRoute } from '@/utils/tenantRoles'
 
 const route = useRoute()
+const router = useRouter()
+const app = useApp()
 const protocol = useProtocol()
 const wiki = useWiki()
 const layout = useLayout()
@@ -163,6 +166,29 @@ const startResize = (e: PointerEvent) => {
 
 const nudgeWidth = (delta: number) =>
   layout.setSidebarWidth(layout.sidebarWidth + delta)
+
+// Organisation settings are for admins/owners only. A plain member who lands
+// on one (old link, typed URL) is sent to their organisation list instead, and
+// the view is not even mounted, so it never fires requests the backend would
+// refuse. The organisation details page is judged by the organisation shown.
+const routeAllowed = computed(() => {
+  if (!isAdminOnlyRoute(route.name)) return true
+  if (app.state.loading) return false
+  const orgId =
+    route.name === 'TenantDetails'
+      ? String(route.params.id ?? '')
+      : tenantId.value
+  return app.isTenantAdmin(orgId)
+})
+
+watch(
+  [routeAllowed, () => app.state.loading],
+  ([allowed, loading]) => {
+    if (allowed || loading || !tenantId.value) return
+    router.replace({ name: 'Tenants', params: { tenantId: tenantId.value } })
+  },
+  { immediate: true },
+)
 
 // navigating (tapping a page in the tree, opening a search result, …)
 // closes the mobile drawer

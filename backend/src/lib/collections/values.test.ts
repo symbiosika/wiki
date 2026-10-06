@@ -59,6 +59,18 @@ describe("collection values", () => {
     expect(() => coerceValue(f, "2026-13-45")).toThrow(CollectionValueError);
   });
 
+  test("a button column stores a web address like a url column", () => {
+    const f = field({ type: "button" });
+    expect(coerceValue(f, "example.com/anmeldung")).toBe(
+      "https://example.com/anmeldung"
+    );
+    expect(coerceValue(f, "")).toBeNull();
+    expect(() => coerceValue(f, "javascript:alert(1)")).toThrow(
+      CollectionValueError
+    );
+    expect(formatValue(f, "https://example.com/")).toBe("https://example.com/");
+  });
+
   test("urls get a scheme when the user omits it", () => {
     const f = field({ type: "url" });
     expect(coerceValue(f, "example.com/x")).toBe("https://example.com/x");

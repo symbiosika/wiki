@@ -18,10 +18,9 @@ const context = { tenantId: TENANT, userId: OWNER };
 /**
  * Ids created by this file, so cleanup removes exactly those.
  *
- * A blanket delete of the tenant's pages would be simpler, but cleanup here is
- * fire-and-forget (see below) and TEST_ORGANISATION_1 is shared with every
- * other suite — a stray tenant-wide delete can land while the next file is
- * building its fixtures.
+ * A blanket delete of the tenant's pages would be simpler, but
+ * TEST_ORGANISATION_1 is shared with every other suite, so cleanup only ever
+ * touches what this file made.
  */
 const created: string[] = [];
 
@@ -63,13 +62,11 @@ describe("movePage — public visibility propagation", () => {
     await initTests();
   });
 
-  // Fire and forget cleanup (Bun runtime limitation — see the backend-testing
-  // skill); scoped to this file's own rows, so a late delete cannot disturb
-  // another suite. `.catch` rather than `.then`: a rejection after the file is
-  // done would otherwise land as an unhandled rejection between test files,
-  // which Bun counts as an error and turns into exit code 1.
-  afterAll(() => {
-    deleteTestPages().catch((error) =>
+  // Awaited: a cleanup that outlives this file runs its query while the next
+  // file sets up, and on the single shared test connection the two interleave
+  // and break that file's initTests(). Scoped to this file's own rows.
+  afterAll(async () => {
+    await deleteTestPages().catch((error) =>
       console.warn("afterAll cleanup failed:", error)
     );
   });

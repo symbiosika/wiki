@@ -10,6 +10,8 @@ import { discoveryTools } from "./discovery";
 import { readTools } from "./read";
 import { writeTools } from "./write";
 import { collectionTools } from "./collections";
+import { aiTestTools } from "./ai-tests";
+import { chatAgentTools } from "./chat-agent";
 import { appUiTools } from "./app-ui";
 
 /** The only tools that change the wiki, with their expected hints. */
@@ -18,10 +20,23 @@ const WRITE_TOOLS: Record<string, { destructive: boolean; idempotent: boolean }>
   append_to_page: { destructive: false, idempotent: false },
   update_page: { destructive: true, idempotent: true },
   edit_page_content: { destructive: true, idempotent: false },
+  // replaces the description instead of stacking a second one, so
+  // repeating the call leaves the page exactly as it is
+  set_image_description: { destructive: true, idempotent: true },
   delete_page: { destructive: true, idempotent: true },
   create_collection_record: { destructive: false, idempotent: false },
   update_collection_record: { destructive: true, idempotent: true },
   delete_collection_record: { destructive: true, idempotent: true },
+  create_ai_test_suite: { destructive: false, idempotent: false },
+  update_ai_test_suite: { destructive: true, idempotent: true },
+  delete_ai_test_suite: { destructive: true, idempotent: true },
+  add_ai_test_questions: { destructive: false, idempotent: false },
+  update_ai_test_question: { destructive: true, idempotent: true },
+  delete_ai_test_questions: { destructive: true, idempotent: true },
+  start_ai_test_run: { destructive: false, idempotent: false },
+  cancel_ai_test_run: { destructive: true, idempotent: true },
+  delete_ai_test_run: { destructive: true, idempotent: true },
+  update_chat_agent_config: { destructive: true, idempotent: true },
 };
 
 const tools = [
@@ -30,6 +45,8 @@ const tools = [
   ...readTools,
   ...writeTools,
   ...collectionTools,
+  ...aiTestTools,
+  ...chatAgentTools,
   ...appUiTools,
 ];
 

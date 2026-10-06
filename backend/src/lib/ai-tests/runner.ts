@@ -25,6 +25,7 @@ import {
   getActiveQuestions,
   type AiTestContext,
 } from "./index";
+import { describeAiError } from "../../ai/errors";
 import { runAgentForQuestion } from "./agent";
 import { judgeAnswer } from "./judge";
 import { scoreQuestion, computeAggregates, type AggregateItem } from "./reward";
@@ -153,6 +154,7 @@ export const executeRun = async (runId: string): Promise<void> => {
       if ((await readRunStatus(runId)) === "cancelled") break;
 
       const startedAt = Date.now();
+      let stage: "agent" | "judge" = "agent";
       try {
         const agentResult = await runAgentForQuestion({
           tenantId: run.tenantId,
@@ -161,6 +163,7 @@ export const executeRun = async (runId: string): Promise<void> => {
           stepLimit: suite.stepLimit,
         });
 
+        stage = "judge";
         const judge = await judgeAnswer({
           question: question.question,
           questionType: question.type,
@@ -248,9 +251,10 @@ export const executeRun = async (runId: string): Promise<void> => {
           hardGate: score.hardGateReasons.length > 0,
         });
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
-        log.error(`AI test question ${question.id} failed: ${message}`);
+        const message = `${stage === "agent" ? "Agent" : "Judge"}: ${describeAiError(error)}`;
+        log.error(
+          `AI test run ${runId}, question ${question.id} failed — ${message}`,
+        );
         await db.insert(aiTestResults).values({
           runId,
           tenantId: run.tenantId,
@@ -294,7 +298,7 @@ export const executeRun = async (runId: string): Promise<void> => {
 
     await finishRun(runId, status, aggregates, null);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeAiError(error);
     log.error(`AI test run ${runId} failed: ${message}`);
     await finishRun(runId, "error", null, message).catch(() => {});
   } finally {

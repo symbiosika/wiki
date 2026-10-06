@@ -12,7 +12,12 @@ import { saveFileToDb } from "@framework/lib/storage/db";
 import { createKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { syncKnowledgeTextBlocks } from "@framework/lib/knowledge/knowledge-text-blocks";
 import { setKnowledgeTextPublicMode } from "@framework/lib/knowledge/knowledge-text-public";
-import { getWikiPageImage, getPublicWikiPageImage } from "./images";
+import {
+  getWikiPageImage,
+  getPublicWikiPageImage,
+  PAGE_IMAGE_BUCKETS,
+} from "./images";
+import { PAGE_IMAGE_CACHE_BUCKETS } from "../http/image-cache-headers";
 
 const TENANT = TEST_ORGANISATION_1.id;
 const OWNER = TEST_ORG1_USER_1.id;
@@ -57,15 +62,21 @@ describe("wiki page images", () => {
     await initTests();
   });
 
-  afterAll(() => {
-    Promise.all([
-      createdPages.length > 0
-        ? getDb().delete(knowledgeText).where(inArray(knowledgeText.id, createdPages))
-        : Promise.resolve(),
-      createdFiles.length > 0
-        ? getDb().delete(files).where(inArray(files.id, createdFiles))
-        : Promise.resolve(),
-    ]).catch(() => {});
+  // Awaited and sequential: a fire-and-forget cleanup outlives this file and
+  // its queries interleave with the next file's initTests() on the shared
+  // single test connection ("bind message supplies 2 parameters, but prepared
+  // statement requires 7"), which failed every test of move.test.ts in CI.
+  afterAll(async () => {
+    try {
+      if (createdPages.length > 0) {
+        await getDb().delete(knowledgeText).where(inArray(knowledgeText.id, createdPages));
+      }
+      if (createdFiles.length > 0) {
+        await getDb().delete(files).where(inArray(files.id, createdFiles));
+      }
+    } catch (error) {
+      console.warn("afterAll cleanup failed:", error);
+    }
   });
 
   test("serves an image uploaded through the block editor (knowledge bucket)", async () => {
@@ -150,5 +161,16 @@ describe("wiki page images", () => {
     await setKnowledgeTextPublicMode(page.id, "public", context);
     const file = await getPublicWikiPageImage(TENANT, page.id, image.filename);
     expect(file.size).toBe(PNG_BYTES.byteLength);
+  });
+});
+
+describe("page image buckets", () => {
+  test("the cache-header wrapper names exactly the buckets a page reads from", () => {
+    // ../http/image-cache-headers cannot import this module (it would open
+    // the database on import), so it spells the buckets out — this keeps the
+    // two lists from drifting apart.
+    expect([...PAGE_IMAGE_CACHE_BUCKETS].sort()).toEqual(
+      [...PAGE_IMAGE_BUCKETS].sort()
+    );
   });
 });

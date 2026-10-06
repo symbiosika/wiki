@@ -172,7 +172,16 @@
               class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
             >
               <IconAlert class="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{{ $t('Ask.error') }}</span>
+              <span class="flex-1">{{
+                rateLimited ? $t('Ask.errorRateLimited') : $t('Ask.error')
+              }}</span>
+              <button
+                type="button"
+                class="shrink-0 font-medium underline underline-offset-2 hover:no-underline"
+                @click="retry"
+              >
+                {{ $t('Ask.retry') }}
+              </button>
             </div>
           </div>
         </div>
@@ -301,6 +310,8 @@ const isStreaming = computed(
   () => status.value === 'streaming' || status.value === 'submitted',
 )
 const chatError = computed(() => Boolean(chat.value?.error))
+/** The model was busy (upstream rate limit, see backend describeStreamError). */
+const rateLimited = computed(() => chat.value?.error?.message === 'rate_limited')
 
 /** A request is in flight but nothing visible has arrived for it yet. */
 const isThinking = computed(() => {
@@ -471,6 +482,19 @@ const submitText = async (text: string) => {
   )
   input.value = ''
   nextTick(autoGrow)
+}
+
+/**
+ * Ask the failed question again in place — no reload, no retyping. The SDK
+ * drops the broken answer and resends the history up to the question.
+ */
+const retry = () => {
+  const instance = chat.value
+  if (!instance || isStreaming.value) return
+  const sessionId = activeSessionId.value
+  void instance.regenerate({
+    body: { mode: 'read', ...(sessionId ? { sessionId } : {}) },
+  })
 }
 
 const handleSubmit = () => {

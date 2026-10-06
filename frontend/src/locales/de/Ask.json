@@ -17,6 +17,8 @@
   "loadError": "Die Unterhaltung konnte nicht geladen werden.",
   "sessionCreateError": "Die Unterhaltung wird nicht gespeichert – die Antwort kommt trotzdem.",
   "error": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+  "errorRateLimited": "Das KI-Modell ist gerade überlastet. Bitte versuchen Sie es gleich noch einmal.",
+  "retry": "Erneut versuchen",
   "disclaimer": "Antworten stammen aus Ihrem Wiki und können Fehler enthalten.",
   "suggestions": [
     "Wie beantrage ich Urlaub?",

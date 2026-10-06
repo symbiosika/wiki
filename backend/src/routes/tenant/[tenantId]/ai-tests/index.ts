@@ -169,10 +169,11 @@ export default function defineAiTestRoutes(
       const { tenantId, suiteId } = c.req.valid("param");
       const suite = await getSuite({ tenantId: tenantId }, suiteId);
       if (!suite) throw new HTTPException(404, { message: "Suite not found" });
-      const [questions, runs] = await Promise.all([
-        listQuestions(suiteId),
-        listRuns(suiteId),
-      ]);
+      // sequential on purpose: two tiny reads, and the embedded PGlite test
+      // DB (one Postgres session behind the pool) garbles interleaved
+      // prepared statements from concurrent connections
+      const questions = await listQuestions(suiteId);
+      const runs = await listRuns(suiteId);
       return c.json({ suite, questions, runs });
     },
   );

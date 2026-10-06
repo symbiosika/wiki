@@ -8,9 +8,10 @@
  * in process, no network, all route-level permission checks intact.
  *
  * The server previously ran as a standalone process (../../../mcp-server,
- * reachable on its own domain). Everything a client sees — server name,
- * version, instructions, tool names and schemas, scopes — is kept identical,
- * so existing connectors keep working once the old domain redirects here.
+ * reachable on its own domain). Its wire surface — server name, tool names
+ * and schemas, scopes — is kept compatible, so existing connectors keep
+ * working once the old domain redirects here. The server version is the app
+ * version (../version.ts).
  *
  * Every tool carries MCP tool annotations (readOnlyHint, destructiveHint,
  * idempotentHint, openWorldHint) so clients can tell reading apart from
@@ -20,11 +21,14 @@
 
 import type { McpServerDefinition } from "@framework/types";
 import { SERVER_INSTRUCTIONS } from "./instructions";
+import { APP_VERSION } from "../version";
 import { identityTools } from "./tools/identity";
 import { discoveryTools } from "./tools/discovery";
 import { readTools } from "./tools/read";
 import { writeTools } from "./tools/write";
 import { collectionTools } from "./tools/collections";
+import { aiTestTools } from "./tools/ai-tests";
+import { chatAgentTools } from "./tools/chat-agent";
 import { appUiTools, appResources } from "./tools/app-ui";
 
 /**
@@ -47,7 +51,9 @@ export const SCOPES_SUPPORTED = [
 export const wikiMcpServer: McpServerDefinition = {
   path: "/mcp",
   name: "symbiosika-wiki-mcp",
-  version: "0.3.0",
+  // the app version: a new tool set shows up as a new server version, so
+  // clients (and people debugging them) can tell which build they talk to
+  version: APP_VERSION,
   instructions: SERVER_INSTRUCTIONS,
   scopesSupported: SCOPES_SUPPORTED,
   tools: [
@@ -56,6 +62,8 @@ export const wikiMcpServer: McpServerDefinition = {
     ...readTools,
     ...writeTools,
     ...collectionTools,
+    ...aiTestTools,
+    ...chatAgentTools,
     ...appUiTools,
   ],
   resources: appResources,

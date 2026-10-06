@@ -79,7 +79,8 @@
     "select": "Auswahl",
     "multiSelect": "Mehrfachauswahl",
     "url": "Link",
-    "email": "E-Mail"
+    "email": "E-Mail",
+    "button": "Button"
   },
   "orStartTable": "… oder",
   "startTable": "eine Tabelle daraus machen",
@@ -88,5 +89,6 @@
     "csv": "Als CSV herunterladen ({count})",
     "markdown": "Als Markdown kopieren ({count})",
     "copyFailed": "Kopieren in die Zwischenablage nicht möglich."
-  }
+  },
+  "buttonLabel": "Hier klicken"
 }

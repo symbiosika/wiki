@@ -22,8 +22,8 @@ jobs:
   # CHANGE DETECTION – only build the images that actually changed.
   #   app → main app image (backend + bundled frontend, incl. embedded MCP)
   # On a push to main or develop we force a full rebuild (a release/merge can
-  # leave the paths-filter diff empty, and merging to these branches is a
-  # deliberate release/staging deploy).
+  # leave the paths-filter diff empty, and the images of these branches are
+  # the ones that get deployed — outside this pipeline).
   # ---------------------------------------------------------------------------
   detect-changes:
     runs-on: ubuntu-latest
@@ -244,6 +244,10 @@ jobs:
           username: ${{ secrets.SYMBIOSIKA_AZURECR_IO_USER }}
           password: ${{ secrets.SYMBIOSIKA_AZURECR_IO_TOKEN }}
 
+      - name: Build timestamp
+        id: build-time
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push main app image
         uses: docker/build-push-action@v6
         with:
@@ -253,62 +257,9 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ needs.detect-changes.outputs.image_tag }}
             ${{ env.REGISTRY }}/${{ github.event.repository.name }}:${{ github.sha }}
+          # reported by GET /health (backend/src/version.ts)
+          build-args: |
+            APP_COMMIT=${{ github.sha }}
+            APP_BUILT_AT=${{ steps.build-time.outputs.at }}
           cache-from: type=gha,scope=${{ github.event.repository.name }}-app
           cache-to: type=gha,mode=max,scope=${{ github.event.repository.name }}-app
-
-  # ---------------------------------------------------------------------------
-  # COOLIFY DEPLOY TRIGGERS
-  # After the images are pushed, ask Coolify to redeploy. Each job runs only
-  # for its own branch (and never for pull_request builds, whose images are
-  # tagged pr_<n> and not meant to be deployed).
-  #
-  # Config lives in repository settings, NOT in this file:
-  #   Secrets (Settings → Secrets and variables → Actions → Secrets):
-  #     COOLIFY_BASE_URL, COOLIFY_UUID_PROD, COOLIFY_UUID_STAGING,
-  #     COOLIFY_DEPLOY_TOKEN
-  # If they are not set, the job self-skips with a clear log line instead of
-  # failing — so the build stays green until deploys are configured.
-  # ---------------------------------------------------------------------------
-  deploy-prod:
-    needs: [build-docker-app]
-    if: github.event_name != 'pull_request' && github.ref_name == 'main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Coolify deploy (production)
-        continue-on-error: true
-        env:
-          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
-          COOLIFY_UUID: ${{ secrets.COOLIFY_UUID_PROD }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-        run: |
-          if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
-            echo "Coolify production deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_PROD / COOLIFY_DEPLOY_TOKEN missing) — skipping."
-            exit 0
-          fi
-          curl -sS -X GET \
-            --max-time 2 --retry 2 --retry-all-errors \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
-            || true
-
-  deploy-staging:
-    needs: [build-docker-app]
-    if: github.event_name != 'pull_request' && github.ref_name == 'develop'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Coolify deploy (staging)
-        continue-on-error: true
-        env:
-          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
-          COOLIFY_UUID: ${{ secrets.COOLIFY_UUID_STAGING }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
-        run: |
-          if [ -z "$COOLIFY_BASE_URL" ] || [ -z "$COOLIFY_UUID" ] || [ -z "$COOLIFY_TOKEN" ]; then
-            echo "Coolify staging deploy not configured (COOLIFY_BASE_URL / COOLIFY_UUID_STAGING / COOLIFY_DEPLOY_TOKEN missing) — skipping."
-            exit 0
-          fi
-          curl -sS -X GET \
-            --max-time 2 --retry 2 --retry-all-errors \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "${COOLIFY_BASE_URL}/api/v1/deploy?uuid=${COOLIFY_UUID}&force=false" \
-            || true

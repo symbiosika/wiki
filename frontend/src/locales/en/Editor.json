@@ -28,7 +28,11 @@
     "image": "Image",
     "imageDescription": "Upload and embed an image",
     "reference": "Page reference",
-    "referenceDescription": "Link to another wiki page"
+    "referenceDescription": "Link to another wiki page",
+    "button": "Button",
+    "buttonDescription": "Insert a link as a prominent button",
+    "download": "Download",
+    "downloadDescription": "Upload a file and offer it as a download card"
   },
   "bubble": {
     "link": "Link",
@@ -48,7 +52,8 @@
     "description": "Description",
     "descriptionLabel": "Image description",
     "descriptionHint": "Describe what the image shows — folded away for readers, readable for search and AI",
-    "descriptionPlaceholder": "What does this image show?"
+    "descriptionPlaceholder": "What does this image show?",
+    "descriptionEditHint": "Enter saves · Esc cancels · stored as a single line"
   },
   "imageUploadError": "Image upload failed. Please try again.",
   "markdown": {
@@ -59,5 +64,40 @@
     "placeholder": "# Heading\n\n- List item\n- Another item\n\n**Bold** and `code`…",
     "preview": "Preview",
     "insert": "Insert"
+  },
+  "button": {
+    "insertTitle": "Insert button",
+    "editTitle": "Edit button",
+    "text": "Label",
+    "textPlaceholder": "e.g. Sign up now",
+    "url": "Link (URL)",
+    "urlPlaceholder": "https://…",
+    "style": "Style",
+    "align": "Alignment",
+    "styles": {
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "outline": "Outline"
+    },
+    "invalidUrl": "Please enter a valid web address (https://…, mailto: or /path).",
+    "insert": "Insert",
+    "save": "Save",
+    "remove": "Remove button",
+    "editHint": "Click to edit",
+    "image": "Preview image (optional)",
+    "imageAdd": "Upload image",
+    "imageReplace": "Replace image",
+    "imageRemove": "Remove image",
+    "imageHint": "With an image the button becomes a card with preview, link and “Copy URL” – e.g. for videos.",
+    "open": "Open",
+    "copyUrl": "Copy URL",
+    "copied": "Copied"
+  },
+  "download": {
+    "download": "Download",
+    "uploading": "Uploading…",
+    "uploadError": "File upload failed. Please try again.",
+    "tooLarge": "The file is too large (maximum {max}).",
+    "downloadError": "The file could not be downloaded."
   }
 }

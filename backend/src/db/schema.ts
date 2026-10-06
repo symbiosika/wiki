@@ -748,6 +748,10 @@ export type ChatMessageInsert = typeof chatMessages.$inferInsert;
  * Column types. Deliberately small — every entry here is a UI editor, a
  * validator, a filter and a markdown renderer that has to exist and be tested.
  * Relation types (link to a wiki page / a user) are the intended next step.
+ *
+ * "button" stores a web address exactly like "url"; the difference is purely
+ * how it is shown — a button with a fixed, translated label instead of the
+ * address itself.
  */
 export const COLLECTION_FIELD_TYPES = [
   "text",
@@ -759,6 +763,7 @@ export const COLLECTION_FIELD_TYPES = [
   "multiSelect",
   "url",
   "email",
+  "button",
 ] as const;
 
 export type CollectionFieldType = (typeof COLLECTION_FIELD_TYPES)[number];

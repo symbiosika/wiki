@@ -42,6 +42,20 @@ export const STANDARD_AI_MODEL = openrouter.chatModel(AI_MODEL_ID);
 export const getModel = (modelId?: string) =>
   modelId ? openrouter.chatModel(modelId) : STANDARD_AI_MODEL;
 
+/** What the settings page shows about the AI connection. Never the key itself. */
+export interface AiStatus {
+  provider: "openrouter";
+  apiKeyConfigured: boolean;
+  /** Model used by the chat and the AI-test agent (and the judge by default). */
+  modelId: string;
+}
+
+export const getAiStatus = (): AiStatus => ({
+  provider: "openrouter",
+  apiKeyConfigured: Boolean(OPENROUTER_API_KEY),
+  modelId: AI_MODEL_ID,
+});
+
 /** Throws a clear error if the OpenRouter key is missing. */
 export const assertOpenRouterConfigured = (): void => {
   if (!OPENROUTER_API_KEY) {

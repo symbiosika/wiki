@@ -15,6 +15,7 @@ import { initTests, TEST_ORGANISATION_1 } from "@framework/test/init.test";
 import { getDb } from "@framework/lib/db/db-connection";
 import { knowledgeText } from "@framework/lib/db/schema/knowledge";
 import { defineMcpRoutes } from "@framework/lib/mcp";
+import { APP_VERSION } from "../version";
 import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
 import defineKnowledgeTextsRoutes from "@framework/routes/tenant/[tenantId]/knowledge/texts";
 import defineWikiRoutes from "../routes/tenant/[tenantId]/wiki";
@@ -57,6 +58,7 @@ const EXPECTED_TOOLS = [
   "update_page",
   "append_to_page",
   "edit_page_content",
+  "set_image_description",
   "delete_page",
   // collections
   "list_collections",
@@ -65,6 +67,24 @@ const EXPECTED_TOOLS = [
   "create_collection_record",
   "update_collection_record",
   "delete_collection_record",
+  // AI tests
+  "list_ai_test_suites",
+  "get_ai_test_suite",
+  "create_ai_test_suite",
+  "update_ai_test_suite",
+  "delete_ai_test_suite",
+  "add_ai_test_questions",
+  "update_ai_test_question",
+  "delete_ai_test_questions",
+  "start_ai_test_run",
+  "list_ai_test_runs",
+  "get_ai_test_run",
+  "compare_ai_test_runs",
+  "cancel_ai_test_run",
+  "delete_ai_test_run",
+  // chat agent
+  "get_chat_agent_config",
+  "update_chat_agent_config",
   // app UI
   "view_page",
   "view_image",
@@ -160,7 +180,7 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
     expect(status).toBe(200);
     expect(json.result.protocolVersion).toBe("2025-06-18");
     expect(json.result.serverInfo.name).toBe("symbiosika-wiki-mcp");
-    expect(json.result.serverInfo.version).toBe("0.3.0");
+    expect(json.result.serverInfo.version).toBe(APP_VERSION);
     expect(json.result.instructions).toContain("Company Wiki");
     expect(json.result.capabilities.resources).toBeDefined();
   });
@@ -230,6 +250,52 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
 
     const gone = await callTool("get_page", { pageId });
     expect(gone.isError).toBe(true);
+  });
+
+  test("set_image_description fills the description of an embedded image", async () => {
+    const ref = "/files/db/knowledge/33333333-3333-3333-3333-333333333333.png";
+    const created = await callTool("create_page", {
+      title: "MCP image page",
+      content: `# Technikmodul\n\n![](${ref})`,
+    });
+    const pageId = created.structuredContent.id as string;
+
+    // an image nobody described: the reference is listed, the description is not
+    const before = await callTool("get_page", { pageId });
+    expect(before.structuredContent.embeddedImages).toEqual([{ ref }]);
+
+    const set = await callTool("set_image_description", {
+      pageId,
+      image: ref,
+      description: "Klemmleiste mit zwei Ausgängen",
+    });
+    expect(set.isError).toBeUndefined();
+    expect(set.structuredContent.changed).toBe(true);
+
+    const after = await callTool("get_page", { pageId });
+    expect(after.structuredContent.embeddedImages).toEqual([
+      { ref, description: "Klemmleiste mit zwei Ausgängen" },
+    ]);
+
+    // an empty description removes it again
+    const cleared = await callTool("set_image_description", {
+      pageId,
+      image: ref,
+      description: "",
+    });
+    expect(cleared.isError).toBeUndefined();
+    const reread = await callTool("get_page", { pageId });
+    expect(reread.structuredContent.embeddedImages).toEqual([{ ref }]);
+
+    // an image the page does not embed is an error, not a silent no-op
+    const missing = await callTool("set_image_description", {
+      pageId,
+      image: "/files/db/knowledge/44444444-4444-4444-4444-444444444444.png",
+      description: "Fremdes Bild",
+    });
+    expect(missing.isError).toBe(true);
+
+    await callTool("delete_page", { pageId });
   });
 
   test("list_collections resolves through the app's collections routes", async () => {

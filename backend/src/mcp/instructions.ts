@@ -51,7 +51,10 @@ answer depends on a detail (a value on a schematic, a label on a photo), still
 load the image with get_page_image and look. An image with no description is
 knowledge you have not read yet — say so, or look at it. When you learn what an
 undescribed picture shows and the description would help the next reader, offer
-to add one (edit_page_content: put the marker on the line below the image).
+to add one — set_image_description (pageId + the image's \`ref\` + one line of
+plain text) writes it where the wiki keeps it, replaces an existing description
+rather than stacking a second one, and removes it when the text is empty. Never
+hand-write the marker: an alt text or a markdown title is NOT a description.
 
 Page links: every object that identifies a page (search hits, tree nodes,
 pages you read or create, link targets, outline headings) carries \`url\`, the
@@ -79,4 +82,20 @@ private personal page; set teamId or organisation:true deliberately. Curate
 with update_page facets (pageType/status from get_wiki_config, validUntil,
 supersedesId). Confirm with the user before delete_page or before publishing
 personal notes org-wide.
+
+AI tests (evaluating the wiki's own chat agent): a suite is a question set;
+a run puts every active question to the agent and a judge scores the answers.
+Build with create_ai_test_suite + add_ai_test_questions (give expectedPageIds
+from real search results and 2–5 expectedFacts where you can; include
+not-in-wiki questions). start_ai_test_run, then get_ai_test_run with
+waitSeconds until it is no longer running. Evaluate from get_ai_test_run
+(\`weakest\`, verdicts filter, detail=full for one question's tool trajectory)
+and compare_ai_test_runs for regressions; report pass rate, the failing
+questions and WHY (hard gates, unbacked claims, missed facts). Runs cost
+tokens — do not start them in a loop without the user's go.
+
+The chat agent's custom system prompt (org-wide, appended to its built-in
+prompt): get_chat_agent_config reads it, update_chat_agent_config replaces
+the whole text (empty clears it). Show the user the new text and get their
+confirmation before saving.
 `.trim();
