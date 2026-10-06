@@ -25,7 +25,7 @@
     <DataTable
       v-if="!isLoading"
       :value="app.state.tenants"
-      class="cursor-pointer"
+      :row-class="rowClass"
       @row-click="navigateToTenant"
     >
       <Column field="name" :header="$t('UserTenants.name')">
@@ -127,7 +127,12 @@ const reload = async () => {
 
 onMounted(reload)
 
+// Only admins/owners open an organisation's details (members, settings).
+const rowClass = (data: { id: string }) =>
+  app.isTenantAdmin(data.id) ? 'cursor-pointer' : ''
+
 const navigateToTenant = (event: { data: { id: string } }) => {
+  if (!app.isTenantAdmin(event.data.id)) return
   router.push({
     name: 'TenantDetails',
     params: { tenantId: route.params.tenantId, id: event.data.id },

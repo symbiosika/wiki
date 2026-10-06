@@ -19,6 +19,14 @@ version is visible at `GET /health` and as the MCP `serverInfo.version`.
   `/health` answers) instead of crashing the server before all routes are
   registered.
 
+## [0.13.1] - 2026-10-06
+
+- Settings: plain organisation members now only see their own organisations
+  and teams. The member list, organisation details and the tabs Chat-Agent,
+  Dokument-Tags, Agenten-Anweisungen, KI-Nachbearbeitung, OAuth-Apps, Jobs and
+  Validierungsläufe are shown to admins and owners only; members who open one
+  of these pages directly are sent back to their organisation list.
+
 ## [0.13.0] - 2026-10-05
 
 - Editor: new block "Button" (`/button`) — a link shown as a button with its

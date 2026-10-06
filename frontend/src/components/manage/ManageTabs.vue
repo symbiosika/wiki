@@ -20,11 +20,15 @@
 </template>
 
 <script setup lang="ts">
+import { isAdminOnlyRoute } from '@/utils/tenantRoles'
+
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
-const tabs = computed(() => [
+const app = useApp()
+
+const allTabs = computed(() => [
   { label: t('UserTenants.tabTitle'), routeName: 'Tenants' },
   { label: t('UserTeams.tabTitle'), routeName: 'Teams' },
   { label: t('Chat.config.tabTitle'), routeName: 'ChatAgent' },
@@ -38,6 +42,14 @@ const tabs = computed(() => [
   { label: t('Jobs.tabTitle'), routeName: 'Jobs' },
   { label: t('AiTests.tabTitle'), routeName: 'AiTests' },
 ])
+
+// Members only see their own organisations and teams; the rest configures the
+// organisation and is reserved for admins/owners.
+const tabs = computed(() =>
+  app.isTenantAdmin(String(route.params.tenantId ?? ''))
+    ? allTabs.value
+    : allTabs.value.filter((tab) => !isAdminOnlyRoute(tab.routeName)),
+)
 
 // Route families that belong to a tab but don't share its name prefix, so the
 // tab still lights up on nested detail routes (e.g. the URL-import job editor).
