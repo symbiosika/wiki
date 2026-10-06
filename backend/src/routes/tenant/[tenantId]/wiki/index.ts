@@ -22,6 +22,11 @@ import { movePage } from "../../../../lib/wiki/move";
 import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL } from "../../../../lib/http/image-cache-headers";
 import { setWikiImageDescription } from "../../../../lib/wiki/set-image-description";
+import {
+  PageFileError,
+  downloadHeaders,
+  uploadWikiPageFile,
+} from "../../../../lib/wiki/page-files";
 import { upgradeWebSocket } from "../../../../lib/ws/bun-ws";
 import {
   wikiPresence,
@@ -233,6 +238,135 @@ export default function defineWikiRoutes(
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to load image";
+        return c.json({ success: false, error: message }, 404);
+      }
+    }
+  );
+
+  /**
+   * POST /tenant/:tenantId/wiki/:pageId/files   (multipart, field "file")
+   *
+   * Upload a file for the page's "download" block. Any file type, up to
+   * MAX_PAGE_FILE_SIZE_BYTES; the caller must be able to write the page. The
+   * upload expires unless a following page save references the returned path
+   * (see lib/wiki/page-files.ts for storage, limit and content-type rules).
+   */
+  app.post(
+    `${baseRoute}/:pageId/files`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Upload a file attachment (download block) for a wiki page",
+      requestBody: {
+        content: {
+          "multipart/form-data": {
+            schema: v.object({ file: v.any() }),
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "fileId, path to embed, name, size and mimeType",
+          content: {
+            "application/json": {
+              schema: resolver(
+                v.object({
+                  fileId: v.string(),
+                  path: v.string(),
+                  name: v.string(),
+                  size: v.number(),
+                  mimeType: v.string(),
+                })
+              ),
+            },
+          },
+        },
+      },
+    }),
+    validateScope("knowledge:write"),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId } = c.req.valid("param");
+      const userId = c.get("usersId");
+      try {
+        const form = await c.req.formData();
+        const file = form.get("file");
+        if (!(file instanceof File)) {
+          return c.json(
+            { success: false, error: "Missing 'file' form field" },
+            400
+          );
+        }
+        const result = await uploadWikiPageFile(pageId, file, {
+          tenantId,
+          userId,
+        });
+        return c.json(result);
+      } catch (error) {
+        if (error instanceof PageFileError) {
+          return c.json({ success: false, error: error.message }, error.status);
+        }
+        const message =
+          error instanceof Error ? error.message : "Failed to upload the file";
+        const notFound =
+          message.includes("not found") || message.includes("access denied");
+        return c.json({ success: false, error: message }, notFound ? 404 : 400);
+      }
+    }
+  );
+
+  /**
+   * GET /tenant/:tenantId/wiki/:pageId/files/:filename
+   *
+   * Download a file a page embeds (download block, or an image). Same checks
+   * as the image route above — page visible, file referenced by the page —
+   * but always served as an attachment with its original name, never inline.
+   */
+  app.get(
+    `${baseRoute}/:pageId/files/:filename`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Download a file embedded in a wiki page (page-scoped access)",
+      responses: {
+        200: { description: "The file bytes, as an attachment" },
+      },
+    }),
+    validateScope("knowledge:read"),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+        filename: v.string(),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId, filename } = c.req.valid("param");
+      const userId = c.get("usersId");
+      try {
+        const file = await getWikiPageImage(tenantId, userId, pageId, filename);
+        const bytes = await file.arrayBuffer();
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            ...downloadHeaders(file, bytes.byteLength),
+            "Cache-Control": IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL,
+          },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load file";
         return c.json({ success: false, error: message }, 404);
       }
     }

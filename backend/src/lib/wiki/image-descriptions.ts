@@ -82,9 +82,22 @@ const imageKey = (src: string): string => {
   return (match?.[0] ?? src).trim().toLowerCase();
 };
 
+/**
+ * Extensions of a picture. The knowledge bucket also holds the files of a
+ * page's download blocks (a PDF, a spreadsheet, …) under the very same path
+ * shape; those are not images, and listing them as such would send a model to
+ * `get_page_image` for a zip file.
+ */
+const IMAGE_EXTENSION_RE =
+  /\.(?:png|jpe?g|gif|webp|avif|bmp|svg|tiff?|ico|heic|heif)$/i;
+
 /** All unique page-image references embedded in a piece of content. */
 export const extractEmbeddedImageRefs = (content: string): string[] => [
-  ...new Set(content.match(IMAGE_REF_RE) ?? []),
+  ...new Set(
+    (content.match(IMAGE_REF_RE) ?? []).filter((ref) =>
+      IMAGE_EXTENSION_RE.test(ref),
+    ),
+  ),
 ];
 
 /**

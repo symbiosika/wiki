@@ -79,7 +79,8 @@
     "select": "Select",
     "multiSelect": "Multi-select",
     "url": "Link",
-    "email": "Email"
+    "email": "Email",
+    "button": "Button"
   },
   "orStartTable": "… or",
   "startTable": "turn this into a table",
@@ -88,5 +89,6 @@
     "csv": "Download as CSV ({count})",
     "markdown": "Copy as Markdown ({count})",
     "copyFailed": "Could not copy to the clipboard."
-  }
+  },
+  "buttonLabel": "Click here"
 }

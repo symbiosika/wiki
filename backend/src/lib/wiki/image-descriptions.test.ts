@@ -74,6 +74,14 @@ describe("extractPageImages", () => {
     expect(extractEmbeddedImageRefs("kein Bild")).toEqual([]);
   });
 
+  it("does not list a download-block file as an image", () => {
+    const pdf =
+      "/files/db/knowledge/0b0c5a8e-1111-4a2b-9c3d-123456789abc.pdf";
+    expect(extractEmbeddedImageRefs(`[Preisliste.pdf](${pdf})\n\n![a](${REF})`)).toEqual([
+      REF,
+    ]);
+  });
+
   it("ignores a file link that is not a page image", () => {
     expect(extractPageImages("![x](/files/db/chat/abc.png)")).toEqual([]);
   });

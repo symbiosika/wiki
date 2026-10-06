@@ -78,6 +78,18 @@ export interface WikiImageUpload {
   markdown: string
 }
 
+/** A file uploaded for a page's download block (backend lib/wiki/page-files). */
+export interface WikiFileUpload {
+  fileId: string
+  /** auth-protected API path to embed in the block */
+  path: string
+  name: string
+  /** bytes */
+  size: number
+  /** the content type it is stored and served with */
+  mimeType: string
+}
+
 /** Translate a scope into the team/organisation fields the backend expects. */
 const scopeFields = (
   scope: WikiScope,
@@ -433,6 +445,47 @@ export const useWiki = defineStore('wiki', () => {
     )
   }
 
+  /** Upload a file for a page's download block. */
+  const uploadFile = async (
+    tenantId: string,
+    pageId: string,
+    file: File,
+  ): Promise<WikiFileUpload> => {
+    const form = new FormData()
+    form.append('file', file)
+    return await fetcher.postFormData<WikiFileUpload>(
+      `${api(tenantId)}/wiki/${pageId}/files`,
+      form,
+    )
+  }
+
+  /**
+   * Fetch a file a page embeds (through the page-scoped route, so it works with
+   * a bearer token too) and hand it to the browser as a download.
+   */
+  const downloadFile = async (
+    tenantId: string,
+    pageId: string,
+    fileName: string,
+    saveAs: string,
+  ): Promise<void> => {
+    const blob = await fetcher.getBlob(
+      `${api(tenantId)}/wiki/${pageId}/files/${encodeURIComponent(fileName)}`,
+    )
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = saveAs
+      document.body.append(link)
+      link.click()
+      link.remove()
+    } finally {
+      // give the browser a moment to start the download before releasing it
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    }
+  }
+
   const saveTitle = async (tenantId: string, pageId: string, title: string) => {
     state.value.saving = true
     state.value.saveError = null
@@ -764,6 +817,8 @@ export const useWiki = defineStore('wiki', () => {
     importUrl,
     fetchParserCapabilities,
     uploadImage,
+    uploadFile,
+    downloadFile,
     saveTitle,
     savePageMeta,
     saveAttributes,

@@ -28,12 +28,28 @@ import {
   buildImageCaption,
   normalizeImageDescription,
 } from '@/components/editor/wikiImage'
+import {
+  BUTTON_TYPE,
+  buildButtonCard,
+  type ButtonCardLabels,
+} from '@/components/editor/wikiButton'
+import {
+  DOWNLOAD_TYPE,
+  buildDownloadCard,
+  readDownloadAttrs,
+} from '@/components/editor/wikiDownload'
 
 const BLOCK_ID_ATTR = 'data-block-id'
 
 export interface WikiReaderOptions {
   /** Label for the folded image-description caption (needs i18n). */
   imageDescriptionLabel: string
+  /** Label of a download card's button (needs i18n). */
+  downloadLabel?: string
+  /** Locale for file sizes. */
+  locale?: string
+  /** Labels of a button's link card (a button with a preview image). */
+  buttonCardLabels?: ButtonCardLabels
 }
 
 /**
@@ -96,6 +112,8 @@ const renderTaskLists = (root: DocumentFragment): void => {
  */
 const renderImages = (root: DocumentFragment, label: string): void => {
   for (const image of Array.from(root.querySelectorAll('img'))) {
+    // a link card's preview is part of the card, not a page picture
+    if (image.closest('.wiki-link-card')) continue
     const figure = document.createElement('figure')
     figure.className = 'wiki-image'
     // A long page can carry hundreds of images; fetching and decoding all of
@@ -110,6 +128,69 @@ const renderImages = (root: DocumentFragment, label: string): void => {
       image.getAttribute(IMAGE_DESCRIPTION_ATTRIBUTE),
     )
     if (description) figure.append(buildImageCaption(description, label))
+  }
+}
+
+/**
+ * Turn every button that carries a preview image into the link card the
+ * editor's node view builds (see components/editor/wikiButton). A button
+ * without an image needs nothing: its stored markup is the button.
+ *
+ * Runs before `renderImages`, which leaves the card's own image alone.
+ */
+const renderButtonCards = (
+  root: DocumentFragment,
+  options: WikiReaderOptions,
+): void => {
+  for (const block of Array.from(
+    root.querySelectorAll(`div[data-type="${BUTTON_TYPE}"]`),
+  )) {
+    const image = block.querySelector('img')?.getAttribute('src')
+    const link = block.querySelector('a')
+    if (!image || !link) continue
+    const variant = block.getAttribute('data-variant')
+    const align = block.getAttribute('data-align')
+    const card = buildButtonCard(
+      {
+        href: link.getAttribute('href') ?? '',
+        text: (link.textContent ?? '').trim(),
+        variant: (variant === 'secondary' || variant === 'outline'
+          ? variant
+          : 'primary'),
+        align: align === 'center' || align === 'right' ? align : 'left',
+        image,
+      },
+      options.buttonCardLabels,
+    )
+    const blockId = block.getAttribute(BLOCK_ID_ATTR)
+    if (blockId) card.setAttribute(BLOCK_ID_ATTR, blockId)
+    block.replaceWith(card)
+  }
+}
+
+/**
+ * Replace every stored download block with the card the editor's node view
+ * builds (see components/editor/wikiDownload). The block id moves onto the
+ * card, which takes the block's place among the top-level children.
+ *
+ * Runs after `renderImages`, so the card's own preview image is not wrapped
+ * in an image figure.
+ */
+const renderDownloads = (
+  root: DocumentFragment,
+  options: WikiReaderOptions,
+): void => {
+  for (const block of Array.from(
+    root.querySelectorAll(`div[data-type="${DOWNLOAD_TYPE}"]`),
+  )) {
+    const card = buildDownloadCard(readDownloadAttrs(block), {
+      download: options.downloadLabel ?? 'Download',
+      locale: options.locale ?? 'de',
+    })
+    card.removeAttribute('contenteditable')
+    const blockId = block.getAttribute(BLOCK_ID_ATTR)
+    if (blockId) card.setAttribute(BLOCK_ID_ATTR, blockId)
+    block.replaceWith(card)
   }
 }
 
@@ -173,7 +254,9 @@ export const renderBlocksForReading = (
 
   renderWikiLinks(template.content)
   renderTaskLists(template.content)
+  renderButtonCards(template.content, options)
   renderImages(template.content, options.imageDescriptionLabel)
+  renderDownloads(template.content, options)
   wrapTables(template.content)
   ensureHeadingIds(template.content)
 

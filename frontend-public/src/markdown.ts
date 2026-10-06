@@ -63,6 +63,13 @@ const isSafeUrl = (value: string | null): boolean => {
  */
 const PAGE_IMAGE = /\/files\/db\/(?:knowledge|images)\/([0-9a-f-]{36}\.[a-z0-9]{1,8})/i
 
+/**
+ * A file a page offers for download (the wiki's download block), embedded as a
+ * link to `/files/db/knowledge/<uuid>.<ext>`. Served by the public download
+ * endpoint, which applies the same "published AND referenced" check.
+ */
+const PAGE_FILE = /\/files\/db\/knowledge\/([0-9a-f-]{36}(?:\.[a-z0-9]{1,8})?)$/i
+
 /** `[[Target]]` or `[[Target|alias]]`. */
 const WIKI_LINK = /^\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]$/
 
@@ -144,7 +151,17 @@ const sanitizeFragment = (root: DocumentFragment, options: RenderOptions): void 
 
       if (node.tagName === 'A') {
         const href = node.getAttribute('href') ?? ''
-        if (/^https?:/i.test(href)) {
+        // a download block of the wiki materializes as a link to the file —
+        // point it at the public, page-scoped download endpoint instead
+        const file = PAGE_FILE.exec(href)
+        if (file) {
+          node.setAttribute(
+            'href',
+            `/api/v1/public/wiki/${options.tenantId}/pages/${options.pageId}/files/${file[1]}`,
+          )
+          node.setAttribute('download', '')
+          node.classList.add('page-download')
+        } else if (/^https?:/i.test(href)) {
           node.setAttribute('target', '_blank')
           node.setAttribute('rel', 'noopener noreferrer')
         }
