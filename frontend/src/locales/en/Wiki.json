@@ -203,7 +203,7 @@
   "expandActions": "Show more actions",
   "collapseActions": "Hide more actions",
   "notify": {
-    "menuHint": "Publish",
+    "menuHint": "Notify",
     "menuItem": "Notify users by email",
     "title": "Notify users by email",
     "audienceTeam": "The email goes to the only member of the team “{team}”. | The email goes to all {count} members of the team “{team}”.",

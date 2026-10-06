@@ -4,6 +4,11 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.15.1] - 2026-10-06
+
+- The page's "notify users by email" menu now uses an envelope icon instead
+  of the rocket, with the tooltip "Benachrichtigen" / "Notify".
+
 ## [0.15.0] - 2026-10-06
 
 - Download blocks get an editable display name (pencil button on the card in
