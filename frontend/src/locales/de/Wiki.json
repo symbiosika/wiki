@@ -203,7 +203,7 @@
   "expandActions": "Weitere Aktionen einblenden",
   "collapseActions": "Weitere Aktionen ausblenden",
   "notify": {
-    "menuHint": "Veröffentlichen",
+    "menuHint": "Benachrichtigen",
     "menuItem": "Nutzer per E-Mail benachrichtigen",
     "title": "Nutzer per E-Mail benachrichtigen",
     "audienceTeam": "Die E-Mail geht an das einzige Mitglied des Teams „{team}“. | Die E-Mail geht an alle {count} Mitglieder des Teams „{team}“.",

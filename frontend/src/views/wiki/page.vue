@@ -159,7 +159,7 @@
               :aria-label="$t('Wiki.notify.menuHint')"
               @click="publishMenuRef?.toggle($event)"
             >
-              <IconRocket class="h-3.5 w-3.5" />
+              <IconEmailSend class="h-3.5 w-3.5" />
             </button>
             <Menu ref="publishMenuRef" :model="publishMenuItems" popup />
             <button
@@ -611,7 +611,7 @@ import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconInfo from '~icons/mdi/information-outline'
 import IconGlobe from '~icons/mdi/earth'
-import IconRocket from '~icons/mdi/rocket-launch-outline'
+import IconEmailSend from '~icons/mdi/email-fast-outline'
 import { useToast } from 'primevue/usetoast'
 import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
