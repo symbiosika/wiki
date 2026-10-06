@@ -33,6 +33,7 @@
     <ButtonDialog
       v-model:visible="buttonDialog.visible"
       :initial="buttonDialog.initial"
+      :upload-image="canUploadImages ? uploadButtonImage : undefined"
       @save="saveButton"
       @remove="removeButton"
     />
@@ -225,6 +226,13 @@ const openButtonEdit = ({
   attrs: WikiButtonAttrs
 }) => {
   Object.assign(buttonDialog, { visible: true, initial: { ...attrs }, pos })
+}
+
+/** The button dialog's preview image: an ordinary page image upload. */
+const uploadButtonImage = async (file: File): Promise<string> => {
+  if (!props.tenantId || !props.pageId) throw new Error('no page')
+  const result = await wiki.uploadImage(props.tenantId, props.pageId, file)
+  return result.path
 }
 
 const saveButton = (attrs: WikiButtonAttrs) => {
@@ -433,6 +441,11 @@ onMounted(() => {
     WikiButton.configure({
       onEdit: openButtonEdit,
       editHint: t('Editor.button.editHint'),
+      cardLabels: {
+        open: t('Editor.button.open'),
+        copy: t('Editor.button.copyUrl'),
+        copied: t('Editor.button.copied'),
+      },
     }),
     WikiDownload.configure({
       onDownload: downloadAttachment,
@@ -771,30 +784,83 @@ defineExpose({ flush, getBlocks, insertMarkdown })
 }
 
 /* --- button block (wikiButton): a link styled by its wrapper's attributes --- */
-.wiki-editor div[data-type='wiki-button'] {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card) {
   @apply my-3 flex;
 }
-.wiki-editor div[data-type='wiki-button'][data-align='center'] {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card)[data-align='center'] {
   @apply justify-center;
 }
-.wiki-editor div[data-type='wiki-button'][data-align='right'] {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card)[data-align='right'] {
   @apply justify-end;
 }
-.wiki-editor div[data-type='wiki-button'] > a {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card) > a {
   @apply inline-flex cursor-pointer items-center rounded-lg border px-4 py-2 text-sm font-semibold no-underline transition-colors;
 }
-.wiki-editor div[data-type='wiki-button'] > a,
-.wiki-editor div[data-type='wiki-button'][data-variant='primary'] > a {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card) > a,
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card)[data-variant='primary'] > a {
   @apply border-primary bg-primary text-primary-contrast hover:bg-primary-emphasis hover:border-primary-emphasis;
 }
-.wiki-editor div[data-type='wiki-button'][data-variant='secondary'] > a {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card)[data-variant='secondary'] > a {
   @apply border-surface-200 bg-surface-100 text-surface-800 hover:bg-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
 }
-.wiki-editor div[data-type='wiki-button'][data-variant='outline'] > a {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card)[data-variant='outline'] > a {
   @apply border-primary bg-transparent text-primary hover:bg-primary-50 dark:hover:bg-primary-950;
 }
-.wiki-editor div[data-type='wiki-button'].ProseMirror-selectednode > a {
+.wiki-editor div[data-type='wiki-button']:not(.wiki-link-card).ProseMirror-selectednode > a {
   @apply outline outline-2 outline-offset-2 outline-primary;
+}
+
+/* --- button with a preview image: a link card (e.g. a video) --- */
+.wiki-editor .wiki-link-card {
+  @apply my-3 flex max-w-2xl flex-wrap overflow-hidden rounded-xl border border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-900;
+  /* the card decides by its OWN width whether image and text sit side by
+     side — it is shown in the page column and in the narrow dialog preview */
+  container-type: inline-size;
+}
+.wiki-editor .wiki-link-card[data-align='center'] {
+  @apply mx-auto;
+}
+.wiki-editor .wiki-link-card[data-align='right'] {
+  @apply ml-auto;
+}
+.wiki-editor .wiki-link-card.ProseMirror-selectednode {
+  @apply outline outline-2 outline-offset-2 outline-primary;
+}
+.wiki-editor .wiki-link-card .wiki-link-card__media {
+  @apply block aspect-video w-full shrink-0 bg-surface-100 no-underline dark:bg-surface-800;
+}
+@container (min-width: 34rem) {
+  .wiki-editor .wiki-link-card .wiki-link-card__media {
+    width: 16rem;
+  }
+}
+.wiki-editor .wiki-link-card .wiki-link-card__image,
+.wiki-editor .wiki-prose .wiki-link-card .wiki-link-card__image {
+  @apply m-0 h-full w-full max-w-none rounded-none object-cover;
+}
+.wiki-editor .wiki-link-card__body {
+  @apply flex min-w-0 flex-1 basis-56 flex-col items-start justify-center gap-1.5 p-4;
+}
+.wiki-editor .wiki-link-card .wiki-link-card__title {
+  @apply line-clamp-2 text-base font-semibold text-surface-900 no-underline hover:underline dark:text-surface-0;
+}
+.wiki-editor .wiki-link-card__url {
+  @apply flex w-full min-w-0 items-center gap-2 text-xs text-surface-500 dark:text-surface-400;
+}
+.wiki-editor .wiki-link-card__address {
+  @apply min-w-0 truncate;
+}
+.wiki-editor .wiki-link-card__copy {
+  @apply shrink-0 cursor-pointer rounded-md border border-surface-200 px-2 py-0.5 text-xs text-surface-600 transition-colors hover:bg-surface-100 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800;
+}
+.wiki-editor .wiki-link-card .wiki-link-card__button {
+  @apply mt-1 inline-flex cursor-pointer items-center rounded-lg border border-primary bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-contrast no-underline transition-colors hover:border-primary-emphasis hover:bg-primary-emphasis;
+}
+.wiki-editor .wiki-link-card[data-variant='secondary'] .wiki-link-card__button {
+  @apply border-surface-200 bg-surface-100 text-surface-800 hover:border-surface-200 hover:bg-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
+}
+.wiki-editor .wiki-link-card[data-variant='outline'] .wiki-link-card__button {
+  @apply border-primary bg-transparent text-primary hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-950;
 }
 
 /* --- download block (wikiDownload): a file card --- */

@@ -83,7 +83,15 @@
     "insert": "Einfügen",
     "save": "Speichern",
     "remove": "Button entfernen",
-    "editHint": "Klicken zum Bearbeiten"
+    "editHint": "Klicken zum Bearbeiten",
+    "image": "Vorschaubild (optional)",
+    "imageAdd": "Bild hochladen",
+    "imageReplace": "Bild ersetzen",
+    "imageRemove": "Bild entfernen",
+    "imageHint": "Mit Bild wird der Button zur Karte mit Vorschau, Link und „URL kopieren“ – z. B. für Videos.",
+    "open": "Öffnen",
+    "copyUrl": "URL kopieren",
+    "copied": "Kopiert"
   },
   "download": {
     "download": "Herunterladen",

@@ -41,3 +41,23 @@ describe("page file helpers", () => {
     );
   });
 });
+
+describe("button block with a preview image (link card)", () => {
+  test("materializes as an image line and a link line", async () => {
+    const { renderBlockText } = await import(
+      "@framework/lib/knowledge/materialize-blocks"
+    );
+    const image =
+      "/api/v1/tenant/t1/files/db/knowledge/0b0c5a8e-1111-4a2b-9c3d-123456789abc.png";
+    const text = renderBlockText({
+      type: "html",
+      content:
+        '<div data-type="wiki-button" data-variant="primary">' +
+        `<p><img src="${image}" alt="Schulungsvideo"></p>` +
+        '<p><a href="https://videos.example.com/watch/42">Schulungsvideo</a></p></div>',
+    });
+    expect(text).toBe(
+      `![Schulungsvideo](${image})\n\n[Schulungsvideo](https://videos.example.com/watch/42)`
+    );
+  });
+});

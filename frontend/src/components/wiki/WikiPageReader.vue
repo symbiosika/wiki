@@ -78,6 +78,11 @@ const render = () => {
     renderBlocksForReading(props.blocks, {
       imageDescriptionLabel: t('Editor.image.descriptionLabel'),
       downloadLabel: t('Editor.download.download'),
+      buttonCardLabels: {
+        open: t('Editor.button.open'),
+        copy: t('Editor.button.copyUrl'),
+        copied: t('Editor.button.copied'),
+      },
       locale: locale.value,
     }),
   )

@@ -8,7 +8,9 @@ version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
 - Editor: new block "Button" (`/button`) — a link shown as a button with its
   own label, three styles (primary, secondary, outline) and alignment.
-  Click a button while editing to change or remove it.
+  Click a button while editing to change or remove it. With an optional
+  preview image (e.g. a video thumbnail) the button becomes a link card:
+  image, name, address with a "URL kopieren" button, and the button itself.
 - Editor: new block "Download" (`/download`, or drop any non-image file onto
   the page) — uploads a file (max. 25 MB) and shows it as a card with name,
   type and size; pictures get a preview. Downloads go through new page-scoped

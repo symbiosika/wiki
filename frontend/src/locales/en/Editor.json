@@ -83,7 +83,15 @@
     "insert": "Insert",
     "save": "Save",
     "remove": "Remove button",
-    "editHint": "Click to edit"
+    "editHint": "Click to edit",
+    "image": "Preview image (optional)",
+    "imageAdd": "Upload image",
+    "imageReplace": "Replace image",
+    "imageRemove": "Remove image",
+    "imageHint": "With an image the button becomes a card with preview, link and “Copy URL” – e.g. for videos.",
+    "open": "Open",
+    "copyUrl": "Copy URL",
+    "copied": "Copied"
   },
   "download": {
     "download": "Download",
