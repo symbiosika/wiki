@@ -88,9 +88,85 @@ console.log(`[test-local] starting PGlite on ${HOST}:${PORT} (dir: ${DIR})`);
 const db = await PGlite.create(DIR, { extensions: { vector } });
 await db.exec("CREATE EXTENSION IF NOT EXISTS vector;");
 
+/**
+ * pglite-socket queues single protocol messages, not whole queries, and only
+ * keeps a connection's messages together inside a transaction. postgres.js
+ * sends every query as Parse/Bind/Describe/Execute/Sync, so two connections
+ * querying in parallel (e.g. a Promise.all of two selects) interleave on
+ * PGlite's one session: the second Parse replaces the first's unnamed
+ * statement and a query gets the other one's rows. Keep a connection's
+ * messages together until its Sync, like the queue does for transactions.
+ */
+const EXTENDED_QUERY_MESSAGES = new Set(["P", "B", "D", "E", "C", "H"]);
+
+const serializeExtendedQueries = (socketServer: PGLiteSocketServer) => {
+  const queue = (socketServer as any).queryQueue;
+  let batchHandlerId: number | null = null;
+
+  queue.processQueue = async function () {
+    if (this.processing || this.queue.length === 0) return;
+    this.processing = true;
+    try {
+      while (this.queue.length > 0) {
+        const ownerId: number | null =
+          batchHandlerId ??
+          (this.db.isInTransaction() ? this.lastHandlerId : null);
+        let item;
+        if (ownerId !== null) {
+          const index = this.queue.findIndex(
+            (q: { handlerId: number }) => q.handlerId === ownerId
+          );
+          // The owner's next message is not queued yet; its enqueue()
+          // restarts processing.
+          if (index === -1) break;
+          item = this.queue.splice(index, 1)[0];
+        } else {
+          item = this.queue.shift();
+        }
+
+        const type = String.fromCharCode(item.message[0] ?? 0);
+        batchHandlerId = EXTENDED_QUERY_MESSAGES.has(type)
+          ? item.handlerId
+          : null;
+
+        let bytes = 0;
+        try {
+          await this.db.runExclusive(() =>
+            this.db.execProtocolRawStream(item.message, {
+              onRawData: (data: Uint8Array) => {
+                bytes += data.length;
+                item.onData(data);
+              },
+            })
+          );
+        } catch (error) {
+          batchHandlerId = null;
+          item.reject(error);
+          return;
+        }
+        this.lastHandlerId = item.handlerId;
+        item.resolve(bytes);
+      }
+    } finally {
+      this.processing = false;
+    }
+  };
+
+  // A connection that goes away mid-batch must not block the others.
+  const clearQueueForHandler = queue.clearQueueForHandler.bind(queue);
+  queue.clearQueueForHandler = (handlerId: number) => {
+    clearQueueForHandler(handlerId);
+    if (batchHandlerId === handlerId) {
+      batchHandlerId = null;
+      void queue.processQueue();
+    }
+  };
+};
+
 let server: PGLiteSocketServer;
 try {
   server = new PGLiteSocketServer({ db, port: PORT, host: HOST, maxConnections: 20 });
+  serializeExtendedQueries(server);
   await server.start();
 } catch (error) {
   console.error(
