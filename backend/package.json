@@ -55,7 +55,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:local": "PROTOCOL_DEV_STUB=true bun run ./.scripts/test-local.ts",
+    "test:local": "PROTOCOL_DEV_STUB=true bun run ./framework/.scripts/test-local.ts",
     "db:local": "bun run ./framework/.scripts/local-db-server.ts",
     "db:query": "bun run ./framework/.scripts/db-query.ts",
     "docker:up": "docker compose up -d",

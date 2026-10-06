@@ -6,7 +6,7 @@ name: Tests
 #
 # The suites are independent jobs so they run in parallel and a failure
 # points straight at the affected part of the stack:
-#   backend      – bun test against an embedded PGlite database (.scripts/test-local.ts)
+#   backend      – bun test against an embedded PGlite database (framework/.scripts/test-local.ts)
 #                  (includes the embedded MCP server under backend/src/mcp)
 #   frontend     – vitest (happy-dom)
 on:
