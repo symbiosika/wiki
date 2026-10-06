@@ -4,6 +4,21 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.14.0] - 2026-10-06
+
+- Framework update: impersonation sessions — an actor (e.g. a support admin)
+  can act as another user via a session JWT with RFC 8693 `act` claim;
+  owner-only actions (password/e-mail change, API tokens, passkeys, …) are
+  blocked while impersonating.
+- Framework update: `GET /user/me` additionally returns `actor` and
+  `sessionExpiresAt`.
+- Framework update: secrets are unique per tenant — fixes one tenant
+  overwriting another tenant's secret of the same name (migration
+  `0044_modern_thing`).
+- Framework update: requests during startup get `503 starting` (and
+  `/health` answers) instead of crashing the server before all routes are
+  registered.
+
 ## [0.13.0] - 2026-10-05
 
 - Editor: new block "Button" (`/button`) — a link shown as a button with its
