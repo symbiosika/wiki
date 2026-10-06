@@ -5,9 +5,13 @@
  * Stored as
  *
  *   <div data-type="wiki-download" data-name="Preisliste.pdf"
- *        data-size="482133" data-mime="application/pdf">
- *     <a href="/api/v1/tenant/<t>/files/db/knowledge/<uuid>.pdf">Preisliste.pdf</a>
+ *        data-title="Preisliste 2026" data-size="482133" data-mime="application/pdf">
+ *     <a href="/api/v1/tenant/<t>/files/db/knowledge/<uuid>.pdf">Preisliste 2026</a>
  *   </div>
+ *
+ * `data-name` is the file's own name (what the saved file is called);
+ * `data-title` is an optional display name set in the editor — without one the
+ * card shows the file name.
  *
  * The file lives in the framework's "knowledge" bucket, like an editor image
  * (backend `lib/wiki/page-files.ts`). The `<a>` with the `/files/db/knowledge/…`
@@ -30,7 +34,10 @@ export const DOWNLOAD_TYPE = 'wiki-download'
 export interface WikiDownloadAttrs {
   /** the stored `…/files/db/knowledge/<uuid>.<ext>` path */
   src: string
+  /** the file name — the saved file is called this */
   name: string
+  /** display name on the card; empty = show the file name */
+  title: string
   /** bytes, or null when unknown */
   size: number | null
   mime: string | null
@@ -86,6 +93,11 @@ export const hasImagePreview = (attrs: Pick<WikiDownloadAttrs, 'mime' | 'name'>)
   /^image\/(png|jpe?g|gif|webp|avif|bmp)$/i.test(attrs.mime ?? '') ||
   (!attrs.mime && /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(attrs.name))
 
+/** What the card shows as its heading: the display name, else the file name. */
+export const downloadDisplayName = (
+  attrs: Pick<WikiDownloadAttrs, 'name' | 'title'>,
+): string => attrs.title?.trim() || attrs.name
+
 const parseSize = (value: string | null): number | null => {
   if (!value) return null
   const size = Number(value)
@@ -104,6 +116,7 @@ export const readDownloadAttrs = (element: Element): WikiDownloadAttrs => {
   return {
     src,
     name,
+    title: (element.getAttribute('data-title') ?? '').trim(),
     size: parseSize(element.getAttribute('data-size')),
     mime: element.getAttribute('data-mime'),
   }
@@ -158,13 +171,15 @@ export const buildDownloadCard = (
   meta.className = 'wiki-download__meta'
   const name = document.createElement('div')
   name.className = 'wiki-download__name'
-  name.textContent = attrs.name
+  name.textContent = downloadDisplayName(attrs)
   name.title = attrs.name
   const info = document.createElement('div')
   info.className = 'wiki-download__info'
   info.textContent = [
     fileExtensionLabel(attrs.name),
     formatFileSize(attrs.size, labels.locale),
+    // with a display name of its own, the file name is still worth showing
+    downloadDisplayName(attrs) !== attrs.name ? attrs.name : '',
   ]
     .filter(Boolean)
     .join(' · ')
@@ -184,7 +199,11 @@ export const buildDownloadCard = (
 export interface WikiDownloadOptions {
   /** Fetch and save the file (the host knows tenant and page). */
   onDownload?: (attrs: WikiDownloadAttrs) => void
+  /** Edit the display name (editable editor only); absent = no edit button. */
+  onRename?: (ctx: { pos: number; attrs: WikiDownloadAttrs }) => void
   labels: DownloadCardLabels
+  /** Tooltip of the edit button. */
+  renameHint: string
 }
 
 declare module '@tiptap/core' {
@@ -206,7 +225,9 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
   addOptions() {
     return {
       onDownload: undefined,
+      onRename: undefined,
       labels: { download: 'Download', locale: 'de' },
+      renameHint: 'Rename',
     }
   },
 
@@ -214,6 +235,7 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
     return {
       src: { default: '' },
       name: { default: '' },
+      title: { default: '' },
       size: { default: null },
       mime: { default: null },
     }
@@ -229,10 +251,13 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const { src, name, size, mime } = node.attrs as WikiDownloadAttrs
+    const attrs = node.attrs as WikiDownloadAttrs
+    const { src, name, size, mime } = attrs
+    const title = attrs.title?.trim() ?? ''
     const {
       src: _src,
       name: _name,
+      title: _title,
       size: _size,
       mime: _mime,
       ...rest
@@ -242,12 +267,13 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
       mergeAttributes(rest, {
         'data-type': DOWNLOAD_TYPE,
         'data-name': name,
+        ...(title ? { 'data-title': title } : {}),
         ...(size !== null && size !== undefined
           ? { 'data-size': String(size) }
           : {}),
         ...(mime ? { 'data-mime': mime } : {}),
       }),
-      ['a', { href: src }, name || src],
+      ['a', { href: src }, downloadDisplayName(attrs) || src],
     ]
   },
 
@@ -261,11 +287,30 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
   },
 
   addNodeView() {
-    return ({ node, HTMLAttributes }) => {
+    return ({ node, editor, getPos, HTMLAttributes }) => {
       const attrs = node.attrs as WikiDownloadAttrs
       const dom = buildDownloadCard(attrs, this.options.labels)
       const blockId = HTMLAttributes['data-block-id']
       if (blockId) dom.setAttribute('data-block-id', String(blockId))
+
+      const onRename = this.options.onRename
+      if (onRename) {
+        // writing only — hidden by the stylesheet while the editor is read-only
+        const rename = document.createElement('button')
+        rename.type = 'button'
+        rename.className = 'wiki-download__rename'
+        rename.title = this.options.renameHint
+        rename.setAttribute('aria-label', this.options.renameHint)
+        rename.textContent = '✎'
+        rename.addEventListener('click', (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          if (!editor.isEditable) return
+          const pos = typeof getPos === 'function' ? getPos() : undefined
+          if (typeof pos === 'number') onRename({ pos, attrs })
+        })
+        dom.querySelector('.wiki-download__button')?.before(rename)
+      }
 
       dom
         .querySelector('.wiki-download__button')
@@ -281,7 +326,7 @@ export const WikiDownload = Node.create<WikiDownloadOptions>({
           updated.type.name === node.type.name && updated.eq(node),
         stopEvent: (event) =>
           (event.target as HTMLElement | null)?.closest?.(
-            '.wiki-download__button',
+            '.wiki-download__button, .wiki-download__rename',
           ) != null,
         ignoreMutation: () => true,
       }

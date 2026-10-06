@@ -23,6 +23,13 @@ import { getWikiPageImage } from "../../../../lib/wiki/images";
 import { IMMUTABLE_PRIVATE_IMAGE_CACHE_CONTROL } from "../../../../lib/http/image-cache-headers";
 import { setWikiImageDescription } from "../../../../lib/wiki/set-image-description";
 import {
+  MAX_NOTIFICATION_MESSAGE_LENGTH,
+  MAX_NOTIFICATION_SUBJECT_LENGTH,
+  PageNotificationError,
+  getPageNotificationAudience,
+  notifyPageMembers,
+} from "../../../../lib/wiki/notify-page";
+import {
   PageFileError,
   downloadHeaders,
   uploadWikiPageFile,
@@ -445,6 +452,138 @@ export default function defineWikiRoutes(
           message.includes("not found") ||
           message.includes("access denied") ||
           message.includes("does not embed");
+        return c.json({ success: false, error: message }, notFound ? 404 : 400);
+      }
+    }
+  );
+
+  /**
+   * GET /tenant/:tenantId/wiki/:pageId/notify
+   *
+   * Who an e-mail notification about the page would reach: the page's scope
+   * (team / organisation / personal), the team's name, the number of
+   * recipients and whether the caller may send (write access).
+   */
+  app.get(
+    `${baseRoute}/:pageId/notify`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Audience of an e-mail notification about a wiki page",
+      responses: {
+        200: {
+          description: "scope, teamName, recipientCount, canNotify",
+          content: {
+            "application/json": {
+              schema: resolver(
+                v.object({
+                  scope: v.picklist(["team", "organisation", "personal"]),
+                  teamName: v.nullable(v.string()),
+                  recipientCount: v.number(),
+                  canNotify: v.boolean(),
+                })
+              ),
+            },
+          },
+        },
+      },
+    }),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId } = c.req.valid("param");
+      const userId = c.get("usersId");
+      try {
+        return c.json(
+          await getPageNotificationAudience(pageId, { tenantId, userId })
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load the audience";
+        const notFound =
+          message.includes("not found") || message.includes("access denied");
+        return c.json({ success: false, error: message }, notFound ? 404 : 400);
+      }
+    }
+  );
+
+  /**
+   * POST /tenant/:tenantId/wiki/:pageId/notify
+   *
+   * E-mail everyone who can see the page about it — team members for a team
+   * page, the whole organisation for an organisation page, the owner for a
+   * personal page. The body carries the author's text (and optionally a
+   * subject); the mail always links to the page. Needs write access.
+   */
+  app.post(
+    `${baseRoute}/:pageId/notify`,
+    authAndSetUsersInfo,
+    checkUserPermission,
+    describeRoute({
+      tags: ["wiki"],
+      summary: "Notify the members who can see a wiki page by e-mail",
+      responses: {
+        200: {
+          description: "scope and number of recipients the mail was sent to",
+          content: {
+            "application/json": {
+              schema: resolver(
+                v.object({
+                  scope: v.picklist(["team", "organisation", "personal"]),
+                  recipientCount: v.number(),
+                })
+              ),
+            },
+          },
+        },
+      },
+    }),
+    validateScope("knowledge:write"),
+    validator(
+      "param",
+      v.object({
+        tenantId: v.pipe(v.string(), v.uuid()),
+        pageId: v.pipe(v.string(), v.uuid()),
+      })
+    ),
+    validator(
+      "json",
+      v.object({
+        subject: v.optional(
+          v.nullable(
+            v.pipe(v.string(), v.maxLength(MAX_NOTIFICATION_SUBJECT_LENGTH))
+          )
+        ),
+        message: v.pipe(
+          v.string(),
+          v.maxLength(MAX_NOTIFICATION_MESSAGE_LENGTH)
+        ),
+      })
+    ),
+    isTenantMember,
+    async (c) => {
+      const { tenantId, pageId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("usersId");
+      try {
+        return c.json(
+          await notifyPageMembers(pageId, body, { tenantId, userId })
+        );
+      } catch (error) {
+        if (error instanceof PageNotificationError) {
+          return c.json({ success: false, error: error.message }, error.status);
+        }
+        const message =
+          error instanceof Error ? error.message : "Failed to send the mails";
+        const notFound =
+          message.includes("not found") || message.includes("access denied");
         return c.json({ success: false, error: message }, notFound ? 404 : 400);
       }
     }

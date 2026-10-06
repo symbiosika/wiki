@@ -148,6 +148,20 @@
               <IconCheck v-else-if="copied" class="h-3.5 w-3.5" />
               <IconContentCopy v-else class="h-3.5 w-3.5" />
             </button>
+            <!--
+            publish actions ("deploy"): for now one — notify the people who
+            can see the page by e-mail.
+          -->
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary dark:border-surface-700 dark:text-surface-300"
+              :title="$t('Wiki.notify.menuHint')"
+              :aria-label="$t('Wiki.notify.menuHint')"
+              @click="publishMenuRef?.toggle($event)"
+            >
+              <IconRocket class="h-3.5 w-3.5" />
+            </button>
+            <Menu ref="publishMenuRef" :model="publishMenuItems" popup />
             <button
               type="button"
               class="flex items-center gap-1 rounded-full border border-surface-200 px-2 py-0.5 text-surface-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-surface-700 dark:text-surface-300"
@@ -324,6 +338,14 @@
         :tenant-id="tenantId"
         :entry-id="page.id"
         @applied="onAssistantApplied"
+      />
+
+      <!-- "notify members by e-mail", opened from the publish menu -->
+      <PageNotifyDialog
+        v-model:visible="notifyDialogOpen"
+        :tenant-id="tenantId"
+        :page-id="page.id"
+        :page-title="page.title ?? ''"
       />
 
       <!-- manual "insert markdown" dialog, opened by the Markdown chip -->
@@ -589,11 +611,13 @@ import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconInfo from '~icons/mdi/information-outline'
 import IconGlobe from '~icons/mdi/earth'
+import IconRocket from '~icons/mdi/rocket-launch-outline'
 import { useToast } from 'primevue/usetoast'
 import IconLanguageMarkdown from '~icons/mdi/language-markdown-outline'
 import DocumentAssistantPanel from '@/components/wiki/DocumentAssistantPanel.vue'
 import WikiTableOfContents from '@/components/wiki/WikiTableOfContents.vue'
 import MarkdownPasteDialog from '@/components/wiki/MarkdownPasteDialog.vue'
+import PageNotifyDialog from '@/components/wiki/PageNotifyDialog.vue'
 import WikiReferences from '@/components/wiki/WikiReferences.vue'
 import PageTypeIcon from '@/components/wiki/PageTypeIcon.vue'
 import { useDocumentAssistant } from '@/stores/documentAssistant'
@@ -696,6 +720,19 @@ watch(editable, (canEdit) => {
 // handlePaste). This dialog is the explicit fallback: paste markdown, preview
 // it, and insert it as formatted content at the cursor.
 const markdownDialogOpen = ref(false)
+
+// ----- publish menu: notify members by e-mail --------------------------------
+
+const publishMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
+const notifyDialogOpen = ref(false)
+const publishMenuItems = computed(() => [
+  {
+    label: t('Wiki.notify.menuItem'),
+    command: () => {
+      notifyDialogOpen.value = true
+    },
+  },
+])
 
 const onInsertMarkdown = (markdown: string) => {
   editorRef.value?.insertMarkdown(markdown)
