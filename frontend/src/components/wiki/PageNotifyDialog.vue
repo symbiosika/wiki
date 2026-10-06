@@ -82,13 +82,18 @@ const audienceText = computed(() => {
   const a = audience.value
   if (!a) return ''
   if (a.scope === 'team') {
-    return t('Wiki.notify.audienceTeam', {
-      count: a.recipientCount,
-      team: a.teamName ?? '',
-    })
+    return t(
+      'Wiki.notify.audienceTeam',
+      { count: a.recipientCount, team: a.teamName ?? '' },
+      a.recipientCount,
+    )
   }
   if (a.scope === 'organisation') {
-    return t('Wiki.notify.audienceOrganisation', { count: a.recipientCount })
+    return t(
+      'Wiki.notify.audienceOrganisation',
+      { count: a.recipientCount },
+      a.recipientCount,
+    )
   }
   return t('Wiki.notify.audiencePersonal')
 })
