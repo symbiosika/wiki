@@ -1,43 +1,43 @@
-# „502 Bad Gateway" eingrenzen
+# Narrowing down "502 Bad Gateway"
 
-Sporadische *Bad Gateway*-Fehler bei einem Setup aus **Reverse Proxy → LXC-Container
-(Proxmox) → Docker Compose → App** sind fast immer eine von drei Ursachen — und von
-außen sehen alle drei identisch aus:
+Sporadic *Bad Gateway* errors in a setup of **reverse proxy → LXC container
+(Proxmox) → Docker Compose → app** almost always come from one of three causes — and
+from the outside all three look identical:
 
-| Schicht | Typische Ursache | Wer meldet 502 |
+| Layer | Typical cause | Who reports 502 |
 |---|---|---|
-| Reverse Proxy | Upstream-IP veraltet, Keepalive-Mismatch, Timeout zu kurz | Proxy |
-| Container / Host | Prozess neu gestartet, OOM-Kill, Docker-Restart, Netzwerk weg | Proxy (App war weg) |
-| App | Absturz, blockierter Event-Loop, sehr langsame Antwort | Proxy (App antwortete nicht) |
+| Reverse proxy | Stale upstream IP, keepalive mismatch, timeout too short | Proxy |
+| Container / host | Process restarted, OOM kill, Docker restart, network gone | Proxy (app was gone) |
+| App | Crash, blocked event loop, very slow response | Proxy (app did not respond) |
 
-**502 kommt *immer* vom Reverse Proxy.** Die Frage ist nie „wer schickt den Fehler",
-sondern „warum bekam der Proxy keine Antwort". Genau dafür gibt es das *Ops-Log*.
+**502 *always* comes from the reverse proxy.** The question is never "who sends the error",
+but "why did the proxy get no response". That is exactly what the *ops log* is for.
 
 ---
 
-## 1. Was die App jetzt loggt
+## 1. What the app now logs
 
-`backend/src/lib/diagnostics/` schreibt eine eigene, maschinenlesbare Zeile pro
-Ereignis (NDJSON), erkennbar am Präfix `[ops]`:
+`backend/src/lib/diagnostics/` writes its own machine-readable line per
+event (NDJSON), recognisable by the `[ops]` prefix:
 
-- **auf stdout** → `docker compose logs app`
-- **zusätzlich in `logs/ops.log`** im Container (rotiert, max. 5 × 2 MB),
-  abschaltbar mit `OPS_LOG_FILE=false`
+- **to stdout** → `docker compose logs app`
+- **additionally to `logs/ops.log`** inside the container (rotated, max. 5 × 2 MB),
+  can be disabled with `OPS_LOG_FILE=false`
 
-Es gibt vier Ereignistypen. Jeder trägt eine `boot`-ID — sie ändert sich bei
-**jedem** Prozessstart und ist das wichtigste Feld überhaupt.
+There are four event types. Each carries a `boot` ID — it changes on
+**every** process start and is the single most important field.
 
-### `boot` — der Prozess startet
+### `boot` — the process starts
 
 ```json
 {"ts":"2026-08-06T10:59:32.336Z","event":"boot","boot":"qpSpuuDDrr","pid":1,
  "runtime":"bun 1.3.11","memory":{"rssMb":42,...}}
 ```
 
-Ein `boot` zum Zeitpunkt des 502 heißt: die App war weg. Damit ist die Frage
-„Proxy oder App" bereits beantwortet — weiter bei `shutdown`/`crash`.
+A `boot` at the time of the 502 means: the app was gone. That already answers
+the question "proxy or app" — continue with `shutdown`/`crash`.
 
-### `shutdown` / `crash` — der Prozess endet
+### `shutdown` / `crash` — the process ends
 
 ```json
 {"event":"crash","boot":"qpSpuuDDrr","reason":"unhandledRejection",
@@ -45,25 +45,25 @@ Ein `boot` zum Zeitpunkt des 502 heißt: die App war weg. Damit ist die Frage
  "counters":{...},"inflight":2,"inflightRequests":[…]}
 ```
 
-`reason` sagt, **wer** den Prozess beendet hat:
+`reason` tells you **who** ended the process:
 
-| `reason` | Bedeutung |
+| `reason` | Meaning |
 |---|---|
-| `SIGTERM` | Von außen gestoppt: `docker restart`, Redeploy, LXC-Shutdown — **oder der OOM-Killer des Hosts** |
-| `SIGINT` / `SIGHUP` | Interaktiv gestoppt, Terminal weg |
-| `uncaughtException` | Nicht abgefangene Exception in der App |
-| `unhandledRejection` | Nicht abgefangene Promise-Rejection in der App |
-| `exit` | Regulärer Exit ohne Signal |
+| `SIGTERM` | Stopped from outside: `docker restart`, redeploy, LXC shutdown — **or the host's OOM killer** |
+| `SIGINT` / `SIGHUP` | Stopped interactively, terminal gone |
+| `uncaughtException` | Uncaught exception in the app |
+| `unhandledRejection` | Unhandled promise rejection in the app |
+| `exit` | Regular exit without a signal |
 
-> **Wichtig:** Bun beendet den Prozess bei `uncaughtException` **und** bei
-> `unhandledRejection` mit Exit-Code 1. Eine einzige „vergessene" Promise in
-> einem Cron-Tick oder Job reicht also, um den kompletten Server zu killen —
-> Docker startet ihn wegen `restart: unless-stopped` sofort neu, und **jeder
-> Request in diesem Fenster wird zu 502**. Das ist die mit Abstand häufigste
-> App-seitige Ursache und war bisher nur als einzelner Stacktrace in stdout
-> sichtbar. Jetzt steht sie mit Zeitstempel, Stacktrace und Uptime im Ops-Log.
+> **Important:** Bun terminates the process on `uncaughtException` **and** on
+> `unhandledRejection` with exit code 1. A single "forgotten" promise in
+> a cron tick or job is therefore enough to kill the entire server —
+> Docker restarts it immediately because of `restart: unless-stopped`, and **every
+> request in that window becomes a 502**. This is by far the most common
+> app-side cause and used to be visible only as a lone stack trace in stdout.
+> Now it shows up in the ops log with timestamp, stack trace and uptime.
 
-### `heartbeat` — alle 30 Sekunden, auch wenn nichts passiert
+### `heartbeat` — every 30 seconds, even when nothing happens
 
 ```json
 {"event":"heartbeat","boot":"jR1…","uptimeS":1830,"loopLagMs":3,
@@ -75,94 +75,94 @@ Ein `boot` zum Zeitpunkt des 502 heißt: die App war weg. Damit ist die Frage
  "delta":{"requests":180,"status5xx":0,…},"total":{…}}
 ```
 
-Der Heartbeat beantwortet das, was Request-Logs nicht können:
+The heartbeat answers what request logs cannot:
 
-- **Lücke im Heartbeat** → Prozess war weg oder eingefroren. Die `boot`-ID der
-  nächsten Zeile sagt, was davon: gleiche ID = eingefroren, neue ID = neu gestartet.
-- **`loopLagMs`** — wie viel später ein trivialer Timer tatsächlich lief.
-  Dauerhaft > 500 ms heißt: der Event-Loop war mit synchroner Arbeit blockiert
-  und konnte in dieser Zeit **keine Verbindung annehmen** — genau das sieht ein
-  Proxy als toten Upstream.
-- **`containerMemory`** — Speicher aus Sicht des *Containers*, inklusive Limit.
-  `usedPercent` nahe 100 und steigende `limitHits`/`oomKills` = der Container ist
-  zu klein bzw. die App leakt. `oomKills > 0` ist der Beweis, dass der Kernel
-  getötet hat — nicht die App abgestürzt ist.
-- **`longRunning`** — Requests, die seit > 10 s laufen und **noch nicht
-  geantwortet** haben. Wenn der Proxy nach 60 s aufgibt und hier ein Request mit
-  `ms: 60000` steht, ist die App die langsame Seite. (Gemessen wird bis zu den
-  Response-Headern: ein gestreamter Chat, dessen Header sofort kommen und dessen
-  Body zwei Minuten läuft, taucht hier nicht auf — dafür ist `client-aborted` im
-  Request-Log das Signal.)
+- **Gap in the heartbeat** → the process was gone or frozen. The `boot` ID of the
+  next line tells you which: same ID = frozen, new ID = restarted.
+- **`loopLagMs`** — how much later a trivial timer actually ran.
+  Consistently > 500 ms means: the event loop was blocked by synchronous work
+  and during that time **could not accept any connection** — which is exactly what a
+  proxy sees as a dead upstream.
+- **`containerMemory`** — memory from the *container's* point of view, including the limit.
+  `usedPercent` close to 100 and rising `limitHits`/`oomKills` = the container is
+  too small or the app is leaking. `oomKills > 0` is proof that the kernel
+  did the killing — not that the app crashed.
+- **`longRunning`** — requests that have been running for > 10 s and have **not yet
+  responded**. If the proxy gives up after 60 s and a request with
+  `ms: 60000` shows up here, the app is the slow side. (Measurement stops at the
+  response headers: a streamed chat whose headers arrive immediately and whose
+  body runs for two minutes does not show up here — for that, `client-aborted` in
+  the request log is the signal.)
 
-### `request` / `request-error` — auffällige Requests
+### `request` / `request-error` — notable requests
 
-Erfolgreiche, schnelle Requests werden **nicht** geloggt (sonst ertrinken die
-interessanten Zeilen in Static-Assets). Geloggt wird:
+Successful, fast requests are **not** logged (otherwise the
+interesting lines would drown in static assets). What gets logged:
 
-| `reason` | Bedeutung |
+| `reason` | Meaning |
 |---|---|
-| `server-error` | Antwort mit Status ≥ 500 |
-| `slow` | Dauer ≥ `OPS_SLOW_REQUEST_MS` (Default 3000 ms) |
-| `client-aborted` | Der Client (= der Proxy!) hat die Verbindung vorher gekappt |
-| `no-response` | Handler lieferte gar keine Antwort |
-| `all` | nur bei `OPS_LOG_ALL_REQUESTS=true` |
+| `server-error` | Response with status ≥ 500 |
+| `slow` | Duration ≥ `OPS_SLOW_REQUEST_MS` (default 3000 ms) |
+| `client-aborted` | The client (= the proxy!) cut the connection first |
+| `no-response` | Handler returned no response at all |
+| `all` | only with `OPS_LOG_ALL_REQUESTS=true` |
 
-Der Query-String wird bewusst **nicht** geloggt — dort stehen Magic-Link-Tokens
-und OAuth-Codes.
+The query string is deliberately **not** logged — it contains magic-link tokens
+and OAuth codes.
 
-Jede Antwort bekommt zusätzlich die Header **`X-Request-Id`** und **`X-Boot-Id`**.
-Schickt der Proxy schon einen `X-Request-Id`, wird dieser übernommen. Damit lässt
-sich ein einzelner Request zwischen Proxy-Log und App-Log exakt zuordnen — siehe
-Abschnitt 4.
+Every response additionally gets the headers **`X-Request-Id`** and **`X-Boot-Id`**.
+If the proxy already sends an `X-Request-Id`, that one is reused. This lets
+you match a single request exactly between the proxy log and the app log — see
+section 4.
 
 ---
 
-## 2. Einschalten
+## 2. Enabling it
 
-Alles außer dem Diagnose-Endpoint ist **standardmäßig aktiv**. Konfiguration über
-Umgebungsvariablen (siehe `.env.prod.example`):
+Everything except the diagnostics endpoint is **active by default**. Configuration via
+environment variables (see `.env.prod.example`):
 
-| Variable | Default | Wirkung |
+| Variable | Default | Effect |
 |---|---|---|
-| `OPS_LOG` | `true` | Ops-Log komplett aus mit `false` |
-| `OPS_LOG_FILE` | `true` | Zusätzlich `logs/ops.log` schreiben |
-| `OPS_HEARTBEAT_MS` | `30000` | Heartbeat-Intervall, `0` = aus |
-| `OPS_SLOW_REQUEST_MS` | `3000` | Ab hier gilt ein Request als langsam |
-| `OPS_LOG_ALL_REQUESTS` | `false` | Vollständiges Access-Log (nur zur Fehlersuche) |
-| `DIAGNOSTICS_TOKEN` | *(leer)* | Aktiviert `GET /internal/diagnostics` |
+| `OPS_LOG` | `true` | Turn the ops log off completely with `false` |
+| `OPS_LOG_FILE` | `true` | Additionally write `logs/ops.log` |
+| `OPS_HEARTBEAT_MS` | `30000` | Heartbeat interval, `0` = off |
+| `OPS_SLOW_REQUEST_MS` | `3000` | Threshold above which a request counts as slow |
+| `OPS_LOG_ALL_REQUESTS` | `false` | Full access log (for troubleshooting only) |
+| `DIAGNOSTICS_TOKEN` | *(empty)* | Enables `GET /internal/diagnostics` |
 
-**Damit `logs/ops.log` einen Neustart des Containers übersteht**, in
-`docker-compose.prod.yml` das Volume aktivieren:
+**For `logs/ops.log` to survive a container restart**, enable the volume in
+`docker-compose.prod.yml`:
 
 ```yaml
     volumes:
       - app_logs:/usr/src/app/logs
-      # oder als Bind-Mount, dann direkt vom LXC-Host lesbar:
+      # or as a bind mount, then directly readable from the LXC host:
       # - ./logs/app:/usr/src/app/logs
 ```
 
-### Live-Snapshot ohne Shell
+### Live snapshot without a shell
 
 ```bash
-DIAGNOSTICS_TOKEN=<langes-zufälliges-secret>   # in .env setzen
+DIAGNOSTICS_TOKEN=<long-random-secret>   # set in .env
 curl -s -H "X-Diagnostics-Token: $TOKEN" https://wiki.example.com/internal/diagnostics | jq
 ```
 
-Liefert Boot-ID, Uptime, Speicher, Container-Limit, Zähler, laufende Requests und
-die letzten ~200 Ereignisse plus 30 Minuten Heartbeat-Historie.
+Returns boot ID, uptime, memory, container limit, counters, running requests and
+the last ~200 events plus 30 minutes of heartbeat history.
 
-Der Endpoint wird **vor** Hono ausgewertet und funktioniert deshalb auch dann,
-wenn die Datenbank nicht erreichbar ist — in diesem Zustand registriert
-`defineServer()` die Anwendungsrouten nämlich gar nicht erst, `/health/detail`
-antwortet dann 404. Ohne gesetztes `DIAGNOSTICS_TOKEN` existiert der Pfad nicht
-(normales 404), es gibt also nichts zu scannen.
+The endpoint is evaluated **before** Hono and therefore works even when
+the database is unreachable — in that state `defineServer()` does not
+register the application routes at all, and `/health/detail`
+then responds with 404. Without `DIAGNOSTICS_TOKEN` set, the path does not exist
+(plain 404), so there is nothing to scan.
 
 ---
 
-## 3. Den Reverse Proxy zum Mitloggen bringen
+## 3. Getting the reverse proxy to log along
 
-Ohne Gegenstück im Proxy-Log ist die halbe Information weg. Entscheidend sind
-`upstream_status`, die Upstream-Zeiten und die Request-ID.
+Without a counterpart in the proxy log, half of the information is missing. What matters is
+`upstream_status`, the upstream timings and the request ID.
 
 ### nginx
 
@@ -180,12 +180,12 @@ server {
     location / {
         proxy_pass http://127.0.0.1:3000;
 
-        # Request-ID durchreichen — dieselbe ID taucht dann im Ops-Log auf
+        # Pass the request ID through — the same ID then shows up in the ops log
         proxy_set_header X-Request-Id $request_id;
 
-        # HTTP/1.1 ist Pflicht. Mit dem Default HTTP/1.0 laufen Keepalive und
-        # WebSocket-Upgrade auseinander — eine klassische Quelle für genau die
-        # sporadischen 502, die sonst niemand erklären kann.
+        # HTTP/1.1 is mandatory. With the default HTTP/1.0, keepalive and
+        # WebSocket upgrade get out of sync — a classic source of exactly the
+        # sporadic 502s that nobody can otherwise explain.
         proxy_http_version 1.1;
         proxy_set_header Connection "";
 
@@ -194,13 +194,13 @@ server {
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # Lange Antworten (KI-Streaming, Uploads, Import) brauchen Luft.
+        # Long responses (AI streaming, uploads, import) need headroom.
         proxy_read_timeout    300s;
         proxy_send_timeout    300s;
         proxy_connect_timeout 10s;
     }
 
-    # WebSocket (Protokoll-Realtime)
+    # WebSocket (protocol realtime)
     location /api/v1/tenant/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -211,19 +211,19 @@ server {
 }
 ```
 
-Im nginx-`error_log` steht bei einem 502 immer eine der drei Zeilen — und die
-sagt schon fast alles:
+For a 502, the nginx `error_log` always contains one of three lines — and that
+line already tells you almost everything:
 
-| nginx-Fehlertext | Heißt |
+| nginx error text | Means |
 |---|---|
-| `connect() failed (111: Connection refused)` | Am Port hörte niemand → App war unten |
-| `upstream prematurely closed connection` | App hat mitten in der Antwort aufgelegt → Absturz oder Keepalive-Mismatch |
-| `upstream timed out` (meist 504) | App hat zu lange gebraucht → `slow`/`longRunning` im Ops-Log prüfen |
+| `connect() failed (111: Connection refused)` | Nobody was listening on the port → app was down |
+| `upstream prematurely closed connection` | App hung up in the middle of the response → crash or keepalive mismatch |
+| `upstream timed out` (usually 504) | App took too long → check `slow`/`longRunning` in the ops log |
 
 ### Traefik
 
 ```yaml
-# statische Konfiguration
+# static configuration
 accessLog:
   filePath: /var/log/traefik/access.log
   format: json
@@ -233,14 +233,14 @@ accessLog:
         X-Request-Id: keep
         X-Boot-Id: keep
 
-# Timeouts am ServersTransport
+# timeouts on the ServersTransport
 serversTransport:
   forwardingTimeouts:
     dialTimeout: 10s
     responseHeaderTimeout: 300s
 ```
 
-Relevante Felder im JSON-Log: `OriginStatus`, `Duration`, `RetryAttempts`.
+Relevant fields in the JSON log: `OriginStatus`, `Duration`, `RetryAttempts`.
 
 ### Caddy
 
@@ -262,117 +262,117 @@ wiki.example.com {
 
 ---
 
-## 4. Entscheidungsbaum bei einem konkreten 502
+## 4. Decision tree for a specific 502
 
-Zeitpunkt und Pfad aus dem Proxy-Log nehmen, dann im Ops-Log nachsehen:
+Take the time and path from the proxy log, then look them up in the ops log:
 
 ```bash
-# Ops-Zeilen um den Zeitpunkt herum
+# ops lines around that point in time
 docker compose -f docker-compose.prod.yml logs app --since 30m | grep '^\[ops\]'
 
-# oder aus der Datei, hübsch formatiert
+# or from the file, nicely formatted
 docker compose -f docker-compose.prod.yml exec app \
   sh -c "grep -h '' /usr/src/app/logs/ops.log" | jq -c 'select(.event != "heartbeat")'
 
-# nur Lebenszyklus-Ereignisse — sind wir überhaupt neu gestartet?
+# lifecycle events only — did we restart at all?
 docker compose -f docker-compose.prod.yml logs app | grep '^\[ops\]' \
   | sed 's/^\[ops\] //' | jq -c 'select(.event=="boot" or .event=="crash" or .event=="shutdown")'
 
-# einen einzelnen Request über beide Logs verfolgen
+# follow a single request across both logs
 grep "<request-id>" /var/log/nginx/wiki-upstream.log
 docker compose -f docker-compose.prod.yml logs app | grep "<request-id>"
 ```
 
-Dann:
+Then:
 
-1. **Steht um den Zeitpunkt ein `crash` oder `shutdown` + `boot` im Log?**
-   → Die App war weg. `reason` sagt warum:
-   - `unhandledRejection` / `uncaughtException` → **App-Bug**, Stacktrace steht dabei.
-   - `SIGTERM` ohne Redeploy → von außen gekillt. Weiter bei Punkt 5 (OOM).
+1. **Is there a `crash` or `shutdown` + `boot` in the log around that time?**
+   → The app was gone. `reason` tells you why:
+   - `unhandledRejection` / `uncaughtException` → **app bug**, the stack trace is included.
+   - `SIGTERM` without a redeploy → killed from outside. Continue with item 5 (OOM).
 
-2. **Klafft eine Lücke in den Heartbeats, ohne `crash`/`boot`?**
-   → Der Prozess lebte, antwortete aber nicht: `kill -9`, eingefrorener
-   Container, oder der Host hat den ganzen LXC angehalten. `loadavg` und
-   `containerMemory` der letzten Heartbeats davor ansehen.
+2. **Is there a gap in the heartbeats, without `crash`/`boot`?**
+   → The process was alive but did not respond: `kill -9`, frozen
+   container, or the host paused the entire LXC. Look at `loadavg` and
+   `containerMemory` of the last heartbeats before it.
 
-3. **Heartbeats laufen durch, Request steht als `slow`/`longRunning` im Log?**
-   → Die App ist die langsame Seite. Proxy-Timeout vergleichen
-   (`proxy_read_timeout`) — passt er nicht zur realen Laufzeit, ist der Timeout
-   die eigentliche Ursache.
+3. **Heartbeats keep running, request shows up as `slow`/`longRunning` in the log?**
+   → The app is the slow side. Compare the proxy timeout
+   (`proxy_read_timeout`) — if it does not match the real runtime, the timeout
+   is the actual cause.
 
-4. **Heartbeats laufen durch, `boot`-ID unverändert, und der Request taucht im
-   Ops-Log gar nicht auf?**
-   → Der Request hat die App nie erreicht. Damit liegt es **nicht an der App**:
-   Proxy-Konfiguration, Upstream-Adresse, Docker-Port-Mapping oder Netzwerk
-   zwischen LXC und Proxy. Gegenprobe direkt am Container vorbei am Proxy:
+4. **Heartbeats keep running, `boot` ID unchanged, and the request does not appear
+   in the ops log at all?**
+   → The request never reached the app. So it is **not the app's fault**:
+   proxy configuration, upstream address, Docker port mapping or the network
+   between LXC and proxy. Cross-check directly against the container, bypassing the proxy:
    ```bash
-   curl -sv http://127.0.0.1:3000/health          # vom LXC-Host aus
+   curl -sv http://127.0.0.1:3000/health          # from the LXC host
    ```
 
-5. **`request` steht mit Status 200 im Ops-Log, der Proxy meldet trotzdem 502?**
-   → Die Antwort ging zwischen App und Proxy verloren. In aller Regel
-   Keepalive-Mismatch (`proxy_http_version 1.1` + `Connection ""` fehlt) oder
-   eine zu kleine `proxy_buffer_size` bei großen Headern.
+5. **`request` shows up with status 200 in the ops log, but the proxy still reports 502?**
+   → The response got lost between app and proxy. As a rule this is a
+   keepalive mismatch (`proxy_http_version 1.1` + `Connection ""` missing) or
+   a `proxy_buffer_size` that is too small for large headers.
 
 ---
 
-## 5. Was auf Container- und Host-Ebene zu prüfen ist
+## 5. What to check at the container and host level
 
-Das Ops-Log endet am Prozess. Diese Befehle decken den Rest ab:
+The ops log ends at the process. These commands cover the rest:
 
 ```bash
-# Wie oft wurde der Container neu gestartet — und woran ist er gestorben?
+# How often was the container restarted — and what did it die of?
 docker inspect --format \
   '{{.Name}} restarts={{.RestartCount}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} started={{.State.StartedAt}}' \
   $(docker compose -f docker-compose.prod.yml ps -q app)
 
-# Zeitleiste aller Container-Ereignisse (start/die/oom/health_status)
+# Timeline of all container events (start/die/oom/health_status)
 docker events --since 24h --filter event=die --filter event=oom --filter event=restart
 
-# OOM-Killer im Kernel-Log — im LXC-Container UND auf dem Proxmox-Host prüfen!
+# OOM killer in the kernel log — check inside the LXC container AND on the Proxmox host!
 dmesg -T | grep -iE 'killed process|out of memory|oom'
 journalctl -k --since "2 hours ago" | grep -i oom
 ```
 
-Auf dem **Proxmox-Host** zusätzlich:
+Additionally on the **Proxmox host**:
 
 ```bash
-pct config <vmid>                 # Memory-/Swap-Limit des LXC
+pct config <vmid>                 # memory/swap limit of the LXC
 pct exec <vmid> -- free -m
-grep -i oom /var/log/syslog       # Host-OOM trifft den ganzen Container
+grep -i oom /var/log/syslog       # a host OOM hits the whole container
 ```
 
-> `State.OOMKilled=false` schließt einen OOM **nicht** aus: wenn der Kernel des
-> Hosts unter Speicherdruck den Bun-Prozess auswählt, sieht Docker nur ein
-> `SIGTERM`/`SIGKILL`. Die Kombination aus `oomKills`/`usedPercent` im Heartbeat
-> und `dmesg` auf dem Host ist der zuverlässige Nachweis.
+> `State.OOMKilled=false` does **not** rule out an OOM: if the host's kernel
+> picks the Bun process under memory pressure, Docker only sees a
+> `SIGTERM`/`SIGKILL`. The combination of `oomKills`/`usedPercent` in the heartbeat
+> and `dmesg` on the host is the reliable proof.
 
-### Empfohlene Compose-Ergänzungen
+### Recommended Compose additions
 
-Beides ist in `docker-compose.prod.yml` bereits vorbereitet:
+Both are already prepared in `docker-compose.prod.yml`:
 
-- **Healthcheck** auf `/health` — macht Neustarts in `docker ps` und
-  `docker events` sichtbar, statt sie nur zu erahnen.
-- **Log-Rotation** für den json-file-Treiber, damit stdout-Logs nicht die
-  Container-Disk füllen (was seinerseits Abstürze verursacht).
-- Ein **Memory-Limit** ist auskommentiert. Setzt man es, wird ein Speicherleck
-  zu einem sauberen, im Log sichtbaren OOM des Containers statt zu einem
-  unerklärlichen Kill irgendwo im LXC.
+- **Healthcheck** on `/health` — makes restarts visible in `docker ps` and
+  `docker events` instead of leaving you to guess at them.
+- **Log rotation** for the json-file driver, so stdout logs do not fill up the
+  container disk (which in turn causes crashes).
+- A **memory limit** is commented out. If you set it, a memory leak
+  turns into a clean OOM of the container that is visible in the log, instead of an
+  inexplicable kill somewhere in the LXC.
 
 ---
 
-## 6. Bekannte App-spezifische Stolperstellen
+## 6. Known app-specific pitfalls
 
-- **Startfenster:** `defineServer()` registriert alle Anwendungsrouten erst,
-  *nachdem* die DB-Verbindung steht und die Lizenzprüfung durch ist. In diesen
-  Sekunden antwortet `/health` bereits mit 200, alle `/api/v1/*`-Routen aber mit
-  **404** (nicht 502). Ein Health-Check auf `/health` meldet den Container also
-  früher „gesund", als er tatsächlich benutzbar ist — bei Deployments relevant.
-- **Lange Antworten:** KI-Streaming, URL-Import und PDF-Parsing laufen deutlich
-  länger als der nginx-Default von 60 s. Bun ist mit `idleTimeout: 255` (Sekunden)
-  konfiguriert; der Proxy sollte darunter oder gleichauf liegen, nicht darüber.
-- **WebSockets:** Der Protokoll-Realtime-Endpunkt braucht `Upgrade`/`Connection`
-  im Proxy. Fehlen sie, scheitert nur der Upgrade — im Ops-Log als
-  `no-response`/`client-aborted` sichtbar.
-- **`X-Forwarded-For` fehlt im Ops-Log?** Dann reicht der Proxy den Header nicht
-  durch, und alle IP-Angaben der App sind die des Proxys.
+- **Startup window:** `defineServer()` only registers all application routes
+  *after* the DB connection is up and the license check has passed. During these
+  seconds `/health` already responds with 200, but all `/api/v1/*` routes with
+  **404** (not 502). A health check on `/health` therefore reports the container as "healthy"
+  earlier than it is actually usable — relevant for deployments.
+- **Long responses:** AI streaming, URL import and PDF parsing run considerably
+  longer than the nginx default of 60 s. Bun is configured with `idleTimeout: 255` (seconds);
+  the proxy should be below or equal to that, not above it.
+- **WebSockets:** The protocol realtime endpoint needs `Upgrade`/`Connection`
+  in the proxy. If they are missing, only the upgrade fails — visible in the ops log as
+  `no-response`/`client-aborted`.
+- **`X-Forwarded-For` missing from the ops log?** Then the proxy is not passing the header
+  through, and all IP information in the app is that of the proxy.
