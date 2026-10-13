@@ -8,6 +8,8 @@ version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
 - The project is now open source under the Apache License 2.0 (`LICENSE`,
   `NOTICE`); the package manifests declare `"license": "Apache-2.0"`.
+- Package names renamed from `template-fullstack-app-*` to
+  `symbiosika-wiki-backend` / `symbiosika-wiki-frontend`.
 
 ## [0.15.1] - 2026-10-06
 

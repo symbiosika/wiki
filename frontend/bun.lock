@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "template-fullstack-app-frontend",
+      "name": "symbiosika-wiki-frontend",
       "dependencies": {
         "@ai-sdk/vue": "3.0.230",
         "@floating-ui/dom": "^1.8.0",
