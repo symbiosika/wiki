@@ -1,91 +1,93 @@
-# Das Wiki als Microsoft-Teams-Tab
+# The Wiki as a Microsoft Teams Tab
 
-Die App läuft als **Personal Tab** in Teams. Der in Teams angemeldete Nutzer wird
-über Entra ID identifiziert und ohne zweiten Login in eine normale Wiki-Session
-getauscht — mit denselben Registrierungsregeln (Einladungscode, offene
-Organisations-Einladungen) wie der Microsoft-Login im Browser.
+The app runs as a **personal tab** in Teams. The user signed in to Teams is
+identified via Entra ID and exchanged for a normal wiki session without a second
+login, under the same registration rules (invitation code, open organization
+invitations) as the Microsoft login in the browser.
 
-## Wie es funktioniert
+## How it works
 
 ```
-Teams-Tab lädt  /static/app/?host=teams        (öffentlich ausgeliefert)
-   └─ teams-js: getAuthToken()                 → Entra-ID-Token für diese App
-        └─ POST /api/v1/auth/teams/exchange    → Token serverseitig validiert
-             ├─ Konto bekannt / kein Gate      → Session-Token im Response-Body
-             └─ Gate aktiv, Adresse unbekannt  → pendingRegistrationToken
-                  └─ POST …/complete-registration mit Einladungscode → Session
+Teams tab loads  /static/app/?host=teams       (served publicly)
+   └─ teams-js: getAuthToken()                 → Entra ID token for this app
+        └─ POST /api/v1/auth/teams/exchange    → token validated server-side
+             ├─ account known / no gate        → session token in response body
+             └─ gate active, address unknown   → pendingRegistrationToken
+                  └─ POST …/complete-registration with invitation code → session
 ```
 
-Die Session wird als `Authorization: Bearer` mitgeschickt, **nicht** als Cookie.
-Grund: im Teams-iFrame ist jeder Request Third-Party, das `SameSite=Lax`-Cookie
-wird nicht mitgesendet, und auf iPadOS ist ein Cross-Site-Cookie ohnehin keine
-Option. Das Token liegt ausschließlich im Speicher — nach einem Reload holt der
-Tab still ein neues Entra-Token, es gibt also nichts zu persistieren.
+The session is sent as `Authorization: Bearer`, **not** as a cookie.
+Reason: inside the Teams iframe every request is third-party, the `SameSite=Lax`
+cookie is not sent, and on iPadOS a cross-site cookie is not an option anyway.
+The token lives in memory only: after a reload the tab silently fetches a new
+Entra token, so there is nothing to persist.
 
-Was **nicht** vertraut wird: `microsoftTeams.app.getContext()`. Dessen
-`userObjectId` ist eine Client-Angabe. Authentisiert wird ausschließlich über die
-Signaturprüfung des Entra-Tokens (`backend/src/lib/teams-sso`).
+What is **not** trusted: `microsoftTeams.app.getContext()`. Its `userObjectId`
+is client-supplied data. Authentication relies exclusively on verifying the
+signature of the Entra token (`backend/src/lib/teams-sso`).
 
-## Einrichtung
+## Setup
 
-### 1. Entra-App-Registrierung
+### 1. Entra app registration
 
-Dieselbe Registrierung wie für den Microsoft-Login im Browser. Zusätzlich nötig:
+The same registration as for the Microsoft login in the browser. Additionally
+required:
 
-1. **Expose an API** → Application ID URI setzen:
-   `api://<host>/<MICROSOFT_CLIENT_ID>` (z. B. `api://wiki.example.com/1234…`)
-2. Scope hinzufügen: `access_as_user`, Consent „Admins and users".
-3. Diesem Scope die Teams-Clients vorautorisieren:
+1. **Expose an API** → set the Application ID URI:
+   `api://<host>/<MICROSOFT_CLIENT_ID>` (e.g. `api://wiki.example.com/1234…`)
+2. Add a scope: `access_as_user`, consent "Admins and users".
+3. Pre-authorize the Teams clients for this scope:
    | Client | Application ID |
    | --- | --- |
    | Teams Desktop/Mobile | `1fec8e78-bce4-4aaf-ab1b-5451cc387264` |
    | Teams Web | `5e3ce6c0-2b1f-4285-8d4b-75ee78787346` |
-4. API-Berechtigungen: `openid`, `profile`, `email`, `User.Read`.
+4. API permissions: `openid`, `profile`, `email`, `User.Read`.
 
-Ein Client-Secret braucht der Teams-Pfad nicht — es bleibt nur für den
-Browser-Login nötig.
+The Teams path does not need a client secret; it is only required for the
+browser login.
 
-### 2. Server-Konfiguration
+### 2. Server configuration
 
 ```env
 MICROSOFT_CLIENT_ID=<Application (client) ID>
-MICROSOFT_CLIENT_SECRET=<nur für den Browser-Login>
+MICROSOFT_CLIENT_SECRET=<only for the browser login>
 MICROSOFT_TENANT_ID=<Directory (tenant) ID>
 ```
 
-`MICROSOFT_TENANT_ID` ist bei einem Teams-Rollout wichtig: ohne GUID (also mit
-`common`) wird jedes gültige Entra-Token akzeptiert, und jeder Microsoft-365-
-Nutzer weltweit landet zumindest auf der Einladungscode-Abfrage. Mit GUID kommt
-nur das eigene Verzeichnis durch.
+`MICROSOFT_TENANT_ID` matters for a Teams rollout: without a GUID (i.e. with
+`common`) every valid Entra token is accepted, and every Microsoft 365 user
+worldwide at least reaches the invitation code prompt. With a GUID, only your
+own directory gets through.
 
-### 3. Teams-App-Paket
+### 3. Teams app package
 
-Unter `docs/teams-app/` liegt das vollständige Paket für `wiki.symbiosika.de`:
-`manifest.json`, `color.png` (192×192) und `outline.png` (32×32, weiß auf
-transparent — so verlangt es Teams für das Outline-Icon).
+`docs/teams-app/` contains the complete package for `wiki.symbiosika.de`:
+`manifest.json`, `color.png` (192×192) and `outline.png` (32×32, white on
+transparent, as Teams requires for the outline icon).
 
 ```bash
 docs/teams-app/pack.sh          # → docs/teams-app/symbiosika-wiki-teams.zip
 ```
 
-Das ZIP in Teams unter „Apps → Manage your apps → Upload an app" hochladen.
-Voraussetzung: Custom App Upload / Sideloading ist im Tenant erlaubt (Teams Admin
-Center).
+Upload the ZIP in Teams via "Apps → Manage your apps → Upload an app".
+Prerequisite: custom app upload / sideloading is allowed in the tenant (Teams
+admin center).
 
-Das Skript prüft vorher das Manifest und packt dann flach (`zip -j`). Beides,
-weil Teams an zwei Stellen streng ist und der Fehler jeweils erst beim Upload
-auffällt:
+The script first checks the manifest and then packs it flat (`zip -j`). It does
+both because Teams is strict in two places, and in each case the error only
+shows up at upload time:
 
-- **Flaches ZIP.** Manifest und Icons direkt im Wurzelverzeichnis; ein Paket mit
-  Unterordner wird mit einer generischen Meldung abgelehnt.
-- **Keine unbekannten Felder.** Das Schema setzt `additionalProperties: false`.
-  Ein einziger nicht vorgesehener Schlüssel führt zu „Das App-Manifest aus Ihrem
-  App-Paket konnte nicht analysiert werden". `packageName` etwa gehört **nicht**
-  zu v1.17, auch wenn es in älteren Beispielen auftaucht.
+- **Flat ZIP.** Manifest and icons directly in the root directory; a package
+  with a subfolder is rejected with a generic message.
+- **No unknown fields.** The schema sets `additionalProperties: false`.
+  A single unexpected key leads to "Das App-Manifest aus Ihrem App-Paket konnte
+  nicht analysiert werden" ("The app manifest from your app package could not
+  be parsed"). `packageName`, for example, is **not** part of v1.17, even
+  though it shows up in older examples.
 
-Die Prüfung im Skript vergleicht die Top-Level-Schlüssel mit der
-Property-Liste von v1.17 und stellt sicher, dass die Pflichtfelder da sind. Sie
-ist kein vollständiger Validator — für den kompletten Abgleich:
+The check in the script compares the top-level keys with the v1.17 property
+list and makes sure the required fields are present. It is not a full
+validator; for a complete check:
 
 ```bash
 curl -sO https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json
@@ -93,112 +95,110 @@ pip install jsonschema && python3 -c "
 import json, jsonschema
 jsonschema.Draft7Validator(json.load(open('MicrosoftTeams.schema.json'))).validate(
     json.load(open('docs/teams-app/manifest.json')))
-print('valide')"
+print('valid')"
 ```
 
-**Für eine andere Instanz** zu ersetzen:
+**For a different instance**, replace:
 
-| Feld | Wert |
+| Field | Value |
 | --- | --- |
-| `id` | neue GUID für die Teams-App — **nicht** die Client-ID |
+| `id` | new GUID for the Teams app, **not** the client ID |
 | `staticTabs[0].contentUrl` | `https://<host>/static/app/?host=teams` |
-| `staticTabs[0].websiteUrl`, `validDomains` | eigener Host |
+| `staticTabs[0].websiteUrl`, `validDomains` | your own host |
 | `webApplicationInfo.id` | `MICROSOFT_CLIENT_ID` |
 | `webApplicationInfo.resource` | `api://<host>/<MICROSOFT_CLIENT_ID>` |
-| `developer.*`, `name`, `description`, `accentColor` | eigene Angaben |
+| `developer.*`, `name`, `description`, `accentColor` | your own details |
 
-**Zur `contentUrl`:** Der direkte Pfad `/static/app/?host=teams` ist der
-kürzeste Weg. Die bloße Domain (`https://<host>/?host=teams`) funktioniert auch —
-`public/index.html` erkennt den `host=teams`-Marker und leitet weiter, *bevor* es
-das Session-Cookie prüft. Ohne diese Sonderbehandlung würde der Tab auf
-`/login.html` landen, weil im Tab nie ein Cookie ankommt, und der Marker ginge
-beim Redirect verloren.
+**About `contentUrl`:** The direct path `/static/app/?host=teams` is the
+shortest route. The bare domain (`https://<host>/?host=teams`) works too:
+`public/index.html` detects the `host=teams` marker and redirects *before* it
+checks the session cookie. Without this special handling the tab would end up
+on `/login.html`, because no cookie ever arrives in the tab, and the marker
+would be lost in the redirect.
 
-## Warum das SPA-Bundle öffentlich ausgeliefert wird
+## Why the SPA bundle is served publicly
 
-`staticPrivateExclude: ["app"]` in `backend/src/index.ts` nimmt `/static/app`
-aus dem Login-Redirect heraus. Ohne das würde der Dokument-Request des Tabs —
-der kein Cookie trägt — auf `/login.html` umgeleitet, bevor unser eigener Code
-laufen kann.
+`staticPrivateExclude: ["app"]` in `backend/src/index.ts` exempts `/static/app`
+from the login redirect. Without it, the tab's document request, which carries
+no cookie, would be redirected to `/login.html` before our own code could run.
 
-Betroffen ist nur das gebaute Frontend-Bundle. Es enthält keine Geheimnisse; alle
-Daten kommen aus der API, und dort ist jede Route weiterhin authentifiziert.
+Only the built frontend bundle is affected. It contains no secrets; all data
+comes from the API, and every route there is still authenticated.
 
-## Bilder im Teams-Modus
+## Images in Teams mode
 
-Wiki-Bilder sind authentifizierte API-Pfade, und ein `<img src>` schickt zwar
-Cookies, aber niemals einen `Authorization`-Header. Im Tab, wo die Session ein
-Bearer-Token ist, laufen sie deshalb alle in ein 401 und der Browser zeigt ein
-kaputtes Bild.
+Wiki images are authenticated API paths, and an `<img src>` does send cookies
+but never an `Authorization` header. In the tab, where the session is a bearer
+token, they therefore all hit a 401 and the browser shows a broken image.
 
-Gelöst wird das an drei Stellen, alle über
+This is solved in three places, all via
 `components/editor/authenticatedImageSrc.ts`:
 
-| Wo | Wie |
+| Where | How |
 | --- | --- |
-| Wiki-Inhalt (TipTap) | NodeView in `wikiImage.ts` — holt die Bytes per Fetcher und setzt eine Blob-URL. `node.attrs.src` bleibt der echte Pfad, sonst würde beim Speichern eine Blob-URL in den Seiteninhalt wandern |
-| Gerendertes Markdown (Chat, Vorschauen) | `MarkdownRenderer.vue` patcht die `<img>`-Elemente nach jedem Render; reine Anzeige, nichts wird zurückgeschrieben |
-| Logo, Profilbild | `useAuthenticatedImage` |
+| Wiki content (TipTap) | NodeView in `wikiImage.ts`: fetches the bytes via the Fetcher and sets a blob URL. `node.attrs.src` stays the real path; otherwise a blob URL would end up in the page content on save |
+| Rendered Markdown (chat, previews) | `MarkdownRenderer.vue` patches the `<img>` elements after every render; display only, nothing is written back |
+| Logo, profile picture | `useAuthenticatedImage` |
 
-Zwei Regeln dabei: nur app-relative Pfade werden mit Token geladen — an einen
-fremden Host würde das Token sonst abfließen — und außerhalb des Teams-Modus
-bleibt die URL unverändert, damit der Browser-Cache greift. Die Blob-URLs werden
-beim Verlassen der Wiki-Ansicht freigegeben.
+Two rules apply: only app-relative paths are loaded with the token (otherwise
+the token would leak to a foreign host), and outside Teams mode the URL stays
+unchanged so the browser cache applies. The blob URLs are released when leaving
+the wiki view.
 
-## Bekannte Einschränkungen
+## Known limitations
 
-- **Kein Logout im Tab.** Die Identität kommt vom Teams-Host; ein Abmelden würde
-  sofort still wieder anmelden. Der Button ist im Teams-Modus ausgeblendet.
-- **Kein Passkey-Login im Tab** (wird auch nicht gebraucht — die Anmeldung läuft
-  über Teams).
-- **Gastkonten ohne E-Mail-Claim** können sich nicht über Teams anmelden: ohne
-  `preferred_username`/`upn`/`email` lässt sich kein Konto zuordnen. Für diese
-  Nutzer bleibt der reguläre Microsoft-Login im Browser.
-- **iPadOS/Teams-Mobile** ist mit dem Bearer-Weg abgedeckt, wurde aber nicht auf
-  einem Gerät verifiziert — beim Rollout einmal prüfen.
-- **Framing-Header:** im Code gibt es weder `X-Frame-Options` noch eine CSP. Falls
-  ein Reverse Proxy davor welche setzt, muss
+- **No logout in the tab.** The identity comes from the Teams host; signing out
+  would immediately sign in again silently. The button is hidden in Teams mode.
+- **No passkey login in the tab** (not needed either; sign-in goes through
+  Teams).
+- **Guest accounts without an email claim** cannot sign in via Teams: without
+  `preferred_username`/`upn`/`email` no account can be matched. For these
+  users the regular Microsoft login in the browser remains.
+- **iPadOS/Teams mobile** is covered by the bearer approach but has not been
+  verified on a device; check it once during rollout.
+- **Framing headers:** the code sets neither `X-Frame-Options` nor a CSP. If a
+  reverse proxy in front sets them,
   `frame-ancestors teams.microsoft.com *.teams.microsoft.com *.skype.com`
-  erlaubt sein. Schnelltest:
+  must be allowed. Quick test:
   `curl -sI https://<host>/ | grep -i -e x-frame -e content-security`
 
-## Fehlersuche
+## Troubleshooting
 
-Der Fehlerbildschirm im Tab nennt die Stufe, auf der es gebrochen ist, und zeigt
-unter „Technische Meldung" den Wortlaut. Dieselbe Meldung steht in der Konsole
-(`[teams] sign-in failed …`) — im Teams-Desktop per Rechtsklick → „Inspect"
-erreichbar, im Teams-Web mit den Devtools des Browsers.
+The error screen in the tab names the stage at which it broke and shows the
+exact wording under "Technische Meldung" (technical message). The same message
+appears in the console (`[teams] sign-in failed …`), reachable in Teams desktop
+via right-click → "Inspect", and in Teams web via the browser's devtools.
 
-**Wichtigste Unterscheidung:** kommt im Server-Log **kein**
-`POST /api/v1/auth/teams/exchange` an, ist der Fehler clientseitig — Teams hat
-kein Token herausgegeben, der Server war nie beteiligt.
+**Most important distinction:** if **no**
+`POST /api/v1/auth/teams/exchange` arrives in the server log, the error is
+client-side: Teams did not issue a token, and the server was never involved.
 
-### Teams gibt kein Token heraus (Stufe „no_token")
+### Teams does not issue a token (stage "no_token")
 
-Das ist der häufigste Fall und betrifft immer die App-Registrierung. Der
-Browser-Login funktioniert dabei weiterhin, weil er diese Einstellungen **nicht**
-braucht — er kommt mit Client-ID, Secret und Redirect-URI aus. Zu prüfen, in
-dieser Reihenfolge:
+This is the most common case and always concerns the app registration. The
+browser login keeps working in this case because it does **not** need these
+settings; it gets by with client ID, secret and redirect URI. Check, in this
+order:
 
-1. **Application ID URI** unter „Expose an API" gesetzt und **exakt** gleich
-   `webApplicationInfo.resource` im Manifest:
+1. **Application ID URI** set under "Expose an API" and **exactly** equal to
+   `webApplicationInfo.resource` in the manifest:
    `api://wiki.symbiosika.de/<MICROSOFT_CLIENT_ID>`
-2. **Scope `access_as_user`** unter „Expose an API" vorhanden, „Who can consent:
+2. **Scope `access_as_user`** present under "Expose an API", "Who can consent:
    Admins and users"
-3. **Vorautorisierte Client-Anwendungen** für diesen Scope — beide GUIDs
-   (`1fec8e78-…` Desktop/Mobile, `5e3ce6c0-…` Web). Fehlt das, verweigert der
-   Host das Token stillschweigend.
-4. **Delegated permissions** `openid` und `profile` erteilt
-5. **Zustimmung**: bei „needs admin approval" einmal „Grant admin consent"
+3. **Pre-authorized client applications** for this scope: both GUIDs
+   (`1fec8e78-…` desktop/mobile, `5e3ce6c0-…` web). If this is missing, the
+   host silently refuses the token.
+4. **Delegated permissions** `openid` and `profile` granted
+5. **Consent**: for "needs admin approval", run "Grant admin consent" once
 
-Typische Wortlaute: `resourceDisabled` oder `invalid_resource` → Punkt 1 oder 3.
-`consentRequired` / `invalid_grant` → Punkt 5. `2000: …` /
-`NOT_SUPPORTED_ON_PLATFORM` → der Host unterstützt SSO in diesem Kontext nicht.
+Typical wordings: `resourceDisabled` or `invalid_resource` → item 1 or 3.
+`consentRequired` / `invalid_grant` → item 5. `2000: …` /
+`NOT_SUPPORTED_ON_PLATFORM` → the host does not support SSO in this context.
 
-| Symptom | Ursache |
+| Symptom | Cause |
 | --- | --- |
-| „Diese Seite läuft nicht in Microsoft Teams" | `app.initialize()` fand keinen Teams-Host — die URL wurde außerhalb von Teams geöffnet |
-| 401 auf `/auth/teams/exchange` | Audience, Tenant oder Scope passen nicht; der genaue Grund steht im Server-Log (`Teams SSO exchange rejected: …`) |
-| 503 auf `/auth/teams/exchange` | `MICROSOFT_CLIENT_ID` ist nicht gesetzt |
-| Einladungscode-Abfrage erscheint unerwartet | die Instanz hat aktive Einladungscodes und die Adresse ist unbekannt — Verhalten identisch zum Browser-Login |
-| Leere Seite, Redirect auf `/login.html` | `staticPrivateExclude: ["app"]` fehlt in der Server-Konfiguration |
+| "Diese Seite läuft nicht in Microsoft Teams" ("This page is not running in Microsoft Teams") | `app.initialize()` found no Teams host; the URL was opened outside Teams |
+| 401 on `/auth/teams/exchange` | Audience, tenant or scope do not match; the exact reason is in the server log (`Teams SSO exchange rejected: …`) |
+| 503 on `/auth/teams/exchange` | `MICROSOFT_CLIENT_ID` is not set |
+| Invitation code prompt appears unexpectedly | the instance has active invitation codes and the address is unknown; behavior identical to the browser login |
+| Blank page, redirect to `/login.html` | `staticPrivateExclude: ["app"]` is missing from the server configuration |
