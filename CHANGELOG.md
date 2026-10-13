@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.15.2] - 2026-10-13
+
+- The project is now open source under the Apache License 2.0 (`LICENSE`,
+  `NOTICE`); the package manifests declare `"license": "Apache-2.0"`.
+- Package names renamed from `template-fullstack-app-*` to
+  `symbiosika-wiki-backend` / `symbiosika-wiki-frontend`.
+
 ## [0.15.1] - 2026-10-06
 
 - The page's "notify users by email" menu now uses an envelope icon instead

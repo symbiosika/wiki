@@ -1,9 +1,10 @@
 {
-  "name": "template-fullstack-app-backend",
-  "version": "0.15.1",
+  "name": "symbiosika-wiki-backend",
+  "version": "0.15.2",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "license": "Apache-2.0",
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.2",
     "@electric-sql/pglite-pgvector": "^0.0.3",

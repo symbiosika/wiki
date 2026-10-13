@@ -1,5 +1,7 @@
 # symbiosika-wiki
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
+
 Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
 
 - **Seiten** sind Framework-`knowledgeTexts` mit `parentId`-Hierarchie und
@@ -254,3 +256,19 @@ cd backend
 bun run init
 bun run sync-skills
 ```
+
+## Mitmachen
+
+Issues und Pull Requests sind willkommen — Ablauf, Tests und Konventionen
+stehen in [`CONTRIBUTING.md`](./CONTRIBUTING.md). Sicherheitslücken bitte
+**nicht** als öffentliches Issue melden, sondern wie in
+[`SECURITY.md`](./SECURITY.md) beschrieben.
+
+## Lizenz
+
+Copyright 2026 Symbiosika GmbH. Lizenziert unter der
+[Apache License 2.0](./LICENSE) — siehe auch [`NOTICE`](./NOTICE).
+
+Das Framework unter `backend/framework` ist ein eigenes Repository
+([symbiosika-framework](https://github.com/symbiosika/symbiosika-framework))
+mit eigener Lizenz.
