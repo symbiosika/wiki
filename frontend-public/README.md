@@ -1,95 +1,95 @@
-# frontend-public — öffentliche Doku-Seite
+# frontend-public — public documentation site
 
-Read-only Zweitansicht des Wikis für veröffentlichte Seiten. Kein Login, kein
-Editor, keine Schreibpfade — eine Doku-Seite, keine zweite App-Oberfläche.
+Read-only secondary view of the wiki for published pages. No login, no
+editor, no write paths — a documentation site, not a second app UI.
 
-## Warum eine eigene App
+## Why a separate app
 
-Das Haupt-Frontend wird unter `/static/app/` ausgeliefert, und `/static/*` läuft
-im Backend durch `authOrRedirectToLogin`. Alles dort ist per Definition hinter
-dem Login. Diese App baut deshalb nach `dist/public/docs/` und landet in
-`backend/public/`, das ohne Authentifizierung ausgeliefert wird — der einzige
-Unterschied im Ausliefern, aber ein grundlegender.
+The main frontend is served under `/static/app/`, and in the backend `/static/*`
+goes through `authOrRedirectToLogin`. Everything there is behind the login by
+definition. This app therefore builds to `dist/public/docs/` and ends up in
+`backend/public/`, which is served without authentication — the only
+difference in how it is served, but a fundamental one.
 
-Entsprechend schlank ist der Stack: Vue 3, Vue Router, Tailwind, `marked`.
-Kein TipTap, kein PrimeVue, kein Pinia, kein i18n.
+The stack is correspondingly lean: Vue 3, Vue Router, Tailwind, `marked`.
+No TipTap, no PrimeVue, no Pinia, no i18n.
 
-## Sichtbarkeit
+## Visibility
 
-Die App entscheidet **nichts** über Sichtbarkeit. Sie ruft ausschließlich
-`/api/v1/public/wiki/:tenantId/…` auf; das Backend liefert dort nur Seiten aus,
-die über `knowledgeText.publicMode` freigegeben wurden (Vererbung an
-Unterseiten, `"excluded"` als Notausgang). Ein 404 heißt „nicht veröffentlicht
-oder nicht vorhanden" — das Backend unterscheidet die beiden Fälle bewusst
-nicht, und diese App tut es folglich auch nicht.
+The app decides **nothing** about visibility. It calls only
+`/api/v1/public/wiki/:tenantId/…`; there the backend serves only pages
+that have been released via `knowledgeText.publicMode` (inherited by
+child pages, `"excluded"` as an escape hatch). A 404 means "not published
+or does not exist" — the backend deliberately does not distinguish between the two cases,
+and consequently neither does this app.
 
 ## Routing
 
-Hash-Routen (`#/<slug>/page/<pageId>`), wie im Haupt-Frontend. Grund:
-Die Bundles werden als statische Dateien ohne SPA-Fallback ausgeliefert, ein
-History-Deep-Link würde beim Neuladen 404 liefern.
+Hash routes (`#/<slug>/page/<pageId>`), as in the main frontend. Reason:
+the bundles are served as static files without an SPA fallback, so a
+history-mode deep link would return 404 on reload.
 
-Die Organisation steht als lesbarer Slug in der URL (`#/acme-gmbh/…`). Slugs
-werden serverseitig aus dem Organisationsnamen abgeleitet, nicht gespeichert —
-die Auflösung ist deshalb eine Suche (`GET …/public/wiki/by-slug/:slug`) und
-ein Slug wandert, wenn eine Organisation umbenannt wird. Kanonisch bleibt die
-Tenant-ID; der Slug ist nur der Einstieg.
+The organisation appears in the URL as a readable slug (`#/acme-gmbh/…`). Slugs
+are derived server-side from the organisation name, not stored —
+resolving one is therefore a lookup (`GET …/public/wiki/by-slug/:slug`), and
+a slug moves when an organisation is renamed. The tenant ID remains
+canonical; the slug is only the entry point.
 
-Seiten behalten ihre ID: Titel sind weder eindeutig noch stabil, ein
-titelbasierter Seiten-Slug würde bei jeder Umbenennung Links brechen.
+Pages keep their ID: titles are neither unique nor stable, and a
+title-based page slug would break links on every rename.
 
-Ohne Organisation in der URL zeigt der Einstieg die veröffentlichenden
-Organisationen; gibt es genau eine (der Normalfall), wird direkt
-weitergeleitet. Eine ID muss niemand eingeben.
+Without an organisation in the URL, the entry page shows the publishing
+organisations; if there is exactly one (the normal case), it redirects
+directly. Nobody has to enter an ID.
 
-## Erscheinungsbild
+## Appearance
 
-Hell/Dunkel folgt standardmäßig dem Betriebssystem und lässt sich über den
-Schalter im Header auf hell oder dunkel festlegen. Umgesetzt über die
-`.app-dark`-Klasse auf `<html>` und denselben localStorage-Schlüssel wie das
-Haupt-Frontend (`wiki:theme`) — beide Apps laufen auf derselben Origin, die
-Wahl gilt also für beide.
+Light/dark follows the operating system by default and can be pinned to light
+or dark via the toggle in the header. Implemented via the
+`.app-dark` class on `<html>` and the same localStorage key as the
+main frontend (`wiki:theme`) — both apps run on the same origin, so the
+choice applies to both.
 
-**Branding.** Logo und Primärfarbe kommen aus derselben Quelle wie im
-Haupt-Frontend (Logo-Tabelle bzw. `tenant_settings` key `branding`), damit eine
-veröffentlichte Seite aussieht wie das Wiki, aus dem sie stammt. Die Farbe wird
-nicht roh übernommen: `src/brand.ts` leitet pro Erscheinungsbild eine lesbare
-Variante ab — eine für Weiß gewählte Markenfarbe ist auf dem dunklen
-Hintergrund sonst unlesbar und umgekehrt. Ungültige Werte fallen auf die
-Standardpalette zurück.
+**Branding.** Logo and primary colour come from the same source as in the
+main frontend (the logo table and `tenant_settings` key `branding`, respectively), so that a
+published page looks like the wiki it comes from. The colour is
+not taken over raw: `src/brand.ts` derives a readable variant for each
+appearance — a brand colour chosen for white would otherwise be unreadable on the dark
+background, and vice versa. Invalid values fall back to the
+default palette.
 
-**Navigationsbreite.** Der Baum ist per Griff zwischen Sidebar und Inhalt
-verschiebbar (Tastatur: Pfeil links/rechts, Doppelklick setzt zurück). Die
-Breite wird pro Browser gemerkt.
+**Navigation width.** The tree can be resized via a handle between the sidebar and the
+content (keyboard: left/right arrow; double-click resets). The
+width is remembered per browser.
 
-**Suche.** Sitzt in der Sidebar über dem Baum, wie im Haupt-Frontend: solange
-etwas eingegeben ist, treten die Treffer an die Stelle des Baums, der
-Inhaltsbereich zeigt weiter die gelesene Seite. Eine eigene Suchseite gibt es
-deshalb nicht. Anfragen sind entprellt und die vorherige wird abgebrochen — der
-semantische Teil der Suche erzeugt pro Anfrage ein Embedding.
+**Search.** Sits in the sidebar above the tree, as in the main frontend: while
+something is entered, the results take the place of the tree, and the
+content area keeps showing the page being read. There is therefore no
+separate search page. Requests are debounced and the previous one is aborted — the
+semantic part of the search generates an embedding per request.
 
-## Inhalte
+## Content
 
-`src/markdown.ts` macht drei Dinge über reines Markdown hinaus:
+`src/markdown.ts` does three things beyond plain Markdown:
 
-1. **Sanitizing.** Der Inhalt landet per `v-html` im DOM; Skripte,
-   Event-Handler und gefährliche URL-Schemata werden vorher entfernt.
-2. **Bilder umschreiben.** Seiten binden Bilder als
-   `/files/db/knowledge/<uuid>.<ext>` ein — ein Pfad, der `files:read`
-   verlangt. Öffentliche Leser haben keine Scopes, daher zeigen die Bilder auf
-   den seitenbezogenen öffentlichen Endpunkt.
-3. **Wiki-Links.** `[[Titel]]` wird zu einem echten Link, **wenn** das Ziel
-   veröffentlicht ist. Sonst zu Klartext: ein toter Link würde verraten, dass
-   eine interne Seite existiert.
+1. **Sanitizing.** The content lands in the DOM via `v-html`; scripts,
+   event handlers and dangerous URL schemes are removed beforehand.
+2. **Rewriting images.** Pages embed images as
+   `/files/db/knowledge/<uuid>.<ext>` — a path that requires `files:read`.
+   Public readers have no scopes, so the images point to
+   the page-scoped public endpoint.
+3. **Wiki links.** `[[Title]]` becomes a real link **if** the target
+   is published. Otherwise plain text: a dead link would reveal that
+   an internal page exists.
 
-## Entwicklung
+## Development
 
 ```bash
 bun install
-bun run dev          # http://localhost:5174/docs/  (API-Proxy → :3000)
+bun run dev          # http://localhost:5174/docs/  (API proxy → :3000)
 bun run test         # Vitest
 bun run type-check
 bun run build        # -> dist/public/docs/
 ```
 
-`VITE_DEV_API_URL` überschreibt das Proxy-Ziel (Default `http://localhost:3000`).
+`VITE_DEV_API_URL` overrides the proxy target (default `http://localhost:3000`).

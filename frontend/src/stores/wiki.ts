@@ -78,6 +78,15 @@ export interface WikiImageUpload {
   markdown: string
 }
 
+/** Who an e-mail notification about a page reaches (backend lib/wiki/notify-page). */
+export interface WikiNotifyAudience {
+  scope: 'team' | 'organisation' | 'personal'
+  teamName: string | null
+  recipientCount: number
+  /** write access to the page — needed to send */
+  canNotify: boolean
+}
+
 /** A file uploaded for a page's download block (backend lib/wiki/page-files). */
 export interface WikiFileUpload {
   fileId: string
@@ -459,6 +468,23 @@ export const useWiki = defineStore('wiki', () => {
     )
   }
 
+  /** Who a notification about the page would reach. */
+  const getNotifyAudience = async (
+    tenantId: string,
+    pageId: string,
+  ): Promise<WikiNotifyAudience> =>
+    await fetcher.get<WikiNotifyAudience>(
+      `${api(tenantId)}/wiki/${pageId}/notify`,
+    )
+
+  /** E-mail everyone who can see the page; the mail links to the page. */
+  const notifyPageMembers = async (
+    tenantId: string,
+    pageId: string,
+    body: { subject?: string | null; message: string },
+  ): Promise<{ scope: WikiNotifyAudience['scope']; recipientCount: number }> =>
+    await fetcher.post(`${api(tenantId)}/wiki/${pageId}/notify`, body)
+
   /**
    * Fetch a file a page embeds (through the page-scoped route, so it works with
    * a bearer token too) and hand it to the browser as a download.
@@ -818,6 +844,8 @@ export const useWiki = defineStore('wiki', () => {
     fetchParserCapabilities,
     uploadImage,
     uploadFile,
+    getNotifyAudience,
+    notifyPageMembers,
     downloadFile,
     saveTitle,
     savePageMeta,

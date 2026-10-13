@@ -4,6 +4,44 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.15.2] - 2026-10-13
+
+- The project is now open source under the Apache License 2.0 (`LICENSE`,
+  `NOTICE`); the package manifests declare `"license": "Apache-2.0"`.
+- Package names renamed from `template-fullstack-app-*` to
+  `symbiosika-wiki-backend` / `symbiosika-wiki-frontend`.
+
+## [0.15.1] - 2026-10-06
+
+- The page's "notify users by email" menu now uses an envelope icon instead
+  of the rocket, with the tooltip "Benachrichtigen" / "Notify".
+
+## [0.15.0] - 2026-10-06
+
+- Download blocks get an editable display name (pencil button on the card in
+  the editor). Default is still the file name; the downloaded file keeps its
+  own name, which the card shows below the display name.
+- New "Publish" menu (rocket icon) on a wiki page with "Notify users by
+  email": sends an editable message plus a link to the page to every member
+  of the page's team, the whole organisation for organisation-wide pages, or
+  just the owner for personal pages. Needs write access to the page
+  (`GET`/`POST /tenant/:tenantId/wiki/:pageId/notify`).
+
+## [0.14.0] - 2026-10-06
+
+- Framework update: impersonation sessions — an actor (e.g. a support admin)
+  can act as another user via a session JWT with RFC 8693 `act` claim;
+  owner-only actions (password/e-mail change, API tokens, passkeys, …) are
+  blocked while impersonating.
+- Framework update: `GET /user/me` additionally returns `actor` and
+  `sessionExpiresAt`.
+- Framework update: secrets are unique per tenant — fixes one tenant
+  overwriting another tenant's secret of the same name (migration
+  `0044_modern_thing`).
+- Framework update: requests during startup get `503 starting` (and
+  `/health` answers) instead of crashing the server before all routes are
+  registered.
+
 ## [0.13.1] - 2026-10-06
 
 - Settings: plain organisation members now only see their own organisations

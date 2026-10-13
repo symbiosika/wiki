@@ -98,6 +98,10 @@
     "uploading": "Uploading…",
     "uploadError": "File upload failed. Please try again.",
     "tooLarge": "The file is too large (maximum {max}).",
-    "downloadError": "The file could not be downloaded."
+    "downloadError": "The file could not be downloaded.",
+    "rename": "Change display name",
+    "renameTitle": "Download display name",
+    "title": "Display name",
+    "titleHint": "Leave empty to show the file name “{name}”. The downloaded file keeps its file name."
   }
 }

@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "template-fullstack-app-backend",
+      "name": "symbiosika-wiki-backend",
       "dependencies": {
         "@ai-sdk/mistral": "^3.0.5",
         "@ai-sdk/openai-compatible": "~2.0.62",

@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const ADMIN_ONLY_ROUTES: typeof import('./utils/tenantRoles').ADMIN_ONLY_ROUTES
   const API_BASE_URL: typeof import('./utils/fetcher').API_BASE_URL
   const CHOICE_COLORS: typeof import('./utils/collections').CHOICE_COLORS
   const COLLECTION_FIELD_TYPES: typeof import('./utils/collections').COLLECTION_FIELD_TYPES
@@ -77,6 +78,7 @@ declare global {
   const hasIncompleteWarning: typeof import('./utils/parserWarnings').hasIncompleteWarning
   const inject: typeof import('vue').inject
   const isAcceptedFile: typeof import('./utils/parserCapabilities').isAcceptedFile
+  const isAdminOnlyRoute: typeof import('./utils/tenantRoles').isAdminOnlyRoute
   const isAdvertisedAnywhere: typeof import('./utils/parserCapabilities').isAdvertisedAnywhere
   const isEmojiIcon: typeof import('./utils/wikiIcons').isEmojiIcon
   const isEmptyValue: typeof import('./utils/collections').isEmptyValue
@@ -88,6 +90,7 @@ declare global {
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
   const isTeamsHost: typeof import('./utils/teamsSession').isTeamsHost
+  const isTenantAdminRole: typeof import('./utils/tenantRoles').isTenantAdminRole
   const isUninformativeMime: typeof import('./utils/parserCapabilities').isUninformativeMime
   const isValidHexColor: typeof import('./utils/brandColor').isValidHexColor
   const looksLikeMarkdown: typeof import('./utils/markdownPaste').looksLikeMarkdown
@@ -224,7 +227,7 @@ declare global {
   export type { CreatedProtocol, ProcessResult } from './stores/protocol'
   import('./stores/protocol')
   // @ts-ignore
-  export type { WikiImportOptions, IngestJob, WikiImageUpload, WikiFileUpload } from './stores/wiki'
+  export type { WikiImportOptions, IngestJob, WikiImageUpload, WikiNotifyAudience, WikiFileUpload } from './stores/wiki'
   import('./stores/wiki')
   // @ts-ignore
   export type { AiTestQuestionType, AiTestRunStatus, AiTestVerdict, AiTestClaimVerdict, AiTestSuite, AiTestQuestion, AiTestRunAggregates, AiTestRun, AiTestTrajectoryStep, AiTestTrajectory, AiTestClaim, AiTestJudgeReport, AiTestMetrics, AiTestScores, AiTestResult, AiTestSuiteDetail, AiTestRunDetail, AiTestSuiteInput, AiTestQuestionInput } from './types/aiTests'
@@ -271,6 +274,9 @@ declare global {
   // @ts-ignore
   export type { TeamsStatus, TeamsFailure, TeamsTheme } from './utils/teamsSession'
   import('./utils/teamsSession')
+  // @ts-ignore
+  export type { TenantRole } from './utils/tenantRoles'
+  import('./utils/tenantRoles')
   // @ts-ignore
   export type { ThemePreference } from './utils/theme'
   import('./utils/theme')

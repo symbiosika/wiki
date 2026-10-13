@@ -98,6 +98,10 @@
     "uploading": "Wird hochgeladen…",
     "uploadError": "Datei-Upload fehlgeschlagen. Bitte erneut versuchen.",
     "tooLarge": "Die Datei ist zu groß (maximal {max}).",
-    "downloadError": "Die Datei konnte nicht heruntergeladen werden."
+    "downloadError": "Die Datei konnte nicht heruntergeladen werden.",
+    "rename": "Anzeigenamen ändern",
+    "renameTitle": "Anzeigename des Downloads",
+    "title": "Anzeigename",
+    "titleHint": "Leer lassen, um den Dateinamen „{name}“ zu zeigen. Die heruntergeladene Datei behält ihren Dateinamen."
   }
 }

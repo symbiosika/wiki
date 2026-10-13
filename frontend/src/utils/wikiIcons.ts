@@ -13,8 +13,7 @@
  *
  * Growing the list means adding an import plus a map entry — nothing else. If
  * free choice over all ~7600 Material icons is ever needed, the collection
- * would have to be served as a lazily fetched static asset instead; see
- * docs/ui-ux-backlog-tolaria.md.
+ * would have to be served as a lazily fetched static asset instead.
  */
 import type { Component } from 'vue'
 

@@ -1,75 +1,77 @@
 # symbiosika-wiki
 
-Ein einfaches, agentenfreundliches Wiki auf Basis des symbiosika-frameworks.
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
-- **Seiten** sind Framework-`knowledgeTexts` mit `parentId`-Hierarchie und
-  Block-Inhalten (`knowledge/texts`-API: Blöcke, Volltext-/Hybrid-Suche,
-  Wikilinks, Backlinks, Versionshistorie, file-artige Read/Edit-Endpunkte
-  für AI-Agenten).
-- **Sichtbarkeit** pro Seite: Persönlich (`userId`), Team (`teamId`) oder
+A simple, agent-friendly wiki built on the symbiosika-framework.
+
+- **Pages** are framework `knowledgeTexts` with a `parentId` hierarchy and
+  block content (`knowledge/texts` API: blocks, full-text/hybrid search,
+  wikilinks, backlinks, version history, file-style read/edit endpoints
+  for AI agents).
+- **Visibility** per page: Personal (`userId`), Team (`teamId`) or
   Organisation (`tenantWide`).
-- **Frontend**: Vue 3 SPA mit Notion-artigem TipTap-Block-Editor
-  (Slash-Befehle, Bubble-Menü, Drag-Handle, Markdown-Input-Rules,
-  To-do-Listen) und einklappbarem Seitenbaum
-  (Persönlich / Teams / Organisation) plus Organisations-/Team-/
-  Einladungsverwaltung.
-- **Öffentliche Doku-Seite** (`frontend-public/`): schlanke, read-only
-  Zweitansicht für veröffentlichte Seiten — ohne Login, ohne Editor. Sie liest
-  ausschließlich die öffentliche API (`/api/v1/public/wiki/:tenantId/…`) und
-  zeigt nur, was über `publicMode` freigegeben wurde. Ausgeliefert unter
-  `/docs/` aus `backend/public/` (das Haupt-Frontend liegt dagegen hinter dem
-  Login unter `/static/app/`). Siehe
+- **Frontend**: Vue 3 SPA with a Notion-style TipTap block editor
+  (slash commands, bubble menu, drag handle, Markdown input rules,
+  to-do lists) and a collapsible page tree
+  (Personal / Teams / Organisation), plus organisation/team/
+  invitation management.
+- **Public docs site** (`frontend-public/`): a lean, read-only
+  secondary view for published pages — no login, no editor. It reads
+  exclusively from the public API (`/api/v1/public/wiki/:tenantId/…`) and
+  shows only what has been released via `publicMode`. Served under
+  `/docs/` from `backend/public/` (the main frontend, by contrast, sits behind the
+  login under `/static/app/`). See
   [`frontend-public/README.md`](./frontend-public/README.md).
-- **MCP-Server** (`backend/src/mcp/`): in den Backend-Prozess eingebetteter
-  MCP-Server (erreichbar unter `/mcp`, OAuth2/API-Token-Auth über das
-  Framework), über den eine Chat-App das Wiki als "Brain" nutzen kann
-  (Identität, Discovery, Lesen, Schreiben).
-  - Jedes Tool trägt MCP-**Annotations** (`readOnlyHint`, `destructiveHint`,
-    `idempotentHint`, `openWorldHint`), damit Clients (Claude & Co.) Lesen und
-    Schreiben schon vor dem Aufruf unterscheiden können: alle lesenden Tools
-    sind `readOnlyHint: true`, die schreibenden markieren zusätzlich, ob sie
-    Bestehendes überschreiben (`destructiveHint`) und ob ein Wiederholen
-    denselben Zustand ergibt (`idempotentHint`). `openWorldHint` ist überall
-    `false` — das Wiki ist eine geschlossene Domäne. Gesetzt werden die Hints
-    zentral über `READ_ONLY` / `writeAnnotations()` in
+- **MCP server** (`backend/src/mcp/`): an MCP server embedded in the backend
+  process (reachable at `/mcp`, OAuth2/API-token auth via the
+  framework) through which a chat app can use the wiki as its "Brain"
+  (identity, discovery, reading, writing).
+  - Every tool carries MCP **annotations** (`readOnlyHint`, `destructiveHint`,
+    `idempotentHint`, `openWorldHint`) so that clients (Claude & co.) can tell reads
+    from writes before making the call: all reading tools
+    are `readOnlyHint: true`; the writing ones additionally mark whether they
+    overwrite existing content (`destructiveHint`) and whether repeating the call
+    yields the same state (`idempotentHint`). `openWorldHint` is `false`
+    everywhere — the wiki is a closed domain. The hints are set
+    centrally via `READ_ONLY` / `writeAnnotations()` in
     [`backend/src/mcp/tools/_define.ts`](./backend/src/mcp/tools/_define.ts);
-    `annotations.test.ts` schlägt fehl, wenn ein neues Tool sie vergisst.
-  - Jede Seite in einer Tool-Antwort trägt neben ihrer `id` auch ihre **`url`**,
-    damit eine Chat-App die Quelle verlinken kann statt nur eine undurchsichtige
-    Seiten-ID zu kennen. Das passiert generisch für alle Tools in
-    [`backend/src/mcp/page-url.ts`](./backend/src/mcp/page-url.ts) — Zeilen, die
-    keine Seiten sind (Teams, Organisationen, Facetten-Vokabulare, Collection-
-    Datensätze), bleiben unangetastet.
-  - Die Adresse einer Seite kommt aus
+    `annotations.test.ts` fails if a new tool forgets them.
+  - Every page in a tool response carries its **`url`** alongside its `id`,
+    so a chat app can link to the source instead of only knowing an opaque
+    page ID. This happens generically for all tools in
+    [`backend/src/mcp/page-url.ts`](./backend/src/mcp/page-url.ts) — rows that
+    are not pages (teams, organisations, facet vocabularies, collection
+    records) are left untouched.
+  - A page's address comes from
     [`backend/src/lib/wiki/page-url.ts`](./backend/src/lib/wiki/page-url.ts) —
-    eine Quelle für alle Erzeuger. Sie ist nicht aus der Routen-Tabelle
-    ableitbar: die App liegt unter `/static/app/` und routet per Hash, ein
-    Seiten-Link ist also
-    `${BASE_URL}/static/app/#/tenant/<tenantId>/wiki/<pageId>` (Abschnitte mit
-    `#anchor`). Der App-interne Chat (`backend/src/ai/tools/wiki/`) liefert
-    denselben Pfad relativ, damit ein Klick in der Antwort ohne Reload
-    navigiert.
-- **Tagesprotokoll einsprechen**: von der Startseite ein Protokoll per Sprache
-  aufnehmen → **Live-Transkription** (der Text erscheint schon während des
-  Sprechens) → KI-Aufbereitung (Zusammenfassung, Kernpunkte, Aufgaben) →
-  datierte Seite unter „Tagesprotokolle". Optionaler „Digital-Twin-Brain": ein
-  Agent extrahiert Fakten in eine kuratierte Themen-Hierarchie unter
-  „Wissensbasis". Keys: `OPENROUTER_API_KEY` (LLM/Agents über OpenRouter mit
-  einem Mistral-Modell) und `MISTRAL_API_KEY` (Live-Transkription).
-  - Die Live-Transkription streamt 16-kHz-PCM (`pcm_s16le`) vom Browser über
-    einen Backend-WebSocket-Relay (`GET …/protocol/realtime`) an Mistrals
-    Realtime-Endpoint (Voxtral). Der `MISTRAL_API_KEY` bleibt serverseitig.
-    Modell konfigurierbar über `MISTRAL_REALTIME_MODEL`
-    (Default `voxtral-mini-transcribe-realtime-2602`). Browser ohne
-    Web-Audio-/AudioWorklet-Unterstützung fallen automatisch auf die
-    asynchrone Aufnahme (`POST …/protocol/transcribe`) zurück.
-- **Dokument-Assistent**: auf jeder Seite ein „Assistent"-Button, der ein Panel
-  öffnet, in dem man per Sprache oder Text mit dem Dokument interagiert. Man
-  beschreibt eine Änderung in natürlicher Sprache, ein Agent arbeitet sie ins
-  Dokument ein (anpassen bestehender Inhalte per String-Replace oder Anhängen
-  neuer Blöcke) – strukturerhaltend und direkt angewendet. Jede Änderung wird
-  als Version gespeichert (über die Historie revertierbar). LLM über OpenRouter,
-  Spracheingabe über die Live-Transkription. Endpoint: `POST
+    a single source for all producers. It cannot be derived from the route
+    table: the app lives under `/static/app/` and uses hash routing, so a
+    page link is
+    `${BASE_URL}/static/app/#/tenant/<tenantId>/wiki/<pageId>` (sections with
+    `#anchor`). The in-app chat (`backend/src/ai/tools/wiki/`) returns
+    the same path as a relative link, so a click in the answer navigates
+    without a reload.
+- **Dictate a daily log**: record a log by voice from the start page
+  → **live transcription** (the text appears while you are still
+  speaking) → AI processing (summary, key points, tasks) →
+  dated page under "Tagesprotokolle" ("Daily logs"). Optional "digital-twin brain": an
+  agent extracts facts into a curated topic hierarchy under
+  "Wissensbasis" ("Knowledge base"). Keys: `OPENROUTER_API_KEY` (LLM/agents via OpenRouter with
+  a Mistral model) and `MISTRAL_API_KEY` (live transcription).
+  - Live transcription streams 16 kHz PCM (`pcm_s16le`) from the browser via
+    a backend WebSocket relay (`GET …/protocol/realtime`) to Mistral's
+    realtime endpoint (Voxtral). The `MISTRAL_API_KEY` stays server-side.
+    The model is configurable via `MISTRAL_REALTIME_MODEL`
+    (default `voxtral-mini-transcribe-realtime-2602`). Browsers without
+    Web Audio/AudioWorklet support automatically fall back to
+    asynchronous recording (`POST …/protocol/transcribe`).
+- **Document assistant**: on every page, an "Assistent" ("Assistant") button that opens a panel
+  in which you interact with the document by voice or text. You
+  describe a change in natural language, and an agent works it into the
+  document (adjusting existing content via string replace or appending
+  new blocks) – preserving structure and applied directly. Every change is
+  saved as a version (revertible via the history). LLM via OpenRouter,
+  voice input via live transcription. Endpoint: `POST
   …/document-assistant` (`{ entryId, instruction }`).
 
 ## Setup
@@ -81,135 +83,135 @@ cd wiki
 # Backend
 cd backend
 bun install
-bun run init          # erzeugt .env mit Secrets
+bun run init          # creates .env with secrets
 
-# Lokale Dev-Datenbank (PGlite, kein Docker nötig)
-bun run db:local      # Terminal 1: startet PGlite auf localhost:5432
-bun run migrate       # Framework- + App-Migrationen
-bun run dev           # Terminal 2: API auf http://localhost:3000
+# Local dev database (PGlite, no Docker needed)
+bun run db:local      # Terminal 1: starts PGlite on localhost:5432
+bun run migrate       # framework + app migrations
+bun run dev           # Terminal 2: API at http://localhost:3000
 
 # Frontend
 cd ../frontend
 bun install
 bun run dev           # http://localhost:5173/static/app/
 
-# Öffentliche Doku-Seite (optional)
+# Public docs site (optional)
 cd ../frontend-public
 bun install
 bun run dev           # http://localhost:5174/docs/
 ```
 
-Hinweis für die lokale PGlite-DB: in `backend/.env`
-`POSTGRES_CONNECTION_POOL_SIZE=1` setzen. PGlite verkraftet keine
-parallel verschränkten Queries; gegen eine echte Postgres
-(`bun run docker:up`) ist die Einstellung unnötig.
+Note for the local PGlite DB: set
+`POSTGRES_CONNECTION_POOL_SIZE=1` in `backend/.env`. PGlite cannot handle
+interleaved parallel queries; against a real Postgres
+(`bun run docker:up`) the setting is unnecessary.
 
-Login lokal ohne SMTP: `SMTP_HOST=console.localhost` (Default) schreibt
-Magic-Link-Mails nach `backend/logs/email/`. Testuser anlegen:
+Local login without SMTP: `SMTP_HOST=console.localhost` (default) writes
+magic-link mails to `backend/logs/email/`. Create a test user:
 `bash backend/framework/.scripts/testuser.sh http://localhost:3000`.
 
-### Anmeldung mit Microsoft 365 (optional)
+### Sign-in with Microsoft 365 (optional)
 
-Sind Client-ID **und** Secret einer Entra-ID-App gesetzt, zeigt die
-Anmeldeseite direkt auf der ersten Stufe zusätzlich den Button
-„Mit Microsoft 365 anmelden“. Der Magic-Link-Login bleibt unverändert
-verfügbar – die Microsoft-Anmeldung kommt nur dazu. Fehlt eine der beiden
-Variablen, erscheint der Button nicht.
+If the client ID **and** secret of an Entra ID app are set, the
+sign-in page additionally shows the button
+"Mit Microsoft 365 anmelden" ("Sign in with Microsoft 365") right on the first step. Magic-link login remains
+available unchanged – Microsoft sign-in is only added on top. If either of the two
+variables is missing, the button does not appear.
 
 ```env
 MICROSOFT_CLIENT_ID=<Application (client) ID>
 MICROSOFT_CLIENT_SECRET=<Client Secret>
-# Verzeichnis: Tenant-GUID (nur eigene Organisation), `organizations`
-# oder `common` (Default, jedes Microsoft-Konto)
+# Directory: tenant GUID (own organisation only), `organizations`
+# or `common` (default, any Microsoft account)
 MICROSOFT_TENANT_ID=<Directory (tenant) ID>
 ```
 
-In der Entra-App als Redirect-URI (Plattform „Web“) exakt hinterlegen:
+In the Entra app, register exactly this as the redirect URI (platform "Web"):
 
 ```
 <BASE_URL>/api/v1/user/auth/microsoft/callback
 ```
 
-Benötigte Delegated Permissions: `openid`, `profile`, `email`, `User.Read`.
+Required delegated permissions: `openid`, `profile`, `email`, `User.Read`.
 
-Der Login läuft über die Framework-Endpunkte `/api/v1/user/auth/microsoft`
-(Start) und `/api/v1/user/auth/microsoft/callback` (Rückkehr, setzt die
-Auth-Cookies). Angemeldet wird über die E-Mail-Adresse des Microsoft-Kontos:
-existiert ein Account mit dieser Adresse, wird er verwendet (egal ob er
-ursprünglich per Magic-Link entstanden ist), andernfalls wird er neu angelegt –
-inklusive offener Organisations-Einladungen. Details siehe
+Login runs through the framework endpoints `/api/v1/user/auth/microsoft`
+(start) and `/api/v1/user/auth/microsoft/callback` (return, sets the
+auth cookies). Users are signed in by the email address of the Microsoft account:
+if an account with that address exists, it is used (regardless of whether it
+was originally created via magic link); otherwise a new one is created –
+including any pending organisation invitations. For details see
 `backend/framework/docs/framework/2_BuildIn_Usermanagement.md`.
 
-Verlangt die Instanz Einladungscodes (aktive Einträge in `invitation_codes`),
-legt eine unbekannte Adresse **keinen** Account an, auch nicht per Microsoft:
-das verifizierte Profil parkt für 15 Minuten in einem HttpOnly-Cookie und der
-Browser landet wieder auf `/login.html?provider=microsoft`. Dort fragt die
-letzte Stufe der Anmeldeseite den Einladungscode ab und schickt ihn an
-`POST /api/v1/user/oauth/complete-registration`; erst das erzeugt den Account.
-Liegt für die Adresse eine offene Organisations-Einladung vor, entfällt der
-Umweg. Ein falscher Code kann bis zum Ablauf beliebig oft neu eingegeben
-werden.
+If the instance requires invitation codes (active entries in `invitation_codes`),
+an unknown address does **not** get an account, not even via Microsoft:
+the verified profile is parked for 15 minutes in an HttpOnly cookie and the
+browser lands back on `/login.html?provider=microsoft`. There, the
+last step of the sign-in page asks for the invitation code and sends it to
+`POST /api/v1/user/oauth/complete-registration`; only that creates the account.
+If there is a pending organisation invitation for the address, this detour is
+skipped. A wrong code can be re-entered any number of times until the profile
+expires.
 
-## Preview-Container (alles in einem)
+## Preview container (all in one)
 
-[`Dockerfile.preview`](./Dockerfile.preview) baut ein einziges Image mit
-**PGlite + Backend + Frontend** – keine externe Datenbank, keine Secrets, kein
-Compose-Verbund. Gedacht für schlanke Preview-Deployments (PR-Previews, Demos,
-schneller Smoke-Test); für Produktion bleibt [`Dockerfile`](./Dockerfile) +
-[`docker-compose.prod.yml`](./docker-compose.prod.yml) zuständig.
+[`Dockerfile.preview`](./Dockerfile.preview) builds a single image with
+**PGlite + backend + frontend** – no external database, no secrets, no
+Compose setup. Intended for lean preview deployments (PR previews, demos,
+quick smoke tests); for production, [`Dockerfile`](./Dockerfile) +
+[`docker-compose.prod.yml`](./docker-compose.prod.yml) remain responsible.
 
 ```bash
-git submodule update --init --recursive     # framework muss ausgecheckt sein
+git submodule update --init --recursive     # framework must be checked out
 
 docker build -f Dockerfile.preview -t wiki-preview .
 docker run --rm -p 3000:3000 -v wiki_preview:/data wiki-preview
-# oder:
+# or:
 docker compose -f docker-compose.preview.yml up --build
 ```
 
-Danach `http://localhost:3000` öffnen. Login per Magic-Link: die Mail landet
-wegen `SMTP_HOST=console.localhost` im Container-Log
-(`docker logs -f <container>`), der Link ist direkt anklickbar.
+Then open `http://localhost:3000`. Login via magic link: because of
+`SMTP_HOST=console.localhost`, the mail ends up in the container log
+(`docker logs -f <container>`), and the link can be clicked directly.
 
-Was der Container beim Start macht
+What the container does on startup
 ([`.docker/preview-entrypoint.sh`](./.docker/preview-entrypoint.sh)):
 
-1. **Secrets** (AES, JWT, OAuth-Introspection) beim ersten Start erzeugen und
-   in `/data/secrets.env` (0600) ablegen – danach wiederverwenden, damit
-   Sessions und verschlüsselte Tenant-Secrets Neustarts überleben. Von außen
-   gesetzte Variablen haben immer Vorrang.
-2. **PGlite** starten: eingebettete Postgres inkl. `pgvector`, über
-   pglite-socket auf `127.0.0.1:5432`. Es läuft dasselbe Skript wie bei
+1. Generate **secrets** (AES, JWT, OAuth introspection) on first start and
+   store them in `/data/secrets.env` (0600) – reused afterwards so that
+   sessions and encrypted tenant secrets survive restarts. Variables set
+   from outside always take precedence.
+2. Start **PGlite**: embedded Postgres including `pgvector`, via
+   pglite-socket on `127.0.0.1:5432`. It runs the same script as
    `bun run db:local`.
-3. **Migrationen** (`framework:migrate` + `app:migrate`) wie im Prod-Image.
-4. **App** starten (`bun ./dist/index.js`), bei SIGTERM wird die Datenbank
-   sauber geschlossen.
+3. **Migrations** (`framework:migrate` + `app:migrate`) as in the prod image.
+4. Start the **app** (`bun ./dist/index.js`); on SIGTERM the database is
+   closed cleanly.
 
-Alles Zustandsbehaftete liegt unter `/data` (Datenbank, Secrets, lokale
-Uploads). Volume mounten = Preview überlebt Neustarts, Volume weglassen =
-Wegwerf-Instanz, die bei jedem Start frisch beginnt.
+All stateful data lives under `/data` (database, secrets, local
+uploads). Mount a volume = the preview survives restarts; omit the volume =
+throwaway instance that starts fresh on every start.
 
-Nützliche Env-Variablen:
+Useful env variables:
 
-| Variable | Default | Bedeutung |
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `BASE_URL` | `http://localhost:3000` | Öffentliche URL = OAuth2-Issuer, muss zur Browser-Adresse passen |
-| `APP_NAME` | `Symbiosika Wiki (Preview)` | Anzeigename (Mails, OAuth-Metadaten) |
-| `PREVIEW_DATA_DIR` | `/data` | Ablage für DB, Secrets, Uploads |
-| `PREVIEW_EMBEDDED_DB` | `auto` | `false` = externe Postgres über `POSTGRES_*` nutzen |
-| `PREVIEW_SKIP_MIGRATIONS` | `false` | Migrationen beim Start überspringen |
-| `AI_PROVIDER`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY` | – | optional; ohne Keys sind die KI-Features No-ops |
-| `SMTP_*` | Console-Modus | echten SMTP-Server statt Container-Log verwenden |
+| `BASE_URL` | `http://localhost:3000` | Public URL = OAuth2 issuer, must match the browser address |
+| `APP_NAME` | `Symbiosika Wiki (Preview)` | Display name (mails, OAuth metadata) |
+| `PREVIEW_DATA_DIR` | `/data` | Storage for DB, secrets, uploads |
+| `PREVIEW_EMBEDDED_DB` | `auto` | `false` = use external Postgres via `POSTGRES_*` |
+| `PREVIEW_SKIP_MIGRATIONS` | `false` | Skip migrations on startup |
+| `AI_PROVIDER`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY` | – | optional; without keys the AI features are no-ops |
+| `SMTP_*` | Console mode | use a real SMTP server instead of the container log |
 
-Grenzen: PGlite ist eine dateibasierte Single-Process-Datenbank (deshalb
-`POSTGRES_CONNECTION_POOL_SIZE=1`) und der Container hält App und Datenbank im
-selben Prozessbaum – gut für eine Preview-Instanz, nicht für echte Last oder
-echte Daten.
+Limitations: PGlite is a file-based single-process database (hence
+`POSTGRES_CONNECTION_POOL_SIZE=1`), and the container keeps app and database in
+the same process tree – fine for a preview instance, not for real load or
+real data.
 
 ## Tests
 
 ```bash
-# Backend (bun:test, läuft gegen die lokale DB)
+# Backend (bun:test, runs against the local DB)
 cd backend
 bun test src/lib/wiki/tree.test.ts "src/routes/tenant/[tenantId]/wiki/index.test.ts"
 
@@ -219,38 +221,54 @@ bun run test
 bun run type-check
 ```
 
-## Architektur
+## Architecture
 
 - `backend/src/routes/tenant/[tenantId]/wiki/` – `GET /api/v1/tenant/:tenantId/wiki/tree`
-  liefert den Seitenbaum, partitioniert in `personal`, `teams[]` (eine
-  Sektion pro Team) und `organisation`. Alles andere (CRUD, Blöcke, Suche,
-  Links, History) kommt direkt vom Framework unter
+  returns the page tree, partitioned into `personal`, `teams[]` (one
+  section per team) and `organisation`. Everything else (CRUD, blocks, search,
+  links, history) comes directly from the framework under
   `/api/v1/tenant/:tenantId/knowledge/texts…`.
-- `backend/src/lib/wiki/tree.ts` – Baum-Businesslogik (reine Funktionen,
-  getestet).
-- `frontend/src/stores/wiki.ts` – Pinia-Store (Tree, Seite, Blöcke,
-  debounced Save, Suche).
-- `frontend/src/components/editor/` – TipTap-Block-Editor. Jeder
-  Top-Level-Knoten trägt eine stabile Block-ID (`data-block-id` ↔
-  Backend-Block-`id`), gespeichert wird per Diff-Sync
+- `backend/src/lib/wiki/tree.ts` – tree business logic (pure functions,
+  tested).
+- `frontend/src/stores/wiki.ts` – Pinia store (tree, page, blocks,
+  debounced save, search).
+- `frontend/src/components/editor/` – TipTap block editor. Every
+  top-level node carries a stable block ID (`data-block-id` ↔
+  backend block `id`); saving is done via diff sync
   (`PUT …/knowledge/texts/:id/blocks`).
-- `frontend/src/components/wiki/` – Sidebar mit einklappbaren Sektionen
-  und rekursivem Tree.
+- `frontend/src/components/wiki/` – sidebar with collapsible sections
+  and a recursive tree.
 
-## Agentische Nutzung
+## Agentic usage
 
-Jede Wiki-Seite ist über die Framework-API auch für AI-Agenten nutzbar:
+Every wiki page is also usable by AI agents via the framework API:
 
-- `GET /:id/content?fromLine&maxLines` – file-artiges Lesen
-- `PATCH /:id/content` – String-Replace-Edit (wie ein Editor-Tool)
+- `GET /:id/content?fromLine&maxLines` – file-style reading
+- `PATCH /:id/content` – string-replace edit (like an editor tool)
 - `GET /knowledge/texts/search?q=…&mode=hybrid|fulltext|semantic`
-- `GET /:id/simplified?recursive=true` – ganze Teilbäume als LLM-freundliches JSON
+- `GET /:id/simplified?recursive=true` – whole subtrees as LLM-friendly JSON
 - `GET /:id/links` / `GET /:id/backlinks`
 
-## Init (Template)
+## Init (template)
 
 ```bash
 cd backend
 bun run init
 bun run sync-skills
 ```
+
+## Contributing
+
+Issues and pull requests are welcome — process, tests and conventions
+are described in [`CONTRIBUTING.md`](./CONTRIBUTING.md). Please do **not**
+report security vulnerabilities as a public issue; instead follow
+[`SECURITY.md`](./SECURITY.md).
+
+## License
+
+Copyright 2026 Symbiosika GmbH. Licensed under the
+[Apache License 2.0](./LICENSE) — see also [`NOTICE`](./NOTICE).
+
+The framework under `backend/framework` is a separate repository
+([symbiosika-framework](https://github.com/symbiosika/symbiosika-framework))
+with its own license.

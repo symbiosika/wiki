@@ -1,4 +1,4 @@
-# template-fullstack-app-frontend
+# symbiosika-wiki-frontend
 
 ## PrimeVue components
 

@@ -14,7 +14,7 @@ import type { EmailTemplateFunction } from "@framework/types";
  */
 
 // Email validation caps subjects at 100 characters – keep them short.
-function truncateSubject(subject: string, maxLength: number = 100): string {
+export function truncateSubject(subject: string, maxLength: number = 100): string {
   if (subject.length <= maxLength) return subject;
   return subject.substring(0, maxLength - 3) + "...";
 }
@@ -67,7 +67,7 @@ function paragraphsHtml(paragraphs: string[], color: string, size: string) {
  * clients strip most <style> rules) and a max-width of 480px so it reads well
  * on phones and desktop alike.
  */
-function renderEmail({
+export function renderEmail({
   appName,
   de,
   en,
