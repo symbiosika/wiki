@@ -58,7 +58,7 @@ import { TableKit } from '@tiptap/extension-table'
 import { WikiTableCell, WikiTableHeader } from './wikiTable'
 import UniqueID from '@tiptap/extension-unique-id'
 import { DragHandle } from '@tiptap/extension-drag-handle-vue-3'
-import { WikiImage, embedImageDescriptions } from './wikiImage'
+import { WikiImage } from './wikiImage'
 import { WikiButton, type WikiButtonAttrs } from './wikiButton'
 import {
   MAX_DOWNLOAD_SIZE_BYTES,
@@ -74,11 +74,15 @@ import {
   BLOCK_ID_TYPES,
   assignMissingBlockIds,
 } from './blockIds'
-import { WikiLink, embedWikiLinkMarkers, type WikiLinkAttrs } from './wikiLink'
+import { WikiLink, type WikiLinkAttrs } from './wikiLink'
 import { WikiLinkSuggestion, type WikiPageRef } from './wikiLinkSuggestion'
 import { useToast } from 'primevue/usetoast'
 import { SlashCommands } from './slashCommands'
-import { blocksToEditorHtml, editorHtmlToBlocks } from '@/utils/wikiBlocks'
+import {
+  blocksToEditorHtml,
+  editorHtmlToBlocks,
+  prepareHtmlForEditor,
+} from '@/utils/wikiBlocks'
 import { looksLikeMarkdown } from '@/utils/markdownPaste'
 import { renderMarkdown } from '@/utils/markdown'
 import { useWiki } from '@/stores/wiki'
@@ -597,14 +601,11 @@ const insertMarkdown = (markdown: string) => {
   if (!editor.value || !markdown.trim()) return
   const html = renderMarkdown(markdown)
   if (!html) return
-  // `[[Target]]` in the pasted markdown becomes a real page reference, and an
+  // `[[Target]]` in the pasted markdown becomes a real page reference, an
   // `<image-description>` marker (pasted from a page read through the API/MCP
-  // tools) moves onto the image it describes
-  const template = document.createElement('template')
-  template.innerHTML = html
-  embedWikiLinkMarkers(template.content)
-  embedImageDescriptions(template.content)
-  editor.value.chain().focus().insertContent(template.innerHTML).run()
+  // tools) moves onto the image it describes, and every list item gets the
+  // leading paragraph the schema requires (else the whole insert is rejected)
+  editor.value.chain().focus().insertContent(prepareHtmlForEditor(html)).run()
 }
 
 defineExpose({ flush, getBlocks, insertMarkdown })
