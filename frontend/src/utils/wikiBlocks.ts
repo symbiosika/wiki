@@ -67,6 +67,54 @@ const embedTaskLists = (root: DocumentFragment | HTMLElement): void => {
   }
 }
 
+/** Elements the editor parses as a block of their own, not as inline text. */
+const BLOCK_ELEMENTS = new Set([
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'PRE',
+  'UL',
+  'OL',
+  'BLOCKQUOTE',
+  'TABLE',
+  'HR',
+  'IMG',
+  'DIV',
+  'FIGURE',
+])
+
+/**
+ * Give every list item a leading paragraph where it has none.
+ *
+ * The editor's list items hold `paragraph block*`: the first child MUST be a
+ * paragraph. Markdown happily produces items that break this — an empty item
+ * (`- ` on its own), or one that starts with an image, heading, code block or
+ * a nested list. Handed to `insertContent`, a single such item makes TipTap
+ * reject the whole insert (`Invalid content for node listItem`), so a paste
+ * or a markdown import silently inserted nothing at all.
+ */
+const ensureListItemParagraphs = (
+  root: DocumentFragment | HTMLElement,
+): void => {
+  for (const item of Array.from(root.querySelectorAll('li'))) {
+    const lead = Array.from(item.childNodes).find(
+      (child) =>
+        child.nodeType === Node.ELEMENT_NODE ||
+        (child.nodeType === Node.TEXT_NODE && child.textContent!.trim() !== ''),
+    )
+    if (
+      lead &&
+      !(lead instanceof Element && BLOCK_ELEMENTS.has(lead.nodeName))
+    ) {
+      continue
+    }
+    item.insertBefore(document.createElement('p'), lead ?? null)
+  }
+}
+
 /**
  * Parse a fragment on its way INTO the editor: bare `[[Target]]` markers (from
  * a markdown block, or written by an agent through the API/MCP tools) become
@@ -84,8 +132,18 @@ const parseFragmentForEditor = (html: string): HTMLElement[] => {
   embedWikiLinkMarkers(template.content)
   embedTaskLists(template.content)
   embedImageDescriptions(template.content)
+  ensureListItemParagraphs(template.content)
   return Array.from(template.content.children) as HTMLElement[]
 }
+
+/**
+ * The same preparation for HTML the editor INSERTS (a markdown paste or the
+ * "insert markdown" dialog), as one HTML string for `insertContent`.
+ */
+export const prepareHtmlForEditor = (html: string): string =>
+  parseFragmentForEditor(html)
+    .map((el) => el.outerHTML)
+    .join('\n')
 
 /**
  * Convert backend blocks to a single HTML string for the editor.

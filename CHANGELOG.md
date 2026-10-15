@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.15.3] - 2026-10-15
+
+- Fix: pasting markdown or using "insert markdown" inserted nothing when the
+  text held a list item that was empty or started with an image, heading,
+  code block or nested list. Such items now get the leading paragraph the
+  editor requires, so the content arrives.
+
 ## [0.15.2] - 2026-10-13
 
 - The project is now open source under the Apache License 2.0 (`LICENSE`,
