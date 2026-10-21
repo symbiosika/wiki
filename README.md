@@ -2,7 +2,57 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
-A simple, agent-friendly wiki built on the symbiosika-framework.
+### Work with agents & humans in one team.
+
+**symbiosika-wiki** is an open-source company wiki built for teams where people
+and AI agents share the same knowledge. Humans write in a fast, Notion-style
+editor. Agents connect through a built-in MCP server and read, search and edit
+the very same pages, with the same permissions, the same version history and
+links back to the source. One wiki, one source of truth, for everyone on the team.
+
+![A wiki page with the page tree, wikilinks, tables and backlinks](docs/screenshots/handbook.png)
+
+## Why symbiosika-wiki
+
+- **Built-in MCP server for your agents.** Claude and other MCP clients connect
+  at `/mcp` (OAuth2 or API token) and can discover, search, read, append and
+  edit pages, query collections and run AI test suites. Every tool is annotated
+  as read-only or writing, and every page in a response carries its URL, so
+  agents cite their sources as clickable links.
+- **Agents act as the user, not as root.** Every tool call runs with the
+  signed-in user's own permissions: Personal, Team or Organisation visibility
+  applies to agents exactly as it does to people.
+- **Every edit is versioned.** Human or agent, each change lands in the page
+  history and can be reverted.
+- **Ask your wiki.** A built-in chat agent answers questions from your pages and
+  links the pages it used. The **Document Assistant** applies changes you
+  describe in plain language (by voice or text) directly to a page.
+- **A real editor.** TipTap block editor with slash commands, Markdown input
+  rules, tables, to-do lists, images, `[[wikilinks]]` and automatic backlinks.
+- **Collections.** Turn any page into a typed table (text, number, date,
+  select, checkbox, URL, ...) that people filter in the UI and agents query
+  and update through MCP.
+- **Trust signals.** Page types (manual, policy, FAQ, ...) and statuses
+  (draft, verified, outdated) tell humans and agents what to rely on.
+- **AI test suites.** Define questions with expected answers and measure
+  whether your agents actually answer correctly from the wiki, run after run.
+- **Voice daily logs.** Dictate with live transcription; an agent turns it into
+  a structured, dated page with summary, key points and tasks.
+- **Publish what you want.** A read-only public docs site serves only the pages
+  you release, with no login.
+- **Yours to run.** Apache-2.0, self-hosted, one Docker image, Postgres.
+
+| Typed collections, shared by people and agents | Rich pages with tables, checklists and links |
+| --- | --- |
+| ![Collection table with select chips, dates and checkboxes](docs/screenshots/collections.png) | ![Release process page with timeline table and checklist](docs/screenshots/release-process.png) |
+
+<sub>Screenshots show fictional demo content ("Acme Robotics").</sub>
+
+AI features (chat, Document Assistant, transcription, summaries) need an
+`OPENROUTER_API_KEY` / `MISTRAL_API_KEY`; the core wiki and the MCP server work
+without them.
+
+## Features in detail
 
 - **Pages** are framework `knowledgeTexts` with a `parentId` hierarchy and
   block content (`knowledge/texts` API: blocks, full-text/hybrid search,
