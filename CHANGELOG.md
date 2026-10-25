@@ -4,6 +4,21 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.16.0] - 2026-10-25
+
+- New: artifacts — publish a static HTML page (e.g. a Claude artifact) as a
+  wiki page. Upload a ZIP (with `index.html`) or a single `.html` file via
+  "Import → Artifact (HTML)"; the page shows it full-size and sits in the page
+  tree (with its own icon) like any other page, with the page's visibility.
+  New versions, ZIP download and removal from the page's toolbar; the last 5
+  versions are kept.
+- Artifacts run sandboxed: served with a CSP `sandbox` (opaque origin, no
+  session cookie, no wiki API) under a short-lived signed URL; scripts only
+  from the common CDNs (cdnjs, jsDelivr, unpkg, Tailwind, jQuery) and Google
+  Fonts. The upload check reports absolute paths and `window.claude` usage.
+- MCP: new tool `publish_artifact` — Claude can put an artifact straight into
+  the wiki (new page or new version of an existing one).
+
 ## [0.15.3] - 2026-10-15
 
 - Fix: pasting markdown or using "insert markdown" inserted nothing when the

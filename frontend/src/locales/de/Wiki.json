@@ -219,5 +219,30 @@
     "sent": "E-Mail an {count} Empfänger versendet",
     "sendError": "Die E-Mail konnte nicht versendet werden.",
     "loadError": "Die Empfänger konnten nicht geladen werden."
+  },
+  "artifact": {
+    "badge": "Artefakt",
+    "treeHint": "Artefakt (HTML-Seite)",
+    "version": "Version {version}",
+    "versionInfo": "Version {version} · {files} Dateien · {size} · {date}",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild verlassen",
+    "openInTab": "In neuem Tab öffnen",
+    "newVersion": "Neue Version hochladen",
+    "download": "Als ZIP herunterladen",
+    "remove": "Artefakt entfernen",
+    "removeConfirm": "Das Artefakt mit allen Versionen von dieser Seite entfernen? Die Seite selbst bleibt erhalten.",
+    "removed": "Artefakt entfernt",
+    "uploaded": "Version {version} hochgeladen",
+    "uploadError": "Das Artefakt konnte nicht hochgeladen werden.",
+    "loadError": "Das Artefakt konnte nicht geladen werden.",
+    "warnings": "Hinweise zum Upload",
+    "warningsCount": "{count} Hinweis | {count} Hinweise",
+    "sandboxHint": "Läuft abgeschirmt: ohne Anmeldung, Cookies und Zugriff auf das Wiki. Skripte nur von gängigen CDNs.",
+    "importMode": "Artefakt (HTML)",
+    "importDrop": "ZIP oder HTML-Datei hierher ziehen oder klicken",
+    "importHint": "Ein Claude-Artefakt oder eine andere statische Webseite: eine einzelne .html-Datei oder ein ZIP mit index.html, die weitere Dateien über relative Pfade lädt. Höchstens 20 MB.",
+    "importSubmit": "Artefakt veröffentlichen",
+    "invalidFile": "Bitte eine ZIP- oder HTML-Datei wählen."
   }
 }

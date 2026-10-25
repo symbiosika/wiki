@@ -9,6 +9,8 @@ import definePostProcessingAgentRoutes from "./routes/tenant/[tenantId]/post-pro
 import defineAiTestRoutes from "./routes/tenant/[tenantId]/ai-tests";
 import defineCollectionRoutes from "./routes/tenant/[tenantId]/collections";
 import defineOrganisationLogoRoutes from "./routes/tenant/[tenantId]/organisation-logo";
+import defineArtifactRoutes from "./routes/tenant/[tenantId]/artifacts";
+import defineArtifactContentRoutes from "./routes/public/artifact-content";
 import defineAppInfoRoutes from "./routes/public/app-info";
 import defineTeamsAuthRoutes from "./routes/public/teams-auth";
 import definePublicWikiRoutes from "./routes/public/wiki";
@@ -140,6 +142,11 @@ const server = defineServer({
         // session: the Entra ID token from the Teams host is what authorises
         // the caller.
         defineTeamsAuthRoutes(app);
+        // Files of uploaded artifacts (HTML bundles shown by a wiki page).
+        // Unauthenticated because the artifact runs in a sandboxed, opaque
+        // origin without the session cookie: a signed, short-lived token in
+        // the path is the access check — see ./routes/public/artifact-content.
+        defineArtifactContentRoutes(app);
         // Unauthenticated, read-only view of pages a tenant explicitly
         // published (knowledgeText.publicMode / publicEffective). Deliberately
         // registered here rather than in customHonoAppsWithAuth — see
@@ -165,6 +172,7 @@ const server = defineServer({
         defineAiTestRoutes(app);
         defineCollectionRoutes(app);
         defineOrganisationLogoRoutes(app);
+        defineArtifactRoutes(app);
       },
     },
   ],

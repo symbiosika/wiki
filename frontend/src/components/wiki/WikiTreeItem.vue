@@ -53,6 +53,12 @@
           @click="openPage"
         >
           <PageTypeIcon :page-type="node.pageType" />
+          <IconArtifact
+            v-if="node.artifact"
+            class="h-3.5 w-3.5 shrink-0 text-primary"
+            :title="$t('Wiki.artifact.treeHint')"
+            :aria-label="$t('Wiki.artifact.treeHint')"
+          />
           <span class="min-w-0 truncate">{{
             node.title || $t('Wiki.untitled')
           }}</span>
@@ -128,6 +134,7 @@ import IconChevronRight from '~icons/mdi/chevron-right'
 import IconPlus from '~icons/mdi/plus'
 import IconTrash from '~icons/mdi/trash-can-outline'
 import IconGlobe from '~icons/mdi/earth'
+import IconArtifact from '~icons/mdi/application-brackets-outline'
 import type { WikiDragState, WikiMovePayload, WikiTreeNode } from '@/types/wiki'
 
 const props = withDefaults(

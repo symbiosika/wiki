@@ -83,6 +83,12 @@ with update_page facets (pageType/status from get_wiki_config, validUntil,
 supersedesId). Confirm with the user before delete_page or before publishing
 personal notes org-wide.
 
+Artifacts: publish_artifact puts a self-contained HTML page (index.html plus
+files it loads by RELATIVE path) into the wiki as a page of its own, shown in
+a sandboxed frame and placed in the tree like create_page. Pass pageId to
+upload a new version. The page runs without cookies, wiki API or
+window.claude; scripts only from the common CDNs (cdnjs, jsDelivr, unpkg).
+
 AI tests (evaluating the wiki's own chat agent): a suite is a question set;
 a run puts every active question to the agent and a judge scores the answers.
 Build with create_ai_test_suite + add_ai_test_questions (give expectedPageIds

@@ -219,5 +219,30 @@
     "sent": "Email sent to {count} recipients",
     "sendError": "The email could not be sent.",
     "loadError": "The recipients could not be loaded."
+  },
+  "artifact": {
+    "badge": "Artifact",
+    "treeHint": "Artifact (HTML page)",
+    "version": "Version {version}",
+    "versionInfo": "Version {version} · {files} files · {size} · {date}",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "openInTab": "Open in new tab",
+    "newVersion": "Upload new version",
+    "download": "Download as ZIP",
+    "remove": "Remove artifact",
+    "removeConfirm": "Remove the artifact and all its versions from this page? The page itself is kept.",
+    "removed": "Artifact removed",
+    "uploaded": "Version {version} uploaded",
+    "uploadError": "The artifact could not be uploaded.",
+    "loadError": "The artifact could not be loaded.",
+    "warnings": "Upload notes",
+    "warningsCount": "{count} note | {count} notes",
+    "sandboxHint": "Runs isolated: no login, cookies or access to the wiki. Scripts only from common CDNs.",
+    "importMode": "Artifact (HTML)",
+    "importDrop": "Drop a ZIP or HTML file here or click",
+    "importHint": "A Claude artifact or any other static web page: a single .html file, or a ZIP with an index.html that loads further files by relative path. At most 20 MB.",
+    "importSubmit": "Publish artifact",
+    "invalidFile": "Please choose a ZIP or HTML file."
   }
 }
