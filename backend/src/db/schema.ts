@@ -974,3 +974,91 @@ export type CollectionFieldSelect = typeof collectionFields.$inferSelect;
 export type CollectionFieldInsert = typeof collectionFields.$inferInsert;
 export type CollectionRecordSelect = typeof collectionRecords.$inferSelect;
 export type CollectionRecordInsert = typeof collectionRecords.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Artifacts (uploaded HTML bundles shown as a wiki page)
+//
+// A wiki page becomes an "artifact page" by carrying at least one artifact
+// version: an uploaded ZIP (or single HTML file) — typically a Claude
+// artifact — that the wiki renders in a sandboxed iframe instead of the
+// editor. The page itself stays a normal page, so its place in the tree, its
+// visibility (personal / team / organisation), moving and publishing all work
+// unchanged. Every upload is a new version; the newest one is shown.
+//
+// The files are served from the app origin under a signed, short-lived token
+// with a CSP `sandbox` header (see lib/artifacts/serve.ts) — they never run
+// with access to the session cookie or the API.
+// ---------------------------------------------------------------------------
+
+export const artifactVersions = pgBaseTable(
+  "artifact_versions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    /** the wiki page that shows this artifact */
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => knowledgeText.id, { onDelete: "cascade" }),
+    /** 1, 2, 3 … per page */
+    version: integer("version").notNull(),
+    /** the HTML file the viewer opens, relative to the bundle root */
+    entryPath: text("entry_path").notNull(),
+    fileCount: integer("file_count").notNull(),
+    /** sum of the unpacked file sizes */
+    totalBytes: integer("total_bytes").notNull(),
+    /** non-fatal findings of the upload check (absolute paths, …) */
+    warnings: jsonb("warnings").$type<string[]>().notNull().default([]),
+    /** original upload name (ZIP / HTML), for the download */
+    sourceName: text("source_name"),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("artifact_versions_tenant_idx").on(table.tenantId),
+    uniqueIndex("artifact_versions_page_version_idx").on(
+      table.pageId,
+      table.version
+    ),
+  ]
+);
+
+export const artifactFiles = pgBaseTable(
+  "artifact_files",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => artifactVersions.id, { onDelete: "cascade" }),
+    /** normalised relative path inside the bundle, e.g. `assets/app.js` */
+    path: text("path").notNull(),
+    contentType: text("content_type").notNull(),
+    size: integer("size").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("artifact_files_tenant_idx").on(table.tenantId),
+    uniqueIndex("artifact_files_version_path_idx").on(
+      table.versionId,
+      table.path
+    ),
+  ]
+);
+
+export type ArtifactVersionSelect = typeof artifactVersions.$inferSelect;
+export type ArtifactFileSelect = typeof artifactFiles.$inferSelect;

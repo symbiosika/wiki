@@ -9,6 +9,7 @@ import { identityTools } from "./identity";
 import { discoveryTools } from "./discovery";
 import { readTools } from "./read";
 import { writeTools } from "./write";
+import { artifactTools } from "./artifacts";
 import { collectionTools } from "./collections";
 import { aiTestTools } from "./ai-tests";
 import { chatAgentTools } from "./chat-agent";
@@ -24,6 +25,7 @@ const WRITE_TOOLS: Record<string, { destructive: boolean; idempotent: boolean }>
   // repeating the call leaves the page exactly as it is
   set_image_description: { destructive: true, idempotent: true },
   delete_page: { destructive: true, idempotent: true },
+  publish_artifact: { destructive: false, idempotent: false },
   create_collection_record: { destructive: false, idempotent: false },
   update_collection_record: { destructive: true, idempotent: true },
   delete_collection_record: { destructive: true, idempotent: true },
@@ -44,6 +46,7 @@ const tools = [
   ...discoveryTools,
   ...readTools,
   ...writeTools,
+  ...artifactTools,
   ...collectionTools,
   ...aiTestTools,
   ...chatAgentTools,

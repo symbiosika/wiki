@@ -26,6 +26,7 @@ import { identityTools } from "./tools/identity";
 import { discoveryTools } from "./tools/discovery";
 import { readTools } from "./tools/read";
 import { writeTools } from "./tools/write";
+import { artifactTools } from "./tools/artifacts";
 import { collectionTools } from "./tools/collections";
 import { aiTestTools } from "./tools/ai-tests";
 import { chatAgentTools } from "./tools/chat-agent";
@@ -61,6 +62,7 @@ export const wikiMcpServer: McpServerDefinition = {
     ...discoveryTools,
     ...readTools,
     ...writeTools,
+    ...artifactTools,
     ...collectionTools,
     ...aiTestTools,
     ...chatAgentTools,

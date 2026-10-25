@@ -20,6 +20,7 @@ import type { SymbiosikaFrameworkHonoApp } from "@framework/types";
 import defineKnowledgeTextsRoutes from "@framework/routes/tenant/[tenantId]/knowledge/texts";
 import defineWikiRoutes from "../routes/tenant/[tenantId]/wiki";
 import defineCollectionRoutes from "../routes/tenant/[tenantId]/collections";
+import defineArtifactRoutes from "../routes/tenant/[tenantId]/artifacts";
 
 let app: Hono;
 let user1Token: string;
@@ -55,6 +56,7 @@ const EXPECTED_TOOLS = [
   "get_page_version",
   // write
   "create_page",
+  "publish_artifact",
   "update_page",
   "append_to_page",
   "edit_page_content",
@@ -144,6 +146,7 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
     defineKnowledgeTextsRoutes(api, "");
     defineWikiRoutes(api, "");
     defineCollectionRoutes(api, "");
+    defineArtifactRoutes(api, "");
     app.route("/api/v1", api as unknown as Hono);
 
     await deleteWikiTestPages();
@@ -250,6 +253,42 @@ describe("Embedded MCP server (symbiosika-wiki)", () => {
 
     const gone = await callTool("get_page", { pageId });
     expect(gone.isError).toBe(true);
+  });
+
+  test("publish_artifact creates an artifact page and adds versions", async () => {
+    const created = await callTool("publish_artifact", {
+      title: "MCP artifact",
+      files: [
+        { path: "index.html", content: '<script src="app.js"></script>' },
+        { path: "app.js", content: "console.log('hi')" },
+      ],
+    });
+    expect(created.isError).toBeUndefined();
+    const pageId = created.structuredContent.pageId as string;
+    expect(created.structuredContent.created).toBe(true);
+    expect(created.structuredContent.version).toBe(1);
+    expect(created.structuredContent.fileCount).toBe(2);
+    expect(created.structuredContent.url).toContain(`/wiki/${pageId}`);
+
+    const updated = await callTool("publish_artifact", {
+      pageId,
+      files: [{ path: "index.html", content: "<p>v2</p>" }],
+    });
+    expect(updated.isError).toBeUndefined();
+    expect(updated.structuredContent.version).toBe(2);
+
+    // a rejected first upload leaves no empty page behind
+    const rejected = await callTool("publish_artifact", {
+      title: "MCP artifact without index",
+      files: [{ path: "app.js", content: "1" }],
+    });
+    expect(rejected.isError).toBe(true);
+    expect(rejected.content[0].text).toContain("index.html");
+    const leftovers = await getDb()
+      .select({ id: knowledgeText.id })
+      .from(knowledgeText)
+      .where(eq(knowledgeText.title, "MCP artifact without index"));
+    expect(leftovers).toHaveLength(0);
   });
 
   test("set_image_description fills the description of an embedded image", async () => {

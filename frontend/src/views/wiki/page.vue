@@ -1,8 +1,12 @@
 <template>
-  <div class="mx-auto flex h-full max-w-3xl flex-col px-4 sm:px-6 lg:px-10">
+  <!-- an artifact page uses the full width; a text page keeps the text column -->
+  <div
+    class="flex h-full flex-col"
+    :class="artifact ? '' : 'mx-auto max-w-3xl px-4 sm:px-6 lg:px-10'"
+  >
     <!-- loading -->
     <div
-      v-if="wiki.state.pageLoading"
+      v-if="wiki.state.pageLoading || artifactLoading"
       class="flex flex-1 items-center justify-center"
     >
       <ProgressSpinner class="h-10 w-10" />
@@ -17,6 +21,21 @@
         {{ $t('Wiki.pageNotFound') }}
       </p>
     </div>
+
+    <!--
+      artifact page: the uploaded HTML bundle replaces title and editor (see
+      ArtifactView). Rename, move and publish it like any page via the tree.
+    -->
+    <ArtifactView
+      v-else-if="page && artifact"
+      :tenant-id="tenantId"
+      :page-id="page.id"
+      :title="page.title ?? ''"
+      :info="artifact"
+      :can-edit="!readOnly.readOnly"
+      @updated="artifact = $event"
+      @removed="onArtifactRemoved"
+    />
 
     <template v-else-if="page">
       <!--
@@ -598,6 +617,7 @@ import type {
   KnowledgeAttributeDefinition,
   WikiBlock,
   WikiTocEntry,
+  ArtifactInfo,
 } from '@/types/wiki'
 import { releaseImageSrcCache } from '@/components/editor/authenticatedImageSrc'
 import IconChat from '~icons/mdi/message-text-outline'
@@ -626,6 +646,8 @@ import { useWikiPresence } from '@/composables/useWikiPresence'
 import { exportWikiPageToPdf } from '@/utils/wikiPdf'
 import { blocksToMarkdown } from '@/utils/wikiMarkdown'
 import { resolvePageTypeStyle } from '@/utils/pageTypeStyle'
+import { fetchArtifact } from '@/utils/artifacts'
+import ArtifactView from '@/components/wiki/ArtifactView.vue'
 
 const wiki = useWiki()
 const app = useApp()
@@ -640,6 +662,18 @@ const pageId = computed(() => String(route.params.pageId))
 
 const page = computed(() => wiki.state.page)
 const loadError = ref(false)
+
+// ----- artifact ----------------------------------------------------------------
+
+/** The uploaded HTML bundle this page shows instead of its text, if any. */
+const artifact = ref<ArtifactInfo | null>(null)
+/** true until the artifact lookup of the opened page answered (no flash of the text view) */
+const artifactLoading = ref(false)
+
+const onArtifactRemoved = () => {
+  artifact.value = null
+  void wiki.loadTree(tenantId.value)
+}
 
 // ----- read-only mode & per-page edit lock ----------------------------------
 
@@ -825,8 +859,21 @@ const loadPage = async () => {
   // facet vocabularies (page types / statuses) — cached, so this is a no-op
   // after the first page open
   void wiki.loadConfig(tenantId.value)
+  artifact.value = null
+  artifactLoading.value = true
+  const loadingId = pageId.value
   try {
-    await wiki.loadPage(tenantId.value, pageId.value)
+    await wiki.loadPage(tenantId.value, loadingId)
+    // a page without an artifact answers null; a failed lookup falls back to
+    // the text view rather than hiding the page
+    const info = await fetchArtifact(tenantId.value, loadingId).catch(
+      () => null,
+    )
+    if (pageId.value === loadingId) {
+      artifact.value = info
+      // the view must render before the title/editor below can be reached
+      artifactLoading.value = false
+    }
     title.value = wiki.state.page?.title ?? ''
     await nextTick()
     autoGrowTitle()
@@ -835,6 +882,8 @@ const loadPage = async () => {
     scheduleJump()
   } catch {
     loadError.value = true
+  } finally {
+    if (pageId.value === loadingId) artifactLoading.value = false
   }
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "symbiosika-wiki-backend",
-  "version": "0.15.3",
+  "version": "0.16.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -39,6 +39,7 @@
     "csv": "6.4.1",
     "drizzle-orm": "0.44.6",
     "drizzle-valibot": "0.4.2",
+    "fflate": "^0.8.3",
     "hono": "4.10.1",
     "hono-openapi": "1.1.0",
     "jsonwebtoken": "9.0.2",

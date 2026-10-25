@@ -78,6 +78,13 @@
       "when": 1788257253073,
       "tag": "0010_consolidate_page_image_bucket",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792916328880,
+      "tag": "0011_artifacts",
+      "breakpoints": true
     }
   ]
 }

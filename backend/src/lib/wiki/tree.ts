@@ -12,6 +12,7 @@
  */
 import { getKnowledgeText } from "@framework/lib/knowledge/knowledge-texts";
 import { getTeamsByUser } from "@framework/lib/usermanagement/teams";
+import { getArtifactPageIds } from "../artifacts/store";
 
 type KnowledgeTextListRow = Awaited<
   ReturnType<typeof getKnowledgeText>
@@ -40,6 +41,11 @@ export interface WikiTreeNode {
    * intent, so this cannot be derived client-side.
    */
   publicEffective: boolean;
+  /**
+   * The page shows an uploaded artifact (HTML bundle) instead of its text —
+   * see lib/artifacts. Lets the sidebar give it its own icon.
+   */
+  artifact: boolean;
   children: WikiTreeNode[];
 }
 
@@ -68,6 +74,7 @@ const toNode = (row: KnowledgeTextListRow): WikiTreeNode => ({
   updatedAt: row.updatedAt,
   pageType: row.pageType ?? null,
   publicEffective: row.publicEffective ?? false,
+  artifact: false,
   children: [],
 });
 
@@ -77,11 +84,14 @@ const toNode = (row: KnowledgeTextListRow): WikiTreeNode => ({
  * Pages referencing a parent outside the given list become roots.
  */
 export const buildTreeFromRows = (
-  rows: KnowledgeTextListRow[]
+  rows: KnowledgeTextListRow[],
+  artifactPageIds: Set<string> = new Set()
 ): WikiTreeNode[] => {
   const nodes = new Map<string, WikiTreeNode>();
   for (const row of rows) {
-    nodes.set(row.id, toNode(row));
+    const node = toNode(row);
+    node.artifact = artifactPageIds.has(row.id);
+    nodes.set(row.id, node);
   }
 
   const roots: WikiTreeNode[] = [];
@@ -108,6 +118,7 @@ export const buildWikiTree = async (
   // single-connection dev databases (PGlite wire protocol)
   const pages = await getKnowledgeText({ tenantId, userId });
   const userTeams = await getTeamsByUser(userId, tenantId);
+  const artifactPageIds = await getArtifactPageIds(tenantId);
 
   const personalRows: KnowledgeTextListRow[] = [];
   const organisationRows: KnowledgeTextListRow[] = [];
@@ -133,12 +144,15 @@ export const buildWikiTree = async (
       teamId: team.teamId,
       name: team.name,
       role: team.role,
-      pages: buildTreeFromRows(teamRows.get(team.teamId) ?? []),
+      pages: buildTreeFromRows(
+        teamRows.get(team.teamId) ?? [],
+        artifactPageIds
+      ),
     }));
 
   return {
-    personal: buildTreeFromRows(personalRows),
+    personal: buildTreeFromRows(personalRows, artifactPageIds),
     teams,
-    organisation: buildTreeFromRows(organisationRows),
+    organisation: buildTreeFromRows(organisationRows, artifactPageIds),
   };
 };

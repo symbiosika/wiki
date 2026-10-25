@@ -24,6 +24,11 @@ export interface WikiTreeNode {
    * Drives the globe marker in the tree.
    */
   publicEffective: boolean
+  /**
+   * The page shows an uploaded artifact (HTML bundle) instead of its text.
+   * Drives the artifact icon in the tree.
+   */
+  artifact?: boolean
   children: WikiTreeNode[]
 }
 
@@ -290,4 +295,27 @@ export interface WikiRelatedPage {
   title: string
   /** distance of the closest chunk pair (smaller = more similar) */
   distance: number
+}
+
+/** One uploaded version of a page's artifact (GET …/wiki/:pageId/artifact). */
+export interface ArtifactVersion {
+  id: string
+  version: number
+  entryPath: string
+  fileCount: number
+  totalBytes: number
+  /** non-fatal findings of the upload check (absolute paths, window.claude…) */
+  warnings: string[]
+  sourceName: string | null
+  createdBy: string | null
+  createdAt: string
+}
+
+/** The artifact a page shows; null from the API when it carries none. */
+export interface ArtifactInfo {
+  pageId: string
+  current: ArtifactVersion
+  versions: ArtifactVersion[]
+  /** path below `/api/v1` of the entry page, with a short-lived token */
+  contentPath: string
 }

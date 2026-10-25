@@ -21,6 +21,12 @@
           :label="$t('Wiki.import.fromUrl')"
           @click="mode = 'url'"
         />
+        <SecondaryButton
+          size="small"
+          :class="{ '!bg-primary !text-primary-contrast': mode === 'artifact' }"
+          :label="$t('Wiki.artifact.importMode')"
+          @click="mode = 'artifact'"
+        />
       </div>
 
       <!-- file dropzone -->
@@ -208,7 +214,7 @@
       </div>
 
       <!-- url -->
-      <div v-else class="flex flex-col gap-3">
+      <div v-else-if="mode === 'url'" class="flex flex-col gap-3">
         <InputText
           v-model="url"
           type="url"
@@ -226,6 +232,48 @@
             :placeholder="$t('Wiki.import.titlePlaceholder')"
           />
         </div>
+      </div>
+
+      <!--
+        artifact: one ZIP / HTML file that the new page shows in a sandboxed
+        frame instead of text (no parsing, no background job)
+      -->
+      <div v-else class="flex flex-col gap-3">
+        <button
+          type="button"
+          class="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors disabled:opacity-50"
+          :class="
+            dragOver
+              ? 'border-primary bg-primary/5'
+              : 'border-surface-300 hover:border-primary dark:border-surface-600'
+          "
+          :disabled="submitting"
+          @click="artifactInputRef?.click()"
+          @dragover.prevent="dragOver = true"
+          @dragleave.prevent="dragOver = false"
+          @drop.prevent="onArtifactDrop"
+        >
+          <IconArtifact class="h-8 w-8 text-surface-400" />
+          <span class="text-sm text-surface-600 dark:text-surface-300">
+            {{ artifactFile?.name ?? $t('Wiki.artifact.importDrop') }}
+          </span>
+        </button>
+        <input
+          ref="artifactInputRef"
+          type="file"
+          class="hidden"
+          :accept="ARTIFACT_ACCEPT"
+          @change="onArtifactInput"
+        />
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('Wiki.import.titleLabel') }}
+          </label>
+          <InputText v-model="title" class="w-full" />
+        </div>
+        <p class="text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('Wiki.artifact.importHint') }}
+        </p>
       </div>
 
       <!-- base location (Ablageort) -->
@@ -269,7 +317,10 @@
       </div>
 
       <!-- AI post-processing -->
-      <div v-if="agentOptions.length > 1" class="flex flex-col gap-1">
+      <div
+        v-if="mode !== 'artifact' && agentOptions.length > 1"
+        class="flex flex-col gap-1"
+      >
         <label class="text-sm text-surface-700 dark:text-surface-300">
           {{ $t('Wiki.import.postProcessingLabel') }}
         </label>
@@ -286,6 +337,7 @@
       </div>
 
       <label
+        v-if="mode !== 'artifact'"
         class="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300"
       >
         <Checkbox v-model="splitIntoBlocks" binary />
@@ -332,6 +384,7 @@
 
       <!-- background-job hint: imports no longer block, they run as a job -->
       <p
+        v-if="mode !== 'artifact'"
         class="flex items-start gap-2 rounded-md bg-surface-100 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
       >
         <IconInbox class="mt-0.5 h-4 w-4 shrink-0" />
@@ -357,7 +410,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, type Component } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import IconUpload from '~icons/mdi/tray-arrow-up'
@@ -373,9 +426,16 @@ import IconPersonal from '~icons/mdi/account-outline'
 import IconTeam from '~icons/mdi/account-group-outline'
 import IconOrganisation from '~icons/mdi/domain'
 import IconCurrent from '~icons/mdi/file-tree-outline'
+import IconArtifact from '~icons/mdi/application-brackets-outline'
 import { useWiki } from '@/stores/wiki'
 import { usePostProcessingAgents } from '@/stores/postProcessingAgents'
 import { FetcherError } from '@/utils/fetcher'
+import {
+  ARTIFACT_ACCEPT,
+  artifactTitleFromFileName,
+  isArtifactFile,
+  uploadArtifact,
+} from '@/utils/artifacts'
 import type { WikiParserModality, WikiScope } from '@/types/wiki'
 import {
   acceptedExtensions,
@@ -393,6 +453,7 @@ const visible = defineModel<boolean>('visible', { required: true })
 
 const { t, te } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const toast = useToast()
 const wiki = useWiki()
 const agentsStore = usePostProcessingAgents()
@@ -445,7 +506,10 @@ interface ImportEntry {
   error?: string
 }
 
-const mode = ref<'file' | 'url'>('file')
+const mode = ref<'file' | 'url' | 'artifact'>('file')
+/** the ZIP / HTML file of an artifact upload (mode "artifact") */
+const artifactFile = ref<File | null>(null)
+const artifactInputRef = ref<HTMLInputElement | null>(null)
 const entries = ref<ImportEntry[]>([])
 const url = ref('')
 const title = ref('')
@@ -863,7 +927,9 @@ const baseParentId = computed(() =>
 const canSubmit = computed(() =>
   mode.value === 'file'
     ? entries.value.length > 0
-    : url.value.trim().length > 0,
+    : mode.value === 'artifact'
+      ? artifactFile.value !== null
+      : url.value.trim().length > 0,
 )
 
 const failedCount = computed(
@@ -871,6 +937,7 @@ const failedCount = computed(
 )
 
 const submitLabel = computed(() => {
+  if (mode.value === 'artifact') return t('Wiki.artifact.importSubmit')
   if (submitting.value && mode.value === 'file' && entries.value.length > 1) {
     return t('Wiki.import.progress', {
       done: importedCount.value,
@@ -1009,9 +1076,93 @@ const submitFiles = async () => {
   })
 }
 
+/** Take the chosen artifact file, defaulting the title from its name. */
+const pickArtifact = (file: File | undefined) => {
+  if (!file) return
+  if (!isArtifactFile(file.name)) {
+    toast.add({
+      severity: 'warn',
+      summary: t('Wiki.artifact.invalidFile'),
+      life: 4000,
+    })
+    return
+  }
+  const previousDefault = artifactFile.value
+    ? artifactTitleFromFileName(artifactFile.value.name)
+    : ''
+  if (!title.value.trim() || title.value === previousDefault) {
+    title.value = artifactTitleFromFileName(file.name)
+  }
+  artifactFile.value = file
+}
+
+const onArtifactInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  pickArtifact(input.files?.[0])
+  input.value = ''
+}
+
+const onArtifactDrop = (event: DragEvent) => {
+  dragOver.value = false
+  pickArtifact(event.dataTransfer?.files?.[0])
+}
+
+/**
+ * Create the page at the chosen location and upload the artifact into it.
+ * Synchronous (no job): the upload is checked and stored right away, so a
+ * rejected bundle removes the just-created page again and the dialog stays
+ * open with the reason.
+ */
+const submitArtifact = async () => {
+  const file = artifactFile.value
+  if (!file) return
+  submitting.value = true
+  let createdPageId: string | null = null
+  try {
+    const page = await wiki.createPage(props.tenantId, scope.value, {
+      title: title.value.trim() || artifactTitleFromFileName(file.name),
+      parentId: baseParentId.value,
+    })
+    createdPageId = page.id
+    const info = await uploadArtifact(props.tenantId, page.id, file)
+    await wiki.loadTree(props.tenantId)
+    visible.value = false
+    toast.add({
+      severity: info.current.warnings.length ? 'warn' : 'success',
+      summary: t('Wiki.artifact.uploaded', { version: info.current.version }),
+      detail: info.current.warnings.join('\n') || undefined,
+      life: info.current.warnings.length ? 8000 : 3000,
+    })
+    router.push({
+      name: 'WikiPage',
+      params: { tenantId: props.tenantId, pageId: page.id },
+    })
+  } catch (error) {
+    if (createdPageId) {
+      await wiki.deletePage(props.tenantId, createdPageId).catch(() => {})
+    }
+    let detail = errorMessage(error)
+    try {
+      detail = (JSON.parse(detail) as { error?: string }).error ?? detail
+    } catch {
+      // not JSON — keep the text
+    }
+    toast.add({
+      severity: 'error',
+      summary: t('Wiki.artifact.uploadError'),
+      detail,
+      life: 6000,
+    })
+  } finally {
+    submitting.value = false
+  }
+}
+
 const submit = async () => {
   if (!canSubmit.value || submitting.value) return
-  if (mode.value === 'url') {
+  if (mode.value === 'artifact') {
+    await submitArtifact()
+  } else if (mode.value === 'url') {
     await submitUrl()
   } else {
     await submitFiles()
@@ -1021,6 +1172,7 @@ const submit = async () => {
 const reset = () => {
   mode.value = 'file'
   entries.value = []
+  artifactFile.value = null
   url.value = ''
   title.value = ''
   splitIntoBlocks.value = true
