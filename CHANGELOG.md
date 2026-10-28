@@ -4,6 +4,14 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.17.0] - 2026-10-28
+
+- New: every user can create further organisations, not only their first one
+  ("Organisation anlegen" no longer fails with "User already has an tenant").
+  Controlled by the framework flag `ALLOW_OPEN_TENANT_CREATION`, which the wiki
+  sets to `true` (docker-compose, `.env.prod.example`, local env defaults).
+- Framework update: also brings the new shared layout for all default emails.
+
 ## [0.16.0] - 2026-10-25
 
 - New: artifacts — publish a static HTML page (e.g. a Claude artifact) as a
