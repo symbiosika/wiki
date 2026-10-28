@@ -26,6 +26,7 @@ import {
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
 import { withImageCacheHeaders } from "./lib/http/image-cache-headers";
 import { withVersionedHealth } from "./lib/http/health-version";
+import { resolveBranding, withBranding } from "./lib/http/branding";
 import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
 import { wikiMcpServer } from "./mcp";
 
@@ -44,13 +45,20 @@ startDiagnostics();
  */
 const publicWikiEnabled = isPublicWikiEnabled();
 
+/**
+ * Name, description and icon of this installation (APP_NAME, APP_DESCRIPTION,
+ * APP_ICON_URL, APP_PREVIEW_IMAGE_URL) — nothing in the bundles names a
+ * particular company. See ./lib/http/branding.
+ */
+const branding = resolveBranding();
+
 const server = defineServer({
   port: 3000,
   jwtExpiresAfter: 60 * 60 * 24 * 30, // 30 days
   magicLinkTtl: 60 * 60 * 24, // 24 hours
-  // Display name of the app (used in emails, OAuth metadata, …). Override
-  // with the APP_NAME env var, e.g. APP_NAME=Wiki for shorter email names.
-  appName: process.env.APP_NAME ?? "Symbiosika Wiki",
+  // Display name of the app (used in emails, OAuth metadata, page titles,
+  // link previews, …). Set with the APP_NAME env var; defaults to "Wiki".
+  appName: branding.appName,
   basePath: "/api/v1",
   loginUrl: "/login.html",
   magicLoginVerifyUrl: "/magic-login-verify.html",
@@ -201,8 +209,15 @@ const server = defineServer({
 // the wrapper below adds a long-lived private `Cache-Control` to exactly those
 // responses — see ./lib/http/image-cache-headers for why this sits here and
 // not in a Hono middleware.
+//
+// The static HTML pages get the installation's name and link-preview tags,
+// and the default favicon gives way to APP_ICON_URL — see
+// ./lib/http/branding.
 const cachingFetch = withImageCacheHeaders(
-  server.fetch as (...args: unknown[]) => Response | Promise<Response>
+  withBranding(
+    server.fetch as (...args: unknown[]) => Response | Promise<Response>,
+    branding
+  )
 );
 
 // `fetch` is wrapped so paths that no file can have (a NUL byte, the classic

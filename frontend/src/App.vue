@@ -2,6 +2,7 @@
 import { useApp } from '@/stores/main'
 import { useTheme } from '@/stores/theme'
 import { isTeamsHost, teamsState, watchTeamsTheme } from '@/utils/teamsSession'
+import { APP_NAME } from '@/utils/appName'
 
 const appStore = useApp()
 const theme = useTheme()
@@ -30,9 +31,10 @@ const teamsNeedsAttention = computed(
 )
 
 // Keep the browser/tab title in sync with the selected organisation, e.g.
-// "Acme Wiki". Falls back to the generic title while no organisation is
-// resolved yet (initial load, signed out).
-const DEFAULT_TITLE = 'SYMBIOSIKA WIKI'
+// "Acme Wiki". While no organisation is resolved yet (initial load, signed
+// out) it shows the installation's name, which the server put into
+// index.html (APP_NAME).
+const DEFAULT_TITLE = APP_NAME
 watch(
   () => appStore.currentTenant?.name,
   (name) => {

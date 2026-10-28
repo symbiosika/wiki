@@ -14,7 +14,7 @@
         <img
           v-if="logoSrc"
           :src="logoSrc"
-          :alt="app.currentTenant?.name ?? $t('Wiki.appName')"
+          :alt="app.currentTenant?.name ?? appName"
           class="max-h-11 max-w-full shrink object-contain"
         />
         <template v-else>
@@ -26,7 +26,7 @@
           <span
             class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
           >
-            {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
+            {{ app.currentTenant?.name ?? appName }}
           </span>
         </template>
       </button>
@@ -372,6 +372,7 @@
 <script setup lang="ts">
 import { useConfirm } from 'primevue/useconfirm'
 import { useAuthenticatedImage } from '@/composables/useAuthenticatedImage'
+import { APP_NAME as appName } from '@/utils/appName'
 import { useToast } from 'primevue/usetoast'
 import IconMagnify from '~icons/mdi/magnify'
 import IconChat from '~icons/mdi/message-text-outline'

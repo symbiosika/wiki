@@ -4,6 +4,18 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.18.0] - 2026-10-28
+
+- New: neutral, configurable branding. The wiki no longer names a particular
+  company: the default name is "Wiki" and the default icon a neutral book.
+  `APP_NAME`, `APP_DESCRIPTION`, `APP_ICON_URL` and `APP_PREVIEW_IMAGE_URL`
+  set name, description and icon. The server writes them into the page title
+  and Open Graph tags of every HTML page, so link previews (WhatsApp, Slack,
+  Teams, …) show the installation's own name and image; with `APP_ICON_URL`
+  set, the default favicon redirects to it.
+- Deployments that relied on the old default name "Symbiosika Wiki" now show
+  "Wiki" — set `APP_NAME` to keep a name.
+
 ## [0.17.1] - 2026-10-28
 
 - Fix: creating further organisations is now switched on in the app code
