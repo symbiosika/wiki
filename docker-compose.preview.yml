@@ -30,7 +30,7 @@ services:
       # address the browser actually uses.
       BASE_URL: ${BASE_URL:-http://localhost:3000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
-      APP_NAME: ${APP_NAME:-Symbiosika Wiki (Preview)}
+      APP_NAME: ${APP_NAME:-Wiki (Preview)}
 
       # --- AI (optional) ---
       # Without a provider all LLM features are no-ops; the wiki itself works.

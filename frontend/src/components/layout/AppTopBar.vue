@@ -22,7 +22,7 @@
       <span
         class="min-w-0 truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
       >
-        {{ app.currentTenant?.name ?? $t('Wiki.appName') }}
+        {{ app.currentTenant?.name ?? appName }}
       </span>
       <span
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-contrast"
@@ -35,6 +35,7 @@
 
 <script setup lang="ts">
 import IconMenu from '~icons/mdi/menu'
+import { APP_NAME as appName } from '@/utils/appName'
 
 const app = useApp()
 const layout = useLayout()

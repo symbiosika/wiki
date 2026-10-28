@@ -155,7 +155,7 @@ ENV PREVIEW_DATA_DIR=/data \
     POSTGRES_CONNECTION_POOL_SIZE=1 \
     # --- App ---
     BASE_URL=http://localhost:3000 \
-    APP_NAME="Symbiosika Wiki (Preview)" \
+    APP_NAME="Wiki (Preview)" \
     # Log to stdout only (docker logs); no rotating files in the container.
     WRITE_DEBUG_FILES=false \
     CRON_LOG=true \

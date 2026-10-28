@@ -1,7 +1,7 @@
 import type { EmailTemplateFunction } from "@framework/types";
 
 /**
- * App-specific email templates for Symbiosika Wiki.
+ * App-specific email templates for the wiki.
  *
  * These override the framework defaults (see the framework's
  * `store/email-templates.ts`) and are registered in `src/index.ts` via

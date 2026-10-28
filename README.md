@@ -246,7 +246,10 @@ Useful env variables:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BASE_URL` | `http://localhost:3000` | Public URL = OAuth2 issuer, must match the browser address |
-| `APP_NAME` | `Symbiosika Wiki (Preview)` | Display name (mails, OAuth metadata) |
+| `APP_NAME` | `Wiki (Preview)` | Display name (page titles, link previews, mails, OAuth metadata) |
+| `APP_DESCRIPTION` | – | One line under the title in link previews |
+| `APP_ICON_URL` | – | Favicon / logo (URL or path); replaces the neutral default icon |
+| `APP_PREVIEW_IMAGE_URL` | icon | Image for link previews (WhatsApp, Slack, …) |
 | `PREVIEW_DATA_DIR` | `/data` | Storage for DB, secrets, uploads |
 | `PREVIEW_EMBEDDED_DB` | `auto` | `false` = use external Postgres via `POSTGRES_*` |
 | `PREVIEW_SKIP_MIGRATIONS` | `false` | Skip migrations on startup |
