@@ -74,6 +74,8 @@ const server = defineServer({
   staticPrivateExclude: ["app"],
   // activate additional parameters for PDF parsing
   enablePdfParserExtraction: true,
+  // Every user may create further organisations, not only their first one.
+  allowOpenTenantCreation: true,
 
   // OAuth2 / OIDC Authorization Server. Enabling it mounts all OAuth
   // endpoints (/oauth/authorize, /oauth/token, /oauth/introspect,
