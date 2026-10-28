@@ -31,6 +31,8 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:3000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       APP_NAME: ${APP_NAME:-Symbiosika Wiki (Preview)}
+      # Every user may create further organisations (not only their first one).
+      ALLOW_OPEN_TENANT_CREATION: ${ALLOW_OPEN_TENANT_CREATION:-true}
 
       # --- AI (optional) ---
       # Without a provider all LLM features are no-ops; the wiki itself works.
