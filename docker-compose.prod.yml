@@ -57,10 +57,6 @@ services:
       BASE_URL: ${BASE_URL}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
 
-      # --- Tenants ---
-      # Every user may create further organisations (not only their first one).
-      ALLOW_OPEN_TENANT_CREATION: ${ALLOW_OPEN_TENANT_CREATION:-true}
-
       # --- Database ---
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}

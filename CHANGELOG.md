@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.17.1] - 2026-10-28
+
+- Fix: creating further organisations is now switched on in the app code
+  (`allowOpenTenantCreation` in `defineServer`) instead of via the
+  `ALLOW_OPEN_TENANT_CREATION` env variable, so it works on every deployment
+  without extra configuration. The env variable is gone.
+
 ## [0.17.0] - 2026-10-28
 
 - New: every user can create further organisations, not only their first one
