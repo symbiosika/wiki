@@ -36,6 +36,29 @@ export interface TenantMember {
   joinedAt: string
 }
 
+/**
+ * What the organisation members table shows in a member's access switch.
+ *
+ * - An owner always has read/write access to the organisation's knowledge
+ *   (the backend enforces it), so the switch shows "write" and is locked.
+ * - Only admins and owners may change access (the endpoint answers 403 to
+ *   everyone else), so for other viewers every switch is read-only.
+ * - Nobody edits their own row: an admin could otherwise lock themselves out.
+ */
+export const tenantMemberAccessState = (
+  member: Pick<TenantMember, 'id' | 'role' | 'knowledgeAccess'>,
+  viewer: { userId: string | undefined; isAdmin: boolean },
+): { value: KnowledgeAccessLevel; editable: boolean; ownerFixed: boolean } => {
+  if (member.role === 'owner') {
+    return { value: 'write', editable: false, ownerFixed: true }
+  }
+  return {
+    value: member.knowledgeAccess,
+    editable: viewer.isAdmin && member.id !== viewer.userId,
+    ownerFixed: false,
+  }
+}
+
 export interface TenantInvitation {
   id: string
   tenantId: string

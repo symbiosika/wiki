@@ -26,6 +26,7 @@ import {
 import { hasNulByteInPath } from "./lib/http/request-path-guard";
 import { withImageCacheHeaders } from "./lib/http/image-cache-headers";
 import { withVersionedHealth } from "./lib/http/health-version";
+import { withOwnerKnowledgeWriteAccess } from "./lib/http/owner-knowledge-access";
 import { resolveBranding, withBranding } from "./lib/http/branding";
 import { startDiagnostics, withDiagnostics } from "./lib/diagnostics";
 import { wikiMcpServer } from "./mcp";
@@ -213,9 +214,15 @@ const server = defineServer({
 // The static HTML pages get the installation's name and link-preview tags,
 // and the default favicon gives way to APP_ICON_URL — see
 // ./lib/http/branding.
+//
+// An organisation owner always keeps write access to the organisation's
+// knowledge: a member update that would leave an owner read-only is put back
+// on "write" — see ./lib/http/owner-knowledge-access.
 const cachingFetch = withImageCacheHeaders(
   withBranding(
-    server.fetch as (...args: unknown[]) => Response | Promise<Response>,
+    withOwnerKnowledgeWriteAccess(
+      server.fetch as (...args: unknown[]) => Response | Promise<Response>
+    ),
     branding
   )
 );

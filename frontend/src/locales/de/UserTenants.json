@@ -44,7 +44,8 @@
   "accessSuccess": "Zugriffsrecht aktualisiert",
   "access": {
     "read": "Lesen",
-    "readWrite": "Lesen/Schreiben"
+    "readWrite": "Lesen/Schreiben",
+    "ownerAlwaysWrite": "Inhaber haben immer Lese- und Schreibzugriff"
   },
   "roles": {
     "member": "Mitglied",
