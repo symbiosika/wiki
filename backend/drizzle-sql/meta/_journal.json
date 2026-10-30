@@ -85,6 +85,13 @@
       "when": 1792916328880,
       "tag": "0011_artifacts",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793362590149,
+      "tag": "0012_owner_knowledge_write",
+      "breakpoints": true
     }
   ]
 }

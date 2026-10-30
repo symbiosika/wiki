@@ -4,6 +4,15 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.18.2] - 2026-10-30
+
+- Fix: an organisation owner always has read/write access to the
+  organisation's knowledge. Owners that were set to "Read" could no longer
+  write organisation-wide pages and had no way to undo it; they get write
+  access back, and setting an owner to "Read" no longer takes effect. The
+  members table shows the owner as "Read/Write" (locked) and only lets admins
+  and owners change other members' access.
+
 ## [0.18.1] - 2026-10-30
 
 - The agent instructions editor now accepts up to 50,000 characters (was

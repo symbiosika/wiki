@@ -54,20 +54,28 @@
       </Column>
       <Column :header="$t('UserTenants.knowledgeAccess')" style="width: 200px">
         <template #body="{ data }">
-          <SelectButton
-            :model-value="data.knowledgeAccess"
-            :options="knowledgeAccessOptions"
-            option-label="label"
-            option-value="value"
-            :allow-empty="false"
-            :disabled="
-              data.id === app.state.user?.id || savingAccessFor === data.id
+          <div
+            :title="
+              accessState(data).ownerFixed
+                ? $t('UserTenants.access.ownerAlwaysWrite')
+                : undefined
             "
-            @update:model-value="
-              (value: KnowledgeAccessLevel) =>
-                value && changeKnowledgeAccess(data, value)
-            "
-          />
+          >
+            <SelectButton
+              :model-value="accessState(data).value"
+              :options="knowledgeAccessOptions"
+              option-label="label"
+              option-value="value"
+              :allow-empty="false"
+              :disabled="
+                !accessState(data).editable || savingAccessFor === data.id
+              "
+              @update:model-value="
+                (value: KnowledgeAccessLevel) =>
+                  value && changeKnowledgeAccess(data, value)
+              "
+            />
+          </div>
         </template>
       </Column>
       <Column header="" style="width: 80px">
@@ -533,6 +541,7 @@ import type {
   TenantInvitationAdminView,
   TenantMember,
 } from '@/types/usermanagement'
+import { tenantMemberAccessState } from '@/types/usermanagement'
 import { isValidHexColor } from '@/utils/brandColor'
 import type { EmbeddingSettings } from '@/stores/main'
 
@@ -601,6 +610,12 @@ const knowledgeAccessOptions = [
 
 // user id of the member whose access is currently being saved (disables its switch)
 const savingAccessFor = ref<string | null>(null)
+
+const accessState = (member: TenantMember) =>
+  tenantMemberAccessState(member, {
+    userId: app.state.user?.id,
+    isAdmin: isAdmin.value,
+  })
 
 // ----- branding colours ------------------------------------------------------
 

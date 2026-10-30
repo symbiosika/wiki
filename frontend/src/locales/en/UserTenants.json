@@ -44,7 +44,8 @@
   "accessSuccess": "Access level updated",
   "access": {
     "read": "Read",
-    "readWrite": "Read/Write"
+    "readWrite": "Read/Write",
+    "ownerAlwaysWrite": "Owners always have read and write access"
   },
   "roles": {
     "member": "Member",
