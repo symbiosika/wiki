@@ -4,6 +4,11 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.18.1] - 2026-10-30
+
+- The agent instructions editor now accepts up to 50,000 characters (was
+  20,000).
+
 ## [0.18.0] - 2026-10-28
 
 - New: neutral, configurable branding. The wiki no longer names a particular

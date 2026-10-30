@@ -84,7 +84,7 @@ import { useAgentInstructions } from '@/stores/agentInstructions'
  * Generous but bounded: the instructions are prepended to every agent session,
  * so an unbounded page would quietly eat the model's context window.
  */
-const MAX_INSTRUCTIONS_CHARS = 20000
+const MAX_INSTRUCTIONS_CHARS = 50000
 
 const { t, locale } = useI18n()
 const toast = useToast()
