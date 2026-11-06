@@ -17,7 +17,32 @@ export interface Team {
    * added to this team as a "member". Only editable by team admins.
    */
   addNewUsersByDefault?: boolean
+  /** Free-form team settings. See TeamMeta for the keys the app uses. */
+  meta?: TeamMeta | null
 }
+
+/**
+ * Keys the app stores in `team.meta`. Unknown keys are kept untouched when the
+ * app writes the meta back.
+ */
+export interface TeamMeta {
+  /**
+   * Knowledge access of users who are added automatically because the team
+   * has `addNewUsersByDefault`. Missing means "read" (read-only).
+   * Applied by the backend (drizzle-sql/0013_new_user_team_knowledge_access.sql).
+   */
+  newUserKnowledgeAccess?: KnowledgeAccessLevel
+  [key: string]: unknown
+}
+
+/**
+ * Access level auto-added users of a team get. Anything but an explicit
+ * "write" means "read" — the same rule the backend trigger applies.
+ */
+export const newUserKnowledgeAccessOf = (
+  meta: TeamMeta | null | undefined,
+): KnowledgeAccessLevel =>
+  meta?.newUserKnowledgeAccess === 'write' ? 'write' : 'read'
 
 export interface TeamMember {
   userId: string

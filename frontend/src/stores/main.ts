@@ -7,6 +7,7 @@ import type {
   KnowledgeAccessLevel,
   Team,
   TeamMember,
+  TeamMeta,
   TenantInvitation,
   TenantInvitationAdminView,
   TenantMember,
@@ -547,12 +548,13 @@ export const useApp = defineStore('app', () => {
   /**
    * Update team settings. The backend PUT endpoint validates against the full
    * team insert schema, so `name` and `tenantId` are always sent; the caller may
-   * additionally update `addNewUsersByDefault`. Only team admins may edit (the
+   * additionally update `addNewUsersByDefault` and `meta` (sent as a whole —
+   * pass the merged object). Only team admins may edit (the
    * backend enforces this via the `isTeamAdmin` middleware).
    */
   const updateTeam = async (
     teamId: string,
-    data: { name?: string; addNewUsersByDefault?: boolean },
+    data: { name?: string; addNewUsersByDefault?: boolean; meta?: TeamMeta },
   ) => {
     const current = state.value.teams.find((entry) => entry.id === teamId)
     const name = data.name ?? current?.name
@@ -564,6 +566,7 @@ export const useApp = defineStore('app', () => {
         ...(data.addNewUsersByDefault !== undefined && {
           addNewUsersByDefault: data.addNewUsersByDefault,
         }),
+        ...(data.meta !== undefined && { meta: data.meta }),
       },
     )
     if (current) {
@@ -571,6 +574,7 @@ export const useApp = defineStore('app', () => {
       if (data.addNewUsersByDefault !== undefined) {
         current.addNewUsersByDefault = data.addNewUsersByDefault
       }
+      if (data.meta !== undefined) current.meta = data.meta
     }
   }
 

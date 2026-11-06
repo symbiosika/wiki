@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.19.0] - 2026-11-06
+
+- Teams with "Automatically add new users to this team" now let team admins
+  choose the access new users get: "Read" (default) or "Read/Write". Teams
+  that already had the option switched on now add new users read-only until
+  an admin picks "Read/Write"; existing members are not changed.
+
 ## [0.18.2] - 2026-10-30
 
 - Fix: an organisation owner always has read/write access to the

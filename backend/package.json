@@ -1,6 +1,6 @@
 {
   "name": "symbiosika-wiki-backend",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "module": "index.ts",
   "type": "module",
   "private": true,

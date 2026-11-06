@@ -55,6 +55,29 @@
       <p class="mt-1 text-xs text-surface-400 dark:text-surface-500">
         {{ $t('UserTeams.addNewUsersByDefaultHint') }}
       </p>
+      <div v-if="addNewUsersByDefault" class="mt-3 pl-7">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-sm text-surface-700 dark:text-surface-300">
+            {{ $t('UserTeams.newUserKnowledgeAccess') }}
+          </span>
+          <SelectButton
+            :model-value="newUserKnowledgeAccess"
+            :options="knowledgeAccessOptions"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+            :disabled="!isCurrentUserAdmin || savingSettings"
+            data-testid="new-user-knowledge-access"
+            @update:model-value="
+              (value: KnowledgeAccessLevel) =>
+                value && changeNewUserKnowledgeAccess(value)
+            "
+          />
+        </div>
+        <p class="mt-1 text-xs text-surface-400 dark:text-surface-500">
+          {{ $t('UserTeams.newUserKnowledgeAccessHint') }}
+        </p>
+      </div>
     </div>
 
     <DataTable v-if="members.length > 0" :value="members">
@@ -254,7 +277,9 @@ import type {
   FoundUser,
   KnowledgeAccessLevel,
   TeamMember,
+  TeamMeta,
 } from '@/types/usermanagement'
+import { newUserKnowledgeAccessOf } from '@/types/usermanagement'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -269,6 +294,10 @@ const teamName = ref('')
 const members = ref<TeamMember[]>([])
 
 const addNewUsersByDefault = ref(false)
+// Knowledge access of users added automatically (team.meta). Default: read.
+const newUserKnowledgeAccess = ref<KnowledgeAccessLevel>('read')
+// The team's whole meta object, so saving one key keeps the others.
+const teamMeta = ref<TeamMeta>({})
 const savingSettings = ref(false)
 
 // Only team admins may change team settings (the backend enforces this too).
@@ -335,6 +364,8 @@ const loadTeamData = async () => {
     members.value = (await app.getTeamMembers(teamId.value)) || []
     const details = await app.getTeam(teamId.value)
     addNewUsersByDefault.value = details?.addNewUsersByDefault ?? false
+    teamMeta.value = { ...(details?.meta ?? {}) }
+    newUserKnowledgeAccess.value = newUserKnowledgeAccessOf(teamMeta.value)
   } catch {
     toast.add({
       severity: 'error',
@@ -528,28 +559,67 @@ const confirmInvite = async () => {
 
 // ----- settings ---------------------------------------------------------------
 
+/**
+ * Save the auto-join settings. The access level for auto-added users is
+ * always written explicitly into team.meta, so it stays "read" unless an
+ * admin picks "read/write".
+ */
+const saveDefaultTeamSettings = async (
+  enabled: boolean,
+  level: KnowledgeAccessLevel,
+) => {
+  const meta: TeamMeta = { ...teamMeta.value, newUserKnowledgeAccess: level }
+  await app.updateTeam(teamId.value, {
+    name: teamName.value,
+    addNewUsersByDefault: enabled,
+    meta,
+  })
+  teamMeta.value = meta
+}
+
+const showSettingsSaved = () =>
+  toast.add({
+    severity: 'success',
+    summary: t('Common.success'),
+    detail: t('UserTeams.settingsSuccess'),
+    life: 3000,
+  })
+
+const showSettingsError = (err: unknown) =>
+  toast.add({
+    severity: 'error',
+    summary: t('Common.error'),
+    detail: errorDetail(err, 'UserTeams.errors.updateSettingsFailed'),
+    life: 3000,
+  })
+
 const confirmUpdateAddNewUsersByDefault = async () => {
   savingSettings.value = true
   try {
-    await app.updateTeam(teamId.value, {
-      name: teamName.value,
-      addNewUsersByDefault: addNewUsersByDefault.value,
-    })
-    toast.add({
-      severity: 'success',
-      summary: t('Common.success'),
-      detail: t('UserTeams.updateSuccess'),
-      life: 3000,
-    })
+    await saveDefaultTeamSettings(
+      addNewUsersByDefault.value,
+      newUserKnowledgeAccess.value,
+    )
+    showSettingsSaved()
   } catch (err) {
     // revert the optimistic toggle on failure
     addNewUsersByDefault.value = !addNewUsersByDefault.value
-    toast.add({
-      severity: 'error',
-      summary: t('Common.error'),
-      detail: errorDetail(err, 'UserTeams.errors.updateSettingsFailed'),
-      life: 3000,
-    })
+    showSettingsError(err)
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+const changeNewUserKnowledgeAccess = async (level: KnowledgeAccessLevel) => {
+  const previous = newUserKnowledgeAccess.value
+  newUserKnowledgeAccess.value = level
+  savingSettings.value = true
+  try {
+    await saveDefaultTeamSettings(addNewUsersByDefault.value, level)
+    showSettingsSaved()
+  } catch (err) {
+    newUserKnowledgeAccess.value = previous
+    showSettingsError(err)
   } finally {
     savingSettings.value = false
   }
