@@ -92,6 +92,13 @@
       "when": 1793362590149,
       "tag": "0012_owner_knowledge_write",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793989445296,
+      "tag": "0013_new_user_team_knowledge_access",
+      "breakpoints": true
     }
   ]
 }

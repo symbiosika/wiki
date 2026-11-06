@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { tenantMemberAccessState, type TenantMember } from './usermanagement'
+import {
+  newUserKnowledgeAccessOf,
+  tenantMemberAccessState,
+  type TenantMember,
+} from './usermanagement'
 
 const member = (patch: Partial<TenantMember> = {}) => ({
   id: 'u-other',
@@ -49,5 +53,28 @@ describe('tenantMemberAccessState', () => {
       tenantMemberAccessState(member(), { userId: 'u-me', isAdmin: false })
         .editable,
     ).toBe(false)
+  })
+})
+
+describe('newUserKnowledgeAccessOf', () => {
+  it('defaults to read when the team has no setting', () => {
+    expect(newUserKnowledgeAccessOf(undefined)).toBe('read')
+    expect(newUserKnowledgeAccessOf(null)).toBe('read')
+    expect(newUserKnowledgeAccessOf({})).toBe('read')
+  })
+
+  it('returns the stored level', () => {
+    expect(newUserKnowledgeAccessOf({ newUserKnowledgeAccess: 'read' })).toBe(
+      'read',
+    )
+    expect(newUserKnowledgeAccessOf({ newUserKnowledgeAccess: 'write' })).toBe(
+      'write',
+    )
+  })
+
+  it('treats unknown values as read', () => {
+    expect(
+      newUserKnowledgeAccessOf({ newUserKnowledgeAccess: 'admin' as never }),
+    ).toBe('read')
   })
 })
