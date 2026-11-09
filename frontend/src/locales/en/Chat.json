@@ -12,7 +12,6 @@
   "close": "Close",
   "clear": "Clear conversation",
   "openChat": "Open Chat",
-  "error": "Something went wrong. Please try again.",
   "toolInput": "Input",
   "toolOutput": "Result",
   "toolError": "Error",
@@ -55,5 +54,15 @@
     "edit_wiki_page_content": "Edit page content",
     "update_wiki_page": "Update page",
     "delete_wiki_page": "Delete page"
+  },
+  "streamError": {
+    "rate_limited": "The AI model is busy right now. Please try again in a moment.",
+    "model_unavailable": "The configured AI model can't be used through OpenRouter right now – usually because the OpenRouter account's privacy settings (e.g. \"Zero Data Retention endpoints only\") exclude every provider of the model. An admin needs to adjust openrouter.ai/settings/privacy or the model (OPENROUTER_MODEL).",
+    "auth_failed": "OpenRouter rejected the API key. An admin needs to check OPENROUTER_API_KEY.",
+    "insufficient_credits": "The OpenRouter account is out of credits. An admin needs to top it up.",
+    "provider_error": "The AI service answered with an error. Please try again.",
+    "unknown": "Something went wrong. Please try again.",
+    "details": "Technical details",
+    "retry": "Try again"
   }
 }

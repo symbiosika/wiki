@@ -30,11 +30,13 @@ import {
   streamText,
   convertToModelMessages,
   createIdGenerator,
-  APICallError,
-  RetryError,
   type UIMessage,
 } from "ai";
 import { assertOpenRouterConfigured, getAiStatus } from "../../../../ai";
+import {
+  describeStreamError,
+  formatStreamErrorLog,
+} from "../../../../ai/stream-errors";
 import { buildWikiAgentConfig } from "../../../../ai/wiki-agent";
 import type { WikiChatMode } from "../../../../ai/tools/wiki";
 import {
@@ -61,22 +63,6 @@ import {
  * that, which the user saw as an error on the first question.
  */
 const CHAT_MAX_RETRIES = 4;
-
-/** Stream error text the frontend recognises as "model busy, try again". */
-export const RATE_LIMITED_ERROR = "rate_limited";
-
-/**
- * Message sent to the client when the stream fails. A rate limit gets a
- * stable code so the frontend can say what happened instead of a generic
- * error; everything else keeps its message.
- */
-export const describeStreamError = (error: unknown): string => {
-  const last = RetryError.isInstance(error) ? error.lastError : error;
-  if (APICallError.isInstance(last) && last.statusCode === 429) {
-    return RATE_LIMITED_ERROR;
-  }
-  return error instanceof Error ? error.message : "Streaming failed";
-};
 
 /**
  * Request schema. Messages are AI-SDK UIMessages: their `parts` carry text as
@@ -176,8 +162,9 @@ export default function defineChatRoutes(
           ...buildWikiAgentConfig({ tenantId, userId, mode, orgSystemPrompt }),
           messages: await convertToModelMessages(messages as UIMessage[]),
           maxRetries: CHAT_MAX_RETRIES,
-          onError: (error) => {
-            console.error(`[Chat] stream error mode=${mode}`, error);
+          // streamText hands over `{ error }`
+          onError: ({ error }) => {
+            console.error(formatStreamErrorLog(mode, error));
           },
         });
 
@@ -255,16 +242,15 @@ export default function defineChatRoutes(
     describeRoute({
       tags: ["chat"],
       summary: "Update the organisation's chat-agent configuration",
-      responses: { 200: { description: "The stored chat-agent configuration" } },
+      responses: {
+        200: { description: "The stored chat-agent configuration" },
+      },
     }),
     validator("param", v.object({ tenantId: v.string() })),
     validator(
       "json",
       v.object({
-        systemPrompt: v.pipe(
-          v.string(),
-          v.maxLength(MAX_SYSTEM_PROMPT_CHARS),
-        ),
+        systemPrompt: v.pipe(v.string(), v.maxLength(MAX_SYSTEM_PROMPT_CHARS)),
       }),
     ),
     isTenantMember,
@@ -359,9 +345,7 @@ export default function defineChatRoutes(
     validator(
       "json",
       v.object({
-        title: v.optional(
-          v.pipe(v.string(), v.maxLength(MAX_TITLE_CHARS * 4)),
-        ),
+        title: v.optional(v.pipe(v.string(), v.maxLength(MAX_TITLE_CHARS * 4))),
       }),
     ),
     isTenantMember,
@@ -387,7 +371,10 @@ export default function defineChatRoutes(
     }),
     validator(
       "param",
-      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+      v.object({
+        tenantId: v.string(),
+        sessionId: v.pipe(v.string(), v.uuid()),
+      }),
     ),
     isTenantMember,
     async (c) => {
@@ -415,7 +402,10 @@ export default function defineChatRoutes(
     }),
     validator(
       "param",
-      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+      v.object({
+        tenantId: v.string(),
+        sessionId: v.pipe(v.string(), v.uuid()),
+      }),
     ),
     validator(
       "json",
@@ -450,7 +440,10 @@ export default function defineChatRoutes(
     }),
     validator(
       "param",
-      v.object({ tenantId: v.string(), sessionId: v.pipe(v.string(), v.uuid()) }),
+      v.object({
+        tenantId: v.string(),
+        sessionId: v.pipe(v.string(), v.uuid()),
+      }),
     ),
     isTenantMember,
     async (c) => {

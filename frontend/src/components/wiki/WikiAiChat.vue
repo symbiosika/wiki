@@ -33,7 +33,9 @@
           <IconChat class="h-5 w-5" />
         </span>
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0">
+          <p
+            class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0"
+          >
             {{ $t('Chat.chatWithAi') }}
           </p>
           <p class="truncate text-xs text-surface-500 dark:text-surface-400">
@@ -50,12 +52,16 @@
               ? 'bg-amber-500 text-white hover:bg-amber-600'
               : 'border border-surface-200 text-surface-500 hover:bg-surface-100 hover:text-surface-700 dark:border-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200'
           "
-          :title="isEdit ? $t('Chat.mode.editTitle') : $t('Chat.mode.readTitle')"
+          :title="
+            isEdit ? $t('Chat.mode.editTitle') : $t('Chat.mode.readTitle')
+          "
           @click="aiChat.toggleMode()"
         >
           <IconPencil v-if="isEdit" class="h-3.5 w-3.5 shrink-0" />
           <IconLock v-else class="h-3.5 w-3.5 shrink-0" />
-          <span>{{ isEdit ? $t('Chat.mode.edit') : $t('Chat.mode.read') }}</span>
+          <span>{{
+            isEdit ? $t('Chat.mode.edit') : $t('Chat.mode.read')
+          }}</span>
         </button>
 
         <!-- quick settings: adjust the org system prompt -->
@@ -91,7 +97,10 @@
       </header>
 
       <!-- messages -->
-      <div ref="scrollRef" class="flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-4">
+      <div
+        ref="scrollRef"
+        class="flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-4"
+      >
         <!-- empty state -->
         <div
           v-if="!messages.length"
@@ -105,7 +114,9 @@
           <p class="text-sm font-medium text-surface-700 dark:text-surface-200">
             {{ $t('Chat.emptyTitle') }}
           </p>
-          <p class="max-w-[16rem] text-xs text-surface-500 dark:text-surface-400">
+          <p
+            class="max-w-[16rem] text-xs text-surface-500 dark:text-surface-400"
+          >
             {{ $t('Chat.emptyHint') }}
           </p>
         </div>
@@ -152,20 +163,20 @@
           <div
             class="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-surface-100 px-3.5 py-2.5 dark:bg-surface-800"
           >
-            <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400 [animation-delay:-0.3s]" />
-            <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400 [animation-delay:-0.15s]" />
-            <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400" />
+            <span
+              class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400 [animation-delay:-0.3s]"
+            />
+            <span
+              class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400 [animation-delay:-0.15s]"
+            />
+            <span
+              class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-400"
+            />
           </div>
         </div>
 
         <!-- error -->
-        <div
-          v-if="chatError"
-          class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-        >
-          <IconAlert class="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{{ $t('Chat.error') }}</span>
-        </div>
+        <ChatErrorNotice v-if="chatError" :error="chat?.error" />
       </div>
 
       <!-- input -->
@@ -231,7 +242,9 @@
         <span class="text-xs text-surface-400 dark:text-surface-500">
           {{ $t('Chat.config.systemPromptHint') }}
         </span>
-        <span class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500">
+        <span
+          class="shrink-0 pl-3 text-xs text-surface-400 dark:text-surface-500"
+        >
           {{
             $t('Chat.config.charCount', {
               count: systemPrompt.length,
@@ -269,9 +282,9 @@ import IconStop from '~icons/mdi/stop'
 import IconLock from '~icons/mdi/lock-outline'
 import IconPencil from '~icons/mdi/pencil-outline'
 import IconBroom from '~icons/mdi/broom'
-import IconAlert from '~icons/mdi/alert-circle-outline'
 import IconCog from '~icons/mdi/cog-outline'
 import ToolCallCard from './ToolCallCard.vue'
+import ChatErrorNotice from './ChatErrorNotice.vue'
 import { normalizeToolPart } from './toolCall'
 import { useToast } from 'primevue/usetoast'
 import { useChatConfig, MAX_SYSTEM_PROMPT_CHARS } from '@/stores/chatConfig'
@@ -382,7 +395,10 @@ const scrollToBottom = async () => {
 
 // keep the newest content in view as it streams
 watch(
-  () => [messages.value.length, JSON.stringify(messages.value.at(-1)?.parts ?? [])],
+  () => [
+    messages.value.length,
+    JSON.stringify(messages.value.at(-1)?.parts ?? []),
+  ],
   scrollToBottom,
 )
 
