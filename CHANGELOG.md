@@ -4,6 +4,15 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.19.2] - 2026-11-09
+
+- Fix: when the chat fails, it now says why instead of only "Es ist ein
+  Fehler aufgetreten" — e.g. that the AI model is busy, that the OpenRouter
+  privacy settings (Zero Data Retention) exclude every provider of the
+  configured model, that the API key was rejected or the credits are used
+  up. The provider's own message is available under "Technische Details".
+  The server log shows such errors on one readable line.
+
 ## [0.19.1] - 2026-11-09
 
 - Fix: opening a wiki link while signed out now lands on that page after

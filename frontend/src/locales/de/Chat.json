@@ -12,7 +12,6 @@
   "close": "Schließen",
   "clear": "Unterhaltung leeren",
   "openChat": "Chat öffnen",
-  "error": "Es ist ein Fehler aufgetreten. Bitte versuche es erneut.",
   "toolInput": "Eingabe",
   "toolOutput": "Ergebnis",
   "toolError": "Fehler",
@@ -55,5 +54,15 @@
     "edit_wiki_page_content": "Seiteninhalt bearbeiten",
     "update_wiki_page": "Seite aktualisieren",
     "delete_wiki_page": "Seite löschen"
+  },
+  "streamError": {
+    "rate_limited": "Das KI-Modell ist gerade überlastet. Bitte gleich noch einmal versuchen.",
+    "model_unavailable": "Das eingestellte KI-Modell ist über OpenRouter gerade nicht nutzbar – meist wegen der Datenschutz-Einstellungen des OpenRouter-Kontos (z. B. „nur Anbieter mit Zero Data Retention“), die alle Anbieter des Modells ausschließen. Ein Admin muss die Einstellungen unter openrouter.ai/settings/privacy oder das Modell (OPENROUTER_MODEL) anpassen.",
+    "auth_failed": "OpenRouter hat den API-Schlüssel abgelehnt. Ein Admin muss OPENROUTER_API_KEY prüfen.",
+    "insufficient_credits": "Das OpenRouter-Guthaben ist aufgebraucht. Ein Admin muss Guthaben aufladen.",
+    "provider_error": "Der KI-Dienst hat mit einem Fehler geantwortet. Bitte erneut versuchen.",
+    "unknown": "Es ist ein Fehler aufgetreten. Bitte erneut versuchen.",
+    "details": "Technische Details",
+    "retry": "Erneut versuchen"
   }
 }

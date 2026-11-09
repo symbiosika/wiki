@@ -167,22 +167,12 @@
               />
             </div>
 
-            <div
+            <ChatErrorNotice
               v-if="chatError"
-              class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-            >
-              <IconAlert class="mt-0.5 h-4 w-4 shrink-0" />
-              <span class="flex-1">{{
-                rateLimited ? $t('Ask.errorRateLimited') : $t('Ask.error')
-              }}</span>
-              <button
-                type="button"
-                class="shrink-0 font-medium underline underline-offset-2 hover:no-underline"
-                @click="retry"
-              >
-                {{ $t('Ask.retry') }}
-              </button>
-            </div>
+              :error="chat?.error"
+              retryable
+              @retry="retry"
+            />
           </div>
         </div>
       </div>
@@ -256,9 +246,9 @@ import IconSend from '~icons/mdi/send'
 import IconStop from '~icons/mdi/stop'
 import IconPlus from '~icons/mdi/plus'
 import IconMenu from '~icons/mdi/menu'
-import IconAlert from '~icons/mdi/alert-circle-outline'
 import AskSessionList from '@/components/ask/AskSessionList.vue'
 import AskToolLine from '@/components/ask/AskToolLine.vue'
+import ChatErrorNotice from '@/components/wiki/ChatErrorNotice.vue'
 import { normalizeToolPart } from '@/components/wiki/toolCall'
 import { teamsAuthHeaders } from '@/utils/teamsSession'
 import { sessionLabel, type ChatSession } from '@/types/chatSession'
@@ -310,8 +300,6 @@ const isStreaming = computed(
   () => status.value === 'streaming' || status.value === 'submitted',
 )
 const chatError = computed(() => Boolean(chat.value?.error))
-/** The model was busy (upstream rate limit, see backend describeStreamError). */
-const rateLimited = computed(() => chat.value?.error?.message === 'rate_limited')
 
 /** A request is in flight but nothing visible has arrived for it yet. */
 const isThinking = computed(() => {
@@ -320,7 +308,8 @@ const isThinking = computed(() => {
   if (!last || last.role !== 'assistant') return true
   return !(last.parts ?? []).some(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (part: any) => (part.type === 'text' && part.text) || normalizeToolPart(part),
+    (part: any) =>
+      (part.type === 'text' && part.text) || normalizeToolPart(part),
   )
 })
 
