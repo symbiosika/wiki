@@ -46,9 +46,25 @@
     <div id="toast-container"></div>
 
     <script>
+      // Where to go after the login. Only targets on this site are honoured:
+      // an absolute URL on our own origin (older links, server redirects) is
+      // reduced to its path, anything else falls back to the start page so
+      // the login can't be abused as an open redirect.
+      function safeRedirect(value) {
+        const fallback = '/static/app/';
+        if (!value) return fallback;
+        try {
+          const url = new URL(value, window.location.origin);
+          if (url.origin !== window.location.origin) return fallback;
+          return url.pathname + url.search + url.hash;
+        } catch (error) {
+          return fallback;
+        }
+      }
+
       function parseQueryString() {
         const params = new URLSearchParams(window.location.search);
-        return { token: params.get('token'), redirect: params.get('redirectUrl') || '/static/app/' };
+        return { token: params.get('token'), redirect: safeRedirect(params.get('redirectUrl')) };
       }
 
       function showToast(message, type = 'success') {
@@ -95,7 +111,7 @@
         const result = await loginWithToken(token);
         if (result.login) {
           showToast('Anmeldung erfolgreich', 'success');
-          setTimeout(() => { window.location.href = result.redirectUrl || redirect || '/static/app/'; }, 2000);
+          setTimeout(() => { window.location.href = redirect; }, 2000);
         } else {
           hideElement('verification');
           showElement('error-message');
