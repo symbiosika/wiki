@@ -40,7 +40,10 @@ export class FetcherError extends Error {
 }
 
 const redirectToLogin = () => {
-  const redirect = encodeURIComponent(window.location.href)
+  // A same-site path, not the full URL: the login only accepts local targets
+  // (open-redirect guard), and the Microsoft sign-in drops absolute URLs.
+  const { pathname, search, hash } = window.location
+  const redirect = encodeURIComponent(pathname + search + hash)
   // Drop the readable session marker; the HttpOnly `jwt` cookie itself can
   // only be cleared by the server (POST /user/logout).
   document.cookie =

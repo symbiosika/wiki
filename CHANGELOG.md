@@ -4,6 +4,13 @@ Every PR that changes the app raises the version in `backend/package.json`
 and adds an entry here (rules: `AGENTS.md` → "Versioning"). The running
 version is visible at `GET /health` and as the MCP `serverInfo.version`.
 
+## [0.19.1] - 2026-11-09
+
+- Fix: opening a wiki link while signed out now lands on that page after
+  the login instead of the start page. This works for the login link by
+  e-mail, passkeys and Microsoft 365. Only targets on the wiki itself are
+  followed after the login.
+
 ## [0.19.0] - 2026-11-06
 
 - Teams with "Automatically add new users to this team" now let team admins

@@ -149,7 +149,10 @@ const isAuthenticated = (): boolean => {
 }
 
 const redirectToLogin = () => {
-  const redirect = encodeURIComponent(window.location.href)
+  // A same-site path, not the full URL: the login only accepts local targets
+  // (open-redirect guard), and the Microsoft sign-in drops absolute URLs.
+  const { pathname, search, hash } = window.location
+  const redirect = encodeURIComponent(pathname + search + hash)
   window.location.href = `/login.html?redirectUrl=${redirect}`
 }
 

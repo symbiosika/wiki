@@ -184,11 +184,27 @@
     <div id="toast-container"></div>
 
     <script>
+      // Where to go after the login. Only targets on this site are honoured:
+      // an absolute URL on our own origin (older links, server redirects) is
+      // reduced to its path, anything else falls back to the start page so
+      // the login can't be abused as an open redirect.
+      function safeRedirect(value) {
+        const fallback = '/static/app/';
+        if (!value) return fallback;
+        try {
+          const url = new URL(value, window.location.origin);
+          if (url.origin !== window.location.origin) return fallback;
+          return url.pathname + url.search + url.hash;
+        } catch (error) {
+          return fallback;
+        }
+      }
+
       // Parse query string
       function parseQueryString() {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
-        const redirect = params.get('redirectUrl') || '/static/app/';
+        const redirect = safeRedirect(params.get('redirectUrl'));
         const email = params.get('email');
         return { token, redirect, email };
       }
@@ -224,7 +240,11 @@
       // Send login link (e-mail based sign-in, no password needed)
       async function sendLoginLink(email) {
         try {
-          const url = `/api/v1/user/send-magic-link?email=${encodeURIComponent(email)}&createUserIfMissing=true`;
+          let url = `/api/v1/user/send-magic-link?email=${encodeURIComponent(email)}&createUserIfMissing=true`;
+          // Carry the page the user wanted to open into the e-mail link,
+          // otherwise clicking it lands on the start page.
+          const { redirect } = parseQueryString();
+          url += `&redirectUrl=${encodeURIComponent(redirect)}`;
           const response = await fetch(url, {
             method: 'GET',
           });
@@ -402,7 +422,7 @@
           showToast('Registrierung erfolgreich', 'success');
           setTimeout(() => {
             const { redirect } = parseQueryString();
-            window.location.href = result.redirect || redirect || '/static/app/';
+            window.location.href = safeRedirect(result.redirect || redirect);
           }, 1500);
         } catch (error) {
           showToast('Der Server ist nicht erreichbar.', 'error');
@@ -497,7 +517,7 @@
           showToast('Anmeldung erfolgreich', 'success');
           setTimeout(() => {
             const { redirect } = parseQueryString();
-            window.location.href = result.redirectUrl || redirect || '/static/app/';
+            window.location.href = redirect;
           }, 1500);
         } else {
           passkeyLoginBtn.disabled = false;
@@ -685,8 +705,7 @@
           if (result.login) {
             showToast('Anmeldung erfolgreich', 'success');
             setTimeout(() => {
-              const redirectUrl = result.redirectUrl || redirect || '/static/app/';
-              window.location.href = redirectUrl;
+              window.location.href = redirect;
             }, 2000);
           } else {
             hideElement('verification');
